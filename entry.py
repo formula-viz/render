@@ -1,6 +1,8 @@
 import os
 import sys
 
+import bpy
+
 script_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(script_path)
 
@@ -11,12 +13,16 @@ from modules.generate_track import generate_track
 
 
 def foo(year, track, session, drivers):
+
     delete_default_collection()
     configure_sun()
     generate_track(year, track, "#605B56", "#837a75")
 
     car_camera_file_loc = f"https://raw.githubusercontent.com/formula-viz/car-and-camera-data-process/main/animation-data-package/{year}_{track}_{session}_{'_'.join(drivers)}"
-    create_drivers(drivers, car_camera_file_loc)
+    num_frames = create_drivers(drivers, car_camera_file_loc)
+
+    bpy.context.scene.frame_end = num_frames
+    bpy.context.scene.render.fps = 60 # the frames from camera and car data process assume we are using 60 fps
 
 
 if __name__ == "__main__":

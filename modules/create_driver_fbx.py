@@ -51,7 +51,7 @@ def scale_to_2_meters(driver_obj):
 # or team to color the car differently based on various factors
 def _create_driver_fbx(driver, color="#0000FF"):
 
-    file_path = "/home/quinn-caverly/Downloads/f1-car.fbx"
+    file_path = "f1-car.fbx"
     bpy.ops.import_scene.fbx(filepath=file_path)
     driver_obj = bpy.data.objects["f1-car"]
     driver_obj.name = driver.title() + "Driver"
@@ -85,7 +85,7 @@ def create_drivers(drivers, folder_loc):
     bpy.context.scene.collection.children.link(car_collection)
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
 
-    for driver in drivers:
+    for i, driver in enumerate(drivers):
         driver_obj = _create_driver_fbx(driver, "#FF0000")
         # we need to load the car path data csv into a df
         exact_file = f"{folder_loc}/{driver}.csv"
@@ -95,3 +95,6 @@ def create_drivers(drivers, folder_loc):
         df = pd.read_csv(data, header=0)
 
         add_keyframes(driver_obj, df)
+
+        if i == len(drivers) - 1:
+            return len(df)
