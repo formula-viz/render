@@ -49,15 +49,17 @@ def _import_data(year, track):
     # when we fetch we need a username and password with requests
     response = requests.get(folder_loc, auth=("quinn-caverly", "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"))
 
-    print(response.text)
     data = StringIO(response.text)
-    print(data)
     df = pd.read_csv(data, header=0)
 
     return df
 
 
 def generate_track(year, track, main_track_color, curb_color):
+    track_collection = bpy.data.collections.new(name="TrackCollection")
+    bpy.context.scene.collection.children.link(track_collection)
+    bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
+
     track_mat = _create_material(main_track_color, "Main")
     curb_mat = _create_material(curb_color, "Curb")
 
