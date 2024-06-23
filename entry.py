@@ -9,7 +9,7 @@ sys.path.append(script_path)
 
 from modules.add_camera import add_camera
 from modules.configure_sun import configure_sun
-from modules.create_driver_fbx import create_drivers
+from modules.create_drivers import create_drivers_and_cam
 from modules.delete_default_collection import delete_default_collection
 from modules.generate_track import generate_track
 
@@ -20,16 +20,17 @@ def foo(year, track, session, drivers):
     configure_sun()
     generate_track(year, track)
 
-    car_camera_file_loc = f"https://raw.githubusercontent.com/formula-viz/car-and-camera-data-process/main/animation-data-package/{year}_{track}_{session}_{'_'.join(drivers)}"
-    add_camera(car_camera_file_loc)
-
     session = fastf1.get_session(year, track, session)
     session.load()
 
-    num_frames = create_drivers(drivers, session)
+    colors = [(1, 0, 0), (0, 0, 1)]
+    num_frames, df_for_cam, driver_obj = create_drivers_and_cam(drivers, colors, session)
+    add_camera(df_for_cam, driver_obj)
 
     bpy.context.scene.frame_end = num_frames
     bpy.context.scene.render.fps = 60  # the frames from camera and car data process assume we are using 60 fps
+
+    bpy.ops.file.find_missing_files(directory="formula-1-2024-generic/textures")
 
 
 if __name__ == "__main__":

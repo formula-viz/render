@@ -5,6 +5,26 @@ import pandas as pd
 from scipy.interpolate import UnivariateSpline
 
 
+# rgb colors in blender are between 0 and 1, this is expected input
+def set_color_by_rgb(obj, color):
+    mat = obj.data.materials[0]
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+
+    principled_bsdf = None
+    for node in nodes:
+        if node.type == "BSDF_PRINCIPLED":
+            principled_bsdf = node
+            break
+
+    for link in mat.node_tree.links:
+        if link.to_node == principled_bsdf and link.to_socket.name == "Base Color":
+            mat.node_tree.links.remove(link)
+
+    new_base_color_rgba = (*color, 1.0)
+    principled_bsdf.inputs["Base Color"].default_value = new_base_color_rgba
+
+
 def set_color_by_hex(driver_obj, hex_color):
     # Convert hex color to RGB (values between 0 and 1)
     r, g, b = tuple(int(hex_color[i : i + 2], 16) / 255.0 for i in (1, 3, 5))
@@ -48,7 +68,7 @@ def scale_to_2_meters(driver_obj):
 
 # this should eventually consider more information like maybe the driver's nationality
 # or team to color the car differently based on various factors
-def _create_driver_fbx(driver):
+def _create_driver_fbx(driver, color):
     driver_collection = bpy.data.collections.new(name=driver.title() + "Collection")
     bpy.context.scene.collection.children.link(driver_collection)
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
@@ -65,10 +85,16 @@ def _create_driver_fbx(driver):
     bpy.ops.object.empty_add(type="PLAIN_AXES")
     empty_obj = bpy.context.object
     empty_obj.name = "MasterEmpty" + driver.title()
+    # make this empty_obj invisible
+    empty_obj.hide_viewport = True
 
     for obj in driver_collection.objects:
         if obj != empty_obj:
             obj.parent = empty_obj
+
+        for substr in ["chassis", "appliances", "steering", "wings"]:
+            if substr in obj.name.lower():
+                set_color_by_rgb(obj, color)
 
     return empty_obj
 
@@ -150,7 +176,6 @@ def get_driver_tel(driver, session):
 
 
 def get_driver_df(tel):
-
     total_distance = 0
     distances = [0.0]
     for i in range(1, len(tel)):
@@ -207,10 +232,10 @@ def create_driver(driver_obj, tel):
     df = add_car_rots(df)
     add_keyframes(driver_obj, df)
 
-    return len(df)
+    return len(df), df
 
 
-def create_drivers(drivers, session):
+def create_drivers_and_cam(drivers, colors, session):
     driver_tels = [get_driver_tel(driver, session) for driver in drivers]
 
     # fastf1 interpolates the start/finish line for the car but it is independent of the other cars
@@ -231,8 +256,13 @@ def create_drivers(drivers, session):
         tel["Y"].iloc[-1] = mean_y
 
     frames = []
-    for driver, tel in zip(drivers, driver_tels):
-        driver_obj = _create_driver_fbx(driver)
-        frames.append(create_driver(driver_obj, tel))
+    df_for_cam, driver_obj = None, None
+    for driver, color, tel in zip(drivers, colors, driver_tels):
+        driver_obj = _create_driver_fbx(driver, color)
+        d_frames, df = create_driver(driver_obj, tel)
 
-    return max(frames)
+        frames.append(d_frames)
+        if driver == drivers[0]:
+            df_for_cam, driver_obj = df, driver_obj
+
+    return max(frames), df_for_cam, driver_obj
