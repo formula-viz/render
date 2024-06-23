@@ -2,11 +2,27 @@ from io import StringIO
 
 import bpy
 import mathutils
+import numpy as np
 import pandas as pd
-import requests
 
 
-def add_camera(folder_loc):
+def scale_frames(df_for_cam):
+    scale_factor = 0.9
+    z_up = 15
+
+    cam_x = df_for_cam["X"] * scale_factor
+    cam_y = df_for_cam["Y"] * scale_factor
+
+    cam_x = cam_x + df_for_cam["X"].mean() - cam_x.mean()
+    cam_y = cam_y + df_for_cam["Y"].mean() - cam_y.mean()
+
+    cam_z = np.zeros(len(cam_x)) + z_up
+
+    return pd.DataFrame({"X": cam_x, "Y": cam_y, "Z": cam_z})
+
+
+# df for cam is the final, already interpolated frames
+def add_camera(df_for_cam, driver_obj):
     camera_collection = bpy.data.collections.new(name="CameraCollection")
     bpy.context.scene.collection.children.link(camera_collection)
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
@@ -15,13 +31,13 @@ def add_camera(folder_loc):
     camera_obj = bpy.data.objects.new(name="VideoCamera", object_data=camera_data)
     bpy.context.collection.objects.link(camera_obj)
 
-    exact_file = f"{folder_loc}/camera.csv"
-    response = requests.get(exact_file, auth=("quinn-caverly", "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"))
+    cam_df = scale_frames(df_for_cam)
 
-    data = StringIO(response.text)
-    df = pd.read_csv(data, header=0)
+    add_keyframes(camera_obj, cam_df)
 
-    add_keyframes(camera_obj, df)
+    camera_obj.constraints.new(type="TRACK_TO")
+    camera_obj.constraints["Track To"].target = driver_obj
+
     bpy.context.scene.camera = camera_obj
 
 
@@ -35,9 +51,3 @@ def add_keyframes(camera_obj, df):
 
         camera_obj.location = mathutils.Vector(point)
         camera_obj.keyframe_insert(data_path="location", frame=idx)
-
-        # create rot_quat from RotW, RotX, RotY, RotZ
-        rot_quat = mathutils.Quaternion((df["RotW"][i], df["RotX"][i], df["RotY"][i], df["RotZ"][i]))
-
-        camera_obj.rotation_euler = rot_quat.to_euler()
-        camera_obj.keyframe_insert(data_path="rotation_euler", frame=idx)
