@@ -23,7 +23,9 @@ def foo(year, track, session, drivers):
     session = fastf1.get_session(year, track, session)
     session.load()
 
-    colors = [(1, 0, 0), (0, 0, 1)]
+    # colors = [(0.072, 0.089, 0.089), (1, 1, 1)]
+    colors = [(30, 150, 252), (255, 198, 0)]
+    colors = [(r / 255, g / 255, b / 255) for r, g, b in colors]
     num_frames, df_for_cam, driver_obj = create_drivers_and_cam(drivers, colors, session)
     add_camera(df_for_cam, driver_obj)
 
