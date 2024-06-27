@@ -29,16 +29,11 @@ def _create_planes(inner_points, outer_points, name, material):
         obj.data.materials.append(material)
 
 
-def _create_material(hex_color, name):
-    # Convert hex to RGB
-    hex_color = hex_color.lstrip("#")
-    rgb = tuple(int(hex_color[i : i + 2], 16) / 255.0 for i in (0, 2, 4))
-
-    # Create the material
+def _create_material(color, name):
     mat = bpy.data.materials.new(name=name + "TrackMaterial")
     mat.use_nodes = True
     bsdf = mat.node_tree.nodes["Principled BSDF"]
-    bsdf.inputs["Base Color"].default_value = (*rgb, 1)
+    bsdf.inputs["Base Color"].default_value = (*color, 1)
 
     return mat
 
@@ -102,8 +97,9 @@ def generate_track(year, track):
     bpy.context.scene.collection.children.link(track_collection)
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
 
-    track_mat = _create_material("#000000", "Main")
-    curb_mat = _create_material("#2a2b2a", "Curb")
+    dark_gray = (0.02, 0.02, 0.02)
+    track_mat = _create_material(dark_gray, "Main")
+    curb_mat = _create_material(dark_gray, "Curb")
 
     df = _import_data(year, track)
 

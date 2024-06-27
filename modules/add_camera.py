@@ -7,8 +7,8 @@ import pandas as pd
 
 
 def scale_frames(df_for_cam):
-    scale_factor = 0.9
-    z_up = 15
+    scale_factor = 0.8
+    z_up = 50
 
     cam_x = df_for_cam["X"] * scale_factor
     cam_y = df_for_cam["Y"] * scale_factor

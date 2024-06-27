@@ -193,8 +193,8 @@ def get_driver_df(tel):
     weights[0] = 1000
     weights[-1] = 1000
 
-    spl_x = UnivariateSpline(displacements, tel["X"], w=weights, s=len(displacements) // 2)
-    spl_y = UnivariateSpline(displacements, tel["Y"], w=weights, s=len(displacements) // 2)
+    spl_x = UnivariateSpline(displacements, tel["X"], w=weights, s=len(displacements) // 3)
+    spl_y = UnivariateSpline(displacements, tel["Y"], w=weights, s=len(displacements) // 3)
 
     # we want to first smooth the speed data using a spline again
     time_floats = tel["Time"].apply(lambda t: t.total_seconds())
