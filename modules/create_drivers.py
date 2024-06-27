@@ -227,42 +227,10 @@ def get_driver_df(tel):
     return pd.DataFrame({"X": final_x, "Y": final_y, "Z": np.zeros(len(final_x))})
 
 
-def create_driver(driver_obj, tel):
+def create_driver(driver, color, tel):
+    driver_obj = _create_driver_fbx(driver, color)
     df = get_driver_df(tel)
     df = add_car_rots(df)
     add_keyframes(driver_obj, df)
 
-    return len(df), df
-
-
-def create_drivers_and_cam(drivers, colors, session):
-    driver_tels = [get_driver_tel(driver, session) for driver in drivers]
-
-    # fastf1 interpolates the start/finish line for the car but it is independent of the other cars
-    # the problem is that the start/finish will probably be put in a different place for each car.
-    # to solve this, we can just take all the drivers we have, average their start/finish line, then
-    # make it so that every driver has the same start/finish. This means the start/finish will be different
-    # for dif runs on the same track but this does not really matter.
-    mean_x = np.mean([tel["X"].iloc[0] for tel in driver_tels])
-    mean_y = np.mean([tel["Y"].iloc[0] for tel in driver_tels])
-    for tel in driver_tels:
-        tel["X"].iloc[0] = mean_x
-        tel["Y"].iloc[0] = mean_y
-
-    mean_x = np.mean([tel["X"].iloc[-1] for tel in driver_tels])
-    mean_y = np.mean([tel["Y"].iloc[-1] for tel in driver_tels])
-    for tel in driver_tels:
-        tel["X"].iloc[-1] = mean_x
-        tel["Y"].iloc[-1] = mean_y
-
-    frames = []
-    df_for_cam, driver_obj = None, None
-    for driver, color, tel in zip(drivers, colors, driver_tels):
-        driver_obj = _create_driver_fbx(driver, color)
-        d_frames, df = create_driver(driver_obj, tel)
-
-        frames.append(d_frames)
-        if driver == drivers[0]:
-            df_for_cam, driver_obj = df, driver_obj
-
-    return max(frames), df_for_cam, driver_obj
+    return df, driver_obj
