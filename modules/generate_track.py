@@ -97,9 +97,10 @@ def generate_track(year, track):
     bpy.context.scene.collection.children.link(track_collection)
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
 
-    dark_gray = (0.02, 0.02, 0.02)
-    track_mat = _create_material(dark_gray, "Main")
-    curb_mat = _create_material(dark_gray, "Curb")
+    # removing the materials for now
+    # dark_gray = (0.02, 0.02, 0.02)
+    # track_mat = _create_material(dark_gray, "Main")
+    # curb_mat = _create_material(dark_gray, "Curb")
 
     df = _import_data(year, track)
 
@@ -115,3 +116,7 @@ def generate_track(year, track):
     _create_planes(inner_points, outer_points, "Main", track_mat)
     _create_planes(outer_points, outer_curb_points, "CurbOuter", curb_mat)
     _create_planes(inner_points, inner_curb_points, "CurbInner", curb_mat)
+
+    # _create_planes(inner_points, outer_points, "Main", track_mat)
+    # _create_planes(outer_points, outer_curb_points, "CurbOuter", curb_mat)
+    # _create_planes(inner_points, inner_curb_points, "CurbInner", curb_mat)
