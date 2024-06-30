@@ -3,29 +3,54 @@ import sys
 
 import bpy
 import fastf1
+import numpy as np
 
 script_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(script_path)
 
 from modules.add_camera import add_camera
 from modules.configure_sun import configure_sun
-from modules.create_drivers import create_driver
-from modules.delete_default_collection import delete_default_collection
+from modules.create_drivers import create_driver, get_driver_tel
 from modules.generate_track import generate_track
 
 
-def foo(year, track, session, drivers):
+def render(output_file):
+    # cycles is what enables NVIDIA GPU rendering with CUDA
+    if not bpy.context.preferences.addons.get("cycles"):
+        bpy.ops.preferences.addon_enable(module="cycles")
 
-    delete_default_collection()
+    bpy.context.scene.render.engine = "CYCLES"
+    bpy.context.scene.cycles.device = "GPU"
+    bpy.context.preferences.addons["cycles"].preferences.compute_device_type = "CUDA"
+
+    bpy.context.preferences.addons["cycles"].preferences.get_devices()
+    print(bpy.context.preferences.addons["cycles"].preferences.compute_device_type)
+    for d in bpy.context.preferences.addons["cycles"].preferences.devices:
+        d["use"] = 1  # Using all devices, include GPU and CPU
+        print(d["name"], d["use"])
+
+    # Set output settings for rendering animation
+    bpy.context.scene.render.image_settings.file_format = "FFMPEG"
+    bpy.context.scene.render.ffmpeg.format = "MPEG4"
+    bpy.context.scene.render.ffmpeg.codec = "H264"
+    bpy.context.scene.render.ffmpeg.constant_rate_factor = "HIGH"
+    bpy.context.scene.render.filepath = output_file
+
+    # Render the animation
+    bpy.ops.render.render(animation=True)
+
+
+def foo(year, track, session, drivers, output_file):
+
+    # deletes the defautl collection
+    bpy.data.collections.remove(bpy.data.collections["Collection"], do_unlink=True)
     configure_sun()
     generate_track(year, track)
 
     session = fastf1.get_session(year, track, session)
     session.load()
 
-    # colors = [(0.072, 0.089, 0.089), (1, 1, 1)]
-    colors = [(30, 150, 252), (255, 198, 0)]
-    colors = [(r / 255, g / 255, b / 255) for r, g, b in colors]
+    colors = [(1, 1, 1), (1, 0.115, 0.217)]
 
     driver_tels = [get_driver_tel(driver, session) for driver in drivers]
     # fastf1 interpolates the start/finish line for the car but it is independent of the other cars
@@ -52,25 +77,29 @@ def foo(year, track, session, drivers):
         # the first driver listed will be the one focused by the camera
         if i == 0:
             add_camera(df, driver_obj)
-            num_frames = len(df) # for now, num_frames is just the # of frames in run of focused car
+            num_frames = len(df)  # for now, num_frames is just the # of frames in run of focused car
 
-
+    # for testing, lets just do a couple frames
     bpy.context.scene.frame_end = num_frames
+    # bpy.context.scene.frame_end = num_frames
     bpy.context.scene.render.fps = 60  # the frames from camera and car data process assume we are using 60 fps
 
     bpy.ops.file.find_missing_files(directory="formula-1-2024-generic/textures")
 
+    # render(output_file)
+
 
 if __name__ == "__main__":
     # a run is uniquely identified by: year, track, session, [driver:]
-    if len(sys.argv) < 6:  # for now we force at least 2 drivers
+    if len(sys.argv) < 7:  # for now we force at least 2 drivers
         print("Usage: python entry.py <year> <track> <session> <driver1> <driver2> ...")
         sys.exit(1)
 
-    # arguments start at 4 because we have blender --python entry.py -- <year> <track> <session> <driver1> <driver2> ...
-    year = int(sys.argv[4])
-    track = sys.argv[5]
-    session = sys.argv[6]
-    drivers = sys.argv[7:]
+    # arguments start at 5 because we have blender --background --python entry.py -- <year> <track> <session> <driver1> <driver2> ...
+    year = int(sys.argv[5])
+    track = sys.argv[6]
+    session = sys.argv[7]
+    output_file = sys.argv[8]
+    drivers = sys.argv[9:]
 
-    foo(year, track, session, drivers)
+    foo(year, track, session, drivers, output_file)

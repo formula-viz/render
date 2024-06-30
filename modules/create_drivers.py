@@ -7,7 +7,14 @@ from scipy.interpolate import UnivariateSpline
 
 # rgb colors in blender are between 0 and 1, this is expected input
 def set_color_by_rgb(obj, color):
-    mat = obj.data.materials[0]
+    # if obj has no mat at all, we need to create one
+
+    if not obj.data.materials:
+        mat = bpy.data.materials.new(name="CustomColorMaterial")
+        obj.data.materials.append(mat)
+    else:
+        mat = obj.data.materials[0]
+
     mat.use_nodes = True
     nodes = mat.node_tree.nodes
 
@@ -227,10 +234,43 @@ def get_driver_df(tel):
     return pd.DataFrame({"X": final_x, "Y": final_y, "Z": np.zeros(len(final_x))})
 
 
+def create_path(driver, first_point, color):
+    curve_data = bpy.data.curves.new(name=driver.title() + "Path", type="CURVE")
+    curve_data.dimensions = "3D"
+    polyline = curve_data.splines.new("POLY")
+
+    polyline.points.add(1)
+    point = polyline.points[0]
+    point.co = (first_point[0], first_point[1], first_point[2], 1)
+
+    curve_object = bpy.data.objects.new(driver.title() + "Path", curve_data)
+    bpy.context.collection.objects.link(curve_object)
+
+    curve_object.data.bevel_depth = 0.1
+    set_color_by_rgb(curve_object, color)
+
+    return polyline
+
+
 def create_driver(driver, color, tel):
     driver_obj = _create_driver_fbx(driver, color)
     df = get_driver_df(tel)
     df = add_car_rots(df)
     add_keyframes(driver_obj, df)
+
+    polyline = create_path(driver, (df["X"][0], df["Y"][0], df["Z"][0]), color)
+
+    def update_path(scene):
+        idx = scene.frame_current
+        if idx < len(df):
+            pos = (df["X"][idx], df["Y"][idx], df["Z"][idx])
+
+            polyline.points.add(1)
+            point = polyline.points[-1]
+            point.co = (pos[0], pos[1], pos[2], 1)
+
+            polyline.update()
+
+    bpy.app.handlers.frame_change_pre.append(update_path)
 
     return df, driver_obj
