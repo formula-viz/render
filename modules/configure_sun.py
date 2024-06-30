@@ -7,7 +7,7 @@ def configure_sun():
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
 
     light_data = bpy.data.lights.new(name="Sun-Data", type="SUN")
-    light_data.energy = 5.0
+    light_data.energy = 2.0
     light_object = bpy.data.objects.new(name="Sun", object_data=light_data)
 
     bpy.context.collection.objects.link(light_object)

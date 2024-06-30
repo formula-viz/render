@@ -6,7 +6,7 @@ import pandas as pd
 import requests
 
 
-def _create_planes(inner_points, outer_points, name, material):
+def _create_planes(inner_points, outer_points, name, material=None):
     mesh = bpy.data.meshes.new(name + "TrackMesh")
     obj = bpy.data.objects.new(name + "Track", mesh)
     bpy.context.collection.objects.link(obj)
@@ -97,18 +97,18 @@ def generate_track(year, track):
     bpy.context.scene.collection.children.link(track_collection)
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
 
-    # removing the materials for now
-    # dark_gray = (0.02, 0.02, 0.02)
-    # track_mat = _create_material(dark_gray, "Main")
-    # curb_mat = _create_material(dark_gray, "Curb")
+    dark_gray = (0.02, 0.02, 0.02)
+    darker_gray = (0.01, 0.01, 0.01)
+    track_mat = _create_material(dark_gray, "Main")
+    curb_mat = _create_material(darker_gray, "Curb")
 
     df = _import_data(year, track)
 
     inner_points = df[["inner_X", "inner_Y", "inner_Z"]].values.tolist()
     outer_points = df[["outer_X", "outer_Y", "outer_Z"]].values.tolist()
 
-    add_edge_line(inner_points, (184, 197, 214, 1), "Inner")
-    add_edge_line(outer_points, (184, 197, 214, 1), "Outer")
+    # add_edge_line(inner_points, (214, 186, 47, 1), "Inner")
+    # add_edge_line(outer_points, (214, 186, 47, 1), "Outer")
 
     inner_curb_points = df[["inner_curb_X", "inner_curb_Y", "inner_curb_Z"]].values.tolist()
     outer_curb_points = df[["outer_curb_X", "outer_curb_Y", "outer_curb_Z"]].values.tolist()
