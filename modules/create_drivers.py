@@ -1,3 +1,5 @@
+import math
+
 import bpy
 import mathutils
 import numpy as np
@@ -95,73 +97,124 @@ def _create_driver_fbx(driver, color):
     # make this empty_obj invisible
     empty_obj.hide_viewport = True
 
+    wheels_objs = []
     for obj in driver_collection.objects:
         if obj != empty_obj:
             obj.parent = empty_obj
+
+        if "wheel" in obj.name.lower():
+            wheels_objs.append(obj)
 
         for substr in ["chassis", "appliances", "steering", "wings"]:
             if substr in obj.name.lower():
                 set_color_by_rgb(obj, color)
 
-    return empty_obj
+    return empty_obj, wheels_objs
 
 
 # Time,X,Y,Z,RotW,RotX,RotY,RotZ
-def add_keyframes(driver_obj, df):
+def add_keyframes(driver_obj, wheels_objs, df):
     for i in range(len(df)):
         idx = i + 1
 
         point = mathutils.Vector((df["X"][i], df["Y"][i], df["Z"][i]))
-        rot_quat = mathutils.Quaternion((df["RotW"][i], df["RotX"][i], df["RotY"][i], df["RotZ"][i]))
+        rot_eul = mathutils.Quaternion((df["RotW"][i], df["RotX"][i], df["RotY"][i], df["RotZ"][i])).to_euler()
+        harsher_rot_eul = mathutils.Quaternion(
+            (df["HarsherRotW"][i], df["HarsherRotX"][i], df["HarsherRotY"][i], df["HarsherRotZ"][i])
+        ).to_euler()
+
+        # for the front wheels, get the differences between the z's for harsher and normal, then add the diff to the front wheel rot
+        front_wheel_diff = harsher_rot_eul[2] - rot_eul[2]
+
+        wheel_rot = df["TireRot"][i]
+        for wheel_obj in wheels_objs:
+            rot = wheel_obj.rotation_euler  # the other infos for y, z may change so just grab what already exists first
+            rot[0] = wheel_rot
+
+            if "frontwheel" in wheel_obj.name.lower():
+                default = -np.pi if wheel_obj.name[-1] == "R" else 0
+                rot[2] = default - front_wheel_diff
+
+            wheel_obj.rotation_euler = rot
+            wheel_obj.keyframe_insert(data_path="rotation_euler", frame=idx)
 
         driver_obj.location = point
         driver_obj.keyframe_insert(data_path="location", frame=idx)
 
-        driver_obj.rotation_euler = rot_quat.to_euler()
+        driver_obj.rotation_euler = rot_eul
         driver_obj.keyframe_insert(data_path="rotation_euler", frame=idx)
 
 
 def add_car_rots(df):
     points = [(df["X"][i], df["Y"][i], df["Z"][i]) for i in range(len(df))]
 
-    # Previous rotation quaternion for SLERP
-    prev_rot = None
-    rot_w = []
-    rot_x = []
-    rot_y = []
-    rot_z = []
+    def get_rots(points, lookahead_points=20, slerp_val=0.1):
+        # Previous rotation quaternion for SLERP
+        prev_rot = None
+        rot_w = []
+        rot_x = []
+        rot_y = []
+        rot_z = []
 
-    for i, point in enumerate(points):
-        # Define how far ahead we look based on available points
-        lookahead = min(20, len(points) - i - 1)
+        for i, point in enumerate(points):
+            # Define how far ahead we look based on available points
+            lookahead = min(lookahead_points, len(points) - i - 1)
 
-        combined_pos = mathutils.Vector(point)
-        for j in range(1, lookahead + 1):
-            combined_pos += mathutils.Vector(points[i + j])
+            combined_pos = mathutils.Vector(point)
+            for j in range(1, lookahead + 1):
+                combined_pos += mathutils.Vector(points[i + j])
 
-        combined_pos /= lookahead + 1
-        direction = combined_pos - mathutils.Vector(point)
+            combined_pos /= lookahead + 1
+            direction = combined_pos - mathutils.Vector(point)
 
-        # Calculate rotation to track direction
-        rot_quat = direction.to_track_quat("-Y", "Z")
+            # Calculate rotation to track direction
+            rot_quat = direction.to_track_quat("-Y", "Z")
 
-        if prev_rot and rot_quat:
-            # Interpolate between previous and current quaternion
-            rot_quat = prev_rot.slerp(rot_quat, 0.1)
+            if prev_rot and rot_quat:
+                # Interpolate between previous and current quaternion
+                rot_quat = prev_rot.slerp(rot_quat, slerp_val)
 
-        rot_w.append(rot_quat.w)
-        rot_x.append(rot_quat.x)
-        rot_y.append(rot_quat.y)
-        rot_z.append(rot_quat.z)
+            rot_w.append(rot_quat.w)
+            rot_x.append(rot_quat.x)
+            rot_y.append(rot_quat.y)
+            rot_z.append(rot_quat.z)
 
-        # Update previous rotation
-        prev_rot = rot_quat
+            # Update previous rotation
+            prev_rot = rot_quat
 
+        return rot_w, rot_x, rot_y, rot_z
+
+    rot_w, rot_x, rot_y, rot_z = get_rots(points)
     df["RotW"] = rot_w
     df["RotX"] = rot_x
     df["RotY"] = rot_y
     df["RotZ"] = rot_z
 
+    harsher_rot_w, harsher_rot_x, harsher_rot_y, harsher_rot_z = get_rots(points, lookahead_points=2, slerp_val=0.05)
+    df["HarsherRotW"] = harsher_rot_w
+    df["HarsherRotX"] = harsher_rot_x
+    df["HarsherRotY"] = harsher_rot_y
+    df["HarsherRotZ"] = harsher_rot_z
+
+    return df
+
+
+# for each index, we will have the Speed attached to it
+# naturally, the difference between frames here is 1/60 of a second
+# so if the speed is 10 m/s, the radius of f1 tire is 0.33 meters
+
+
+# angular velocity is calculated as v/r where v is linear velocity or 10 m/s for example and r is 0.33 meters
+def add_wheel_rots(df):
+    prev_rot = 0  # this is arbitrary but shouldnt matter because it is a wheel
+    tire_rots = []
+    for i in range(len(df)):
+        rad_per_s = df["Speed"][i] / 0.33
+        new_rot = -(prev_rot + rad_per_s / 60)  # should rotate in negative x, this is arbitrary, relative to the model
+        tire_rots.append(new_rot)
+        prev_rot = new_rot
+
+    df["TireRot"] = tire_rots
     return df
 
 
@@ -231,7 +284,10 @@ def get_driver_df(tel):
     final_x = spl_x(adj_d_covered)
     final_y = spl_y(adj_d_covered)
 
-    return pd.DataFrame({"X": final_x, "Y": final_y, "Z": np.zeros(len(final_x))})
+    # add the first value to the beginning of sampled_speeds_m_per_s so they match length
+    sampled_speeds_m_per_s = np.insert(sampled_speeds_m_per_s, 0, sampled_speeds_m_per_s[0])
+
+    return pd.DataFrame({"X": final_x, "Y": final_y, "Z": np.zeros(len(final_x)), "Speed": sampled_speeds_m_per_s})
 
 
 def create_path(driver, first_point, color):
@@ -239,7 +295,7 @@ def create_path(driver, first_point, color):
     curve_data.dimensions = "3D"
     polyline = curve_data.splines.new("POLY")
 
-    polyline.points.add(1)
+    polyline.points.add(0)
     point = polyline.points[0]
     point.co = (first_point[0], first_point[1], first_point[2], 1)
 
@@ -253,10 +309,11 @@ def create_path(driver, first_point, color):
 
 
 def create_driver(driver, color, tel):
-    driver_obj = _create_driver_fbx(driver, color)
+    driver_obj, wheels_objs = _create_driver_fbx(driver, color)
     df = get_driver_df(tel)
     df = add_car_rots(df)
-    add_keyframes(driver_obj, df)
+    df = add_wheel_rots(df)
+    add_keyframes(driver_obj, wheels_objs, df)
 
     polyline = create_path(driver, (df["X"][0], df["Y"][0], df["Z"][0]), color)
 
@@ -268,8 +325,6 @@ def create_driver(driver, color, tel):
             polyline.points.add(1)
             point = polyline.points[-1]
             point.co = (pos[0], pos[1], pos[2], 1)
-
-            polyline.update()
 
     bpy.app.handlers.frame_change_pre.append(update_path)
 
