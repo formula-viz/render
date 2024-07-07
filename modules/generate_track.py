@@ -52,6 +52,7 @@ def _import_data(year, track):
     data = StringIO(response.text)
     df = pd.read_csv(data, header=0)
 
+    df.to_csv("cache/" + base_loc, index=False)
     return df
 
 
