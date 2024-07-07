@@ -15,6 +15,6 @@ MAIN_RENDER_OUTPUT="tmp/main_render.fp4"
 
 echo "Before starting blender"
 
-blender --background --python entry.py -- $YEAR $TRACK $SESSION True $MAIN_RENDER_OUTPUT ${DRIVERS[@]} --debug
+blender --background --python entry.py -- $YEAR $TRACK $SESSION True $MAIN_RENDER_OUTPUT ${DRIVERS[@]}
 
 deactivate
