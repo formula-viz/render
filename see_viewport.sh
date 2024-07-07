@@ -1,6 +1,12 @@
 #!/bin/bash
 # for testing, stops before starting rendering, opens blender in normal mode
 
+# by default this seems to be git ignored, ensuring cache dirs exist here
+mkdir cache
+mkdir cache/track_data
+
+source venv/bin/activate
+
 YEAR=2024
 TRACK="CAN"
 SESSION="Q"
