@@ -2,7 +2,6 @@ import os
 import sys
 
 import bpy
-import fastf1
 import numpy as np
 
 script_path = os.path.dirname(os.path.realpath(__file__))
@@ -10,7 +9,7 @@ sys.path.append(script_path)
 
 from modules.add_camera import add_camera
 from modules.configure_sun import configure_sun
-from modules.create_drivers import create_driver, get_driver_tel
+from modules.create_drivers import create_driver, get_driver_tels
 from modules.generate_track import generate_track
 from modules.set_background_color import set_background_color
 
@@ -62,23 +61,15 @@ def render(output_file):
 
 
 def foo(year, track, session, drivers, should_render, output_file):
-
-    # deletes the defautl collection
+    # deletes the default collection
     bpy.data.collections.remove(bpy.data.collections["Collection"], do_unlink=True)
     set_background_color()
     configure_sun()
-    print("starting generate track")
     generate_track(year, track)
-    print("track generated")
-
-    print("before load from fastf1")
-    session = fastf1.get_session(year, track, session)
-    session.load()
-    print("after load from fastf1")
 
     colors = [(1, 1, 1), (1, 0.115, 0.217)]
+    driver_tels = get_driver_tels(drivers, year, track, session)
 
-    driver_tels = [get_driver_tel(driver, session) for driver in drivers]
     # fastf1 interpolates the start/finish line for the car but it is independent of the other cars
     # the problem is that the start/finish will probably be put in a different place for each car.
     # to solve this, we can just take all the drivers we have, average their start/finish line, then
@@ -130,7 +121,5 @@ if __name__ == "__main__":
     should_render = bool(sys.argv[8])
     output_file = sys.argv[9]
     drivers = sys.argv[10:]
-
-    print("enter blender")
 
     foo(year, track, session, drivers, should_render, output_file)

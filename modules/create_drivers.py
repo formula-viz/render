@@ -1,6 +1,7 @@
-import math
+import os
 
 import bpy
+import fastf1
 import mathutils
 import numpy as np
 import pandas as pd
@@ -235,6 +236,21 @@ def get_driver_tel(driver, session):
     return tel
 
 
+# we are moving the call to fastf1 here incase we already have the necessary drivers cached
+def get_driver_tels(drivers, year, track, session):
+    year_track_session = f"{year}_{track}_{session}"
+    driver_file_paths = [f"cache/{year_track_session}/{driver}_tel.csv" for driver in drivers]
+
+    # if all the files exist, we can just read them in, if they don't exist, read them all
+    # for now for the sake of the simplicity of implementation
+    if all([os.path.exists(file_path) for file_path in driver_file_paths]):
+        return [pd.read_csv(file_path, header=0) for file_path in driver_file_paths]
+    else:
+        fastf1_session = fastf1.get_session(year, track, session)
+        fastf1_session.load()
+        return [get_driver_tel(driver, fastf1_session) for driver in drivers]
+
+
 def get_driver_df(tel):
     total_distance = 0
     distances = [0.0]
@@ -322,9 +338,9 @@ def create_driver(driver, color, tel):
         if idx < len(df):
             pos = (df["X"][idx], df["Y"][idx], df["Z"][idx])
 
-            #polyline.points.add(1)
-            #point = polyline.points[-1]
-            #point.co = (pos[0], pos[1], pos[2], 1)
+            # polyline.points.add(1)
+            # point = polyline.points[-1]
+            # point.co = (pos[0], pos[1], pos[2], 1)
 
     bpy.app.handlers.frame_change_pre.append(update_path)
 
