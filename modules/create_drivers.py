@@ -82,7 +82,7 @@ def _create_driver_fbx(driver, color):
     bpy.context.scene.collection.children.link(driver_collection)
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
 
-    file_path = "formula-1-2024-generic/source/F1_TexPaintBlender_v01_20210215.fbx"
+    file_path = "resources/formula-1-2024-generic/source/F1_TexPaintBlender_v01_20210215.fbx"
     bpy.ops.import_scene.fbx(filepath=file_path)
 
     for obj in bpy.context.selected_objects:
