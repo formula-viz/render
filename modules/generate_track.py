@@ -42,7 +42,9 @@ def _import_data(year, track):
     folder_loc = f"https://raw.githubusercontent.com/formula-viz/track-data-process/main/track_data/{year}_{track}.csv"
 
     # when we fetch we need a username and password with requests
+    print("before requests.get")
     response = requests.get(folder_loc, auth=("quinn-caverly", "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"))
+    print("after requests.get")
 
     data = StringIO(response.text)
     df = pd.read_csv(data, header=0)
@@ -102,6 +104,7 @@ def generate_track(year, track):
     track_mat = _create_material(dark_gray, "Main")
     curb_mat = _create_material(darker_gray, "Curb")
 
+    print("before import track data")
     df = _import_data(year, track)
 
     inner_points = df[["inner_X", "inner_Y", "inner_Z"]].values.tolist()

@@ -16,6 +16,8 @@ from modules.set_background_color import set_background_color
 
 
 def render(output_file):
+    print("starting render process")
+
     # cycles is what enables NVIDIA GPU rendering with CUDA
     if not bpy.context.preferences.addons.get("cycles"):
         bpy.ops.preferences.addon_enable(module="cycles")
@@ -34,6 +36,8 @@ def render(output_file):
     bpy.context.scene.render.resolution_x = 3840
     bpy.context.scene.render.resolution_y = 2160
     bpy.context.scene.render.resolution_percentage = 100
+
+    bpy.context.scene.cycles.use_denoising = False
 
     # Lower the number of samples for quicker rendering
     # bpy.context.scene.cycles.samples = 128  # Adjust to a lower number if needed
@@ -63,10 +67,14 @@ def foo(year, track, session, drivers, should_render, output_file):
     bpy.data.collections.remove(bpy.data.collections["Collection"], do_unlink=True)
     set_background_color()
     configure_sun()
+    print("starting generate track")
     generate_track(year, track)
+    print("track generated")
 
+    print("before load from fastf1")
     session = fastf1.get_session(year, track, session)
     session.load()
+    print("after load from fastf1")
 
     colors = [(1, 1, 1), (1, 0.115, 0.217)]
 
@@ -122,5 +130,7 @@ if __name__ == "__main__":
     should_render = bool(sys.argv[8])
     output_file = sys.argv[9]
     drivers = sys.argv[10:]
+
+    print("enter blender")
 
     foo(year, track, session, drivers, should_render, output_file)
