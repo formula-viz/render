@@ -39,12 +39,15 @@ def _create_material(color, name):
 
 
 def _import_data(year, track):
-    folder_loc = f"https://raw.githubusercontent.com/formula-viz/track-data-process/main/track_data/{year}_{track}.csv"
+    base_loc = f"track_data/{year}_{track}.csv"
+    try:
+        df = pd.read_csv("cache/" + base_loc, header=0)
+        return df
+    except FileNotFoundError:
+        pass
 
-    # when we fetch we need a username and password with requests
-    print("before requests.get")
+    folder_loc = f"https://raw.githubusercontent.com/formula-viz/track-data-process/main/" + base_loc
     response = requests.get(folder_loc, auth=("quinn-caverly", "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"))
-    print("after requests.get")
 
     data = StringIO(response.text)
     df = pd.read_csv(data, header=0)
@@ -53,7 +56,6 @@ def _import_data(year, track):
 
 
 def add_edge_line(points, color_rgba, name):
-
     # curve
     curve_data = bpy.data.curves.new(name=name + "Edge", type="CURVE")
     curve_data.dimensions = "3D"
