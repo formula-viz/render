@@ -315,16 +315,16 @@ def create_driver(driver, color, tel):
     df = add_wheel_rots(df)
     add_keyframes(driver_obj, wheels_objs, df)
 
-    polyline = create_path(driver, (df["X"][0], df["Y"][0], df["Z"][0]), color)
+    # polyline = create_path(driver, (df["X"][0], df["Y"][0], df["Z"][0]), color)
 
     def update_path(scene):
         idx = scene.frame_current
         if idx < len(df):
             pos = (df["X"][idx], df["Y"][idx], df["Z"][idx])
 
-            polyline.points.add(1)
-            point = polyline.points[-1]
-            point.co = (pos[0], pos[1], pos[2], 1)
+            #polyline.points.add(1)
+            #point = polyline.points[-1]
+            #point.co = (pos[0], pos[1], pos[2], 1)
 
     bpy.app.handlers.frame_change_pre.append(update_path)
 
