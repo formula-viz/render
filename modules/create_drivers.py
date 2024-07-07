@@ -237,9 +237,9 @@ def get_driver_tel(driver, session):
 
 
 # we are moving the call to fastf1 here incase we already have the necessary drivers cached
-def get_driver_tels(drivers, year, track, session):
+def load_driver_dfs(drivers, year, track, session):
     year_track_session = f"{year}_{track}_{session}"
-    driver_file_paths = [f"cache/{year_track_session}/{driver}_tel.csv" for driver in drivers]
+    driver_file_paths = [f"cache/{year_track_session}/{driver}.csv" for driver in drivers]
 
     # if all the files exist, we can just read them in, if they don't exist, read them all
     # for now for the sake of the simplicity of implementation
@@ -254,10 +254,12 @@ def get_driver_tels(drivers, year, track, session):
             os.makedirs(f"cache/{year_track_session}")
 
         driver_tels = [get_driver_tel(driver, fastf1_session) for driver in drivers]
-        for driver_tel, driver in zip(driver_tels, drivers):
-            driver_tel.to_csv(f"cache/{year_track_session}/{driver}_tel.csv", index=False)
+        driver_dfs = [get_driver_df(tel) for tel in driver_tels]
 
-        return driver_tels
+        for driver, driver_df in zip(drivers, driver_dfs):
+            driver_df.to_csv(f"cache/{year_track_session}/{driver}.csv", index=False)
+
+        return driver_dfs
 
 
 def get_driver_df(tel):
@@ -333,13 +335,14 @@ def create_path(driver, first_point, color):
     return polyline
 
 
-def create_driver(driver, color, tel):
+def create_driver(driver, color, df):
     driver_obj, wheels_objs = _create_driver_fbx(driver, color)
-    df = get_driver_df(tel)
+    # TODO: maybe I should add car rots and add_wheel_rots to caching to avoid computation?
     df = add_car_rots(df)
     df = add_wheel_rots(df)
     add_keyframes(driver_obj, wheels_objs, df)
 
+    # polyline is removed for now becaue I do not like it aesthetically
     # polyline = create_path(driver, (df["X"][0], df["Y"][0], df["Z"][0]), color)
 
     def update_path(scene):
@@ -353,4 +356,4 @@ def create_driver(driver, color, tel):
 
     bpy.app.handlers.frame_change_pre.append(update_path)
 
-    return df, driver_obj
+    return driver_obj

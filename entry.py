@@ -9,7 +9,8 @@ sys.path.append(script_path)
 
 from modules.add_camera import add_camera
 from modules.configure_sun import configure_sun
-from modules.create_drivers import create_driver, get_driver_tels
+from modules.create_drivers import (create_driver,
+                                    load_driver_dfs)
 from modules.generate_track import generate_track
 from modules.set_background_color import set_background_color
 
@@ -68,28 +69,28 @@ def foo(year, track, session, drivers, should_render, output_file):
     generate_track(year, track)
 
     colors = [(1, 1, 1), (1, 0.115, 0.217)]
-    driver_tels = get_driver_tels(drivers, year, track, session)
+    driver_dfs = load_driver_dfs(drivers, year, track, session)
 
     # fastf1 interpolates the start/finish line for the car but it is independent of the other cars
     # the problem is that the start/finish will probably be put in a different place for each car.
     # to solve this, we can just take all the drivers we have, average their start/finish line, then
     # make it so that every driver has the same start/finish. This means the start/finish will be different
     # for dif runs on the same track but this does not really matter.
-    mean_x = np.mean([tel["X"].iloc[0] for tel in driver_tels])
-    mean_y = np.mean([tel["Y"].iloc[0] for tel in driver_tels])
-    for tel in driver_tels:
-        tel["X"].iloc[0] = mean_x
-        tel["Y"].iloc[0] = mean_y
+    mean_x = np.mean([df["X"].iloc[0] for df in driver_dfs])
+    mean_y = np.mean([df["Y"].iloc[0] for df in driver_dfs])
+    for df in driver_dfs:
+        df["X"].iloc[0] = mean_x
+        df["Y"].iloc[0] = mean_y
 
-    mean_x = np.mean([tel["X"].iloc[-1] for tel in driver_tels])
-    mean_y = np.mean([tel["Y"].iloc[-1] for tel in driver_tels])
-    for tel in driver_tels:
-        tel["X"].iloc[-1] = mean_x
-        tel["Y"].iloc[-1] = mean_y
+    mean_x = np.mean([df["X"].iloc[-1] for df in driver_dfs])
+    mean_y = np.mean([df["Y"].iloc[-1] for df in driver_dfs])
+    for df in driver_dfs:
+        df["X"].iloc[-1] = mean_x
+        df["Y"].iloc[-1] = mean_y
 
     num_frames = 0
-    for i, (driver, color, tel) in enumerate(zip(drivers, colors, driver_tels)):
-        df, driver_obj = create_driver(driver, color, tel)
+    for i, (driver, color, df) in enumerate(zip(drivers, colors, driver_dfs)):
+        driver_obj = create_driver(driver, color, df)
 
         # the first driver listed will be the one focused by the camera
         if i == 0:
@@ -102,7 +103,7 @@ def foo(year, track, session, drivers, should_render, output_file):
     bpy.context.scene.frame_end = 1003
     bpy.context.scene.render.fps = 60  # the frames from camera and car data process assume we are using 60 fps
 
-    bpy.ops.file.find_missing_files(directory="formula-1-2024-generic/textures")
+    bpy.ops.file.find_missing_files(directory="resources/formula-1-2024-generic/textures")
 
     if should_render:
         render(output_file)
