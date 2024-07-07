@@ -248,7 +248,16 @@ def get_driver_tels(drivers, year, track, session):
     else:
         fastf1_session = fastf1.get_session(year, track, session)
         fastf1_session.load()
-        return [get_driver_tel(driver, fastf1_session) for driver in drivers]
+
+        # now we need to add to the cache
+        if not os.path.exists(f"cache/{year_track_session}"):
+            os.makedirs(f"cache/{year_track_session}")
+
+        driver_tels = [get_driver_tel(driver, fastf1_session) for driver in drivers]
+        for driver_tel, driver in zip(driver_tels, drivers):
+            driver_tel.to_csv(f"cache/{year_track_session}/{driver}_tel.csv", index=False)
+
+        return driver_tels
 
 
 def get_driver_df(tel):
