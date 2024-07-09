@@ -16,9 +16,6 @@ from modules.set_background_color import set_background_color
 
 
 def render(output_file):
-    print("starting render process")
-
-    # cycles is what enables NVIDIA GPU rendering with CUDA
     if not bpy.context.preferences.addons.get("cycles"):
         bpy.ops.preferences.addon_enable(module="cycles")
 
@@ -27,37 +24,36 @@ def render(output_file):
     bpy.context.preferences.addons["cycles"].preferences.compute_device_type = "CUDA"
 
     bpy.context.preferences.addons["cycles"].preferences.get_devices()
-    print(bpy.context.preferences.addons["cycles"].preferences.compute_device_type)
     for d in bpy.context.preferences.addons["cycles"].preferences.devices:
         if "nvidia" in d["name"].lower():
             d["use"] = 1
         print(d["name"], d["use"])
 
-    bpy.context.scene.render.resolution_x = 3840
-    bpy.context.scene.render.resolution_y = 2160
+    # bpy.context.scene.render.resolution_x = 3840
+    # bpy.context.scene.render.resolution_y = 2160
+    # bpy.context.scene.render.resolution_x = 1920
+    # bpy.context.scene.render.resolution_y = 1080
+
     bpy.context.scene.render.resolution_percentage = 100
 
     bpy.context.scene.cycles.use_denoising = False
 
-    # Lower the number of samples for quicker rendering
-    # bpy.context.scene.cycles.samples = 128  # Adjust to a lower number if needed
+    bpy.context.scene.cycles.samples = 4096
 
     # Simplify shadows to speed up rendering
-    # bpy.context.scene.cycles.use_adaptive_sampling = True  # Adaptive sampling can help reduce noise
+    bpy.context.scene.cycles.use_adaptive_sampling = True  # Adaptive sampling can help reduce noise
     # bpy.context.scene.cycles.max_bounces = 4  # Reduce the number of bounces
     # bpy.context.scene.cycles.diffuse_bounces = 2
     # bpy.context.scene.cycles.glossy_bounces = 2
     # bpy.context.scene.cycles.transmission_bounces = 2
     # bpy.context.scene.cycles.volume_bounces = 2
 
-    # Set output settings for rendering animation
     bpy.context.scene.render.image_settings.file_format = "FFMPEG"
     bpy.context.scene.render.ffmpeg.format = "MPEG4"
     bpy.context.scene.render.ffmpeg.codec = "H264"
     bpy.context.scene.render.ffmpeg.constant_rate_factor = "HIGH"
     bpy.context.scene.render.filepath = output_file
 
-    # Render the animation
     bpy.ops.render.render(animation=True)
 
 
@@ -98,9 +94,7 @@ def foo(year, track, session, drivers, should_render, output_file):
             num_frames = len(df)  # for now, num_frames is just the # of frames in run of focused car
 
     bpy.context.scene.frame_end = num_frames
-    # for testing, lets just do a couple frames
-    bpy.context.scene.frame_start = 1000
-    bpy.context.scene.frame_end = 1003
+    # bpy.context.scene.frame_end = 60
     bpy.context.scene.render.fps = 60  # the frames from camera and car data process assume we are using 60 fps
 
     bpy.ops.file.find_missing_files(directory="resources/formula-1-2024-generic/textures")

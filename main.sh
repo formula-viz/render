@@ -6,6 +6,8 @@ mkdir cache/track_data
 
 source venv/bin/activate
 
+export OPTIX_PATH=~/Install/optix-build/bin
+
 YEAR=2024
 TRACK="CAN"
 SESSION="Q"
