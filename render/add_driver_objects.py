@@ -118,7 +118,7 @@ def main(year: str, track: str, fps: str, driver_tuples):
     # if this produces sensible results then it is the best plan long term
     driver_objs = {}
     for driver in driver_dfs:
-        hex_color = plotting.DRIVER_COLORS[driver]
+        hex_color = plotting.DRIVER_COLORS[plotting.DRIVER_TRANSLATE[driver]]
         driver_objs[driver] = create_driver(driver, hex_color, driver_dfs[driver])
 
     return driver_objs, driver_dfs

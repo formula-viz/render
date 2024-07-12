@@ -23,7 +23,8 @@ def main(render_settings):
     if not render_settings["should_render"]:
         print("Set to not render, skipping rendering...")
 
-    print("Starting Render...")
+    print("Starting Render with...")
+    print(render_settings)
     configure_gpu(render_settings)
 
     bpy.context.scene.cycles.samples = render_settings["samples"]
