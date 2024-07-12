@@ -1,22 +1,14 @@
 #!/bin/bash
+echo "Entering main.sh"
 
-# by default this seems to be git ignored, ensuring cache dirs exist here
-mkdir cache
-mkdir cache/track_data
+######################
+echo "Entering pre_render"
+python pre_render/main.py
+######################
 
-source venv/bin/activate
+#####################
+echo "Entering render"
+blender --background --python render/main.py
+#####################
 
-export OPTIX_PATH=~/Install/optix-build/bin
-
-YEAR=2024
-TRACK="CAN"
-SESSION="Q"
-DRIVERS=("RUS" "VER")
-
-MAIN_RENDER_OUTPUT="tmp/main_render.fp4"
-
-echo "Before starting blender"
-
-blender --background --python entry.py -- $YEAR $TRACK $SESSION True $MAIN_RENDER_OUTPUT ${DRIVERS[@]}
-
-deactivate
+echo "Ending main.sh"
