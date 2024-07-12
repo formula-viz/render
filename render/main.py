@@ -1,15 +1,27 @@
 import os
+import subprocess
 import sys
 
-import yaml
+import bpy
 
 script_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(script_path)
+
 
 import add_camera
 import add_driver_objects
 import add_sun
 import add_track
+import render_animation
+
+
+def install(package):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+install("pyyaml")
+install("mathutils")
+install("fastf1")
+
+import yaml
 
 
 def read_from_yaml():
@@ -42,20 +54,25 @@ def read_from_yaml():
     for driver in drivers:
         print("    " + str(driver))
 
-    return year, track, fps, drivers
+    render_settings = config["render"]
+
+    return year, track, fps, drivers, render_settings
 
 
 # we already have loaded the track data and the car data for all cars
 # on this year and track, now, we just need the cars to render
 def main():
-    year, track, fps, drivers = read_from_yaml()
+    print("test")
+    year, track, fps, drivers, render_settings = read_from_yaml()
 
     bpy.data.collections.remove(bpy.data.collections["Collection"], do_unlink=True)
     bpy.context.scene.world.node_tree.nodes["Background"].inputs[0].default_value = (0.6, 0.6, 0.6, 1)
     add_sun.main()
 
+    print("Adding Track...")
     add_track.main(str(year), track)
 
+    print("Adding Drivers...")
     focused_driver = drivers[0][0]  # the camera driver is just the first listed
     driver_objs, driver_dfs = add_driver_objects.main(str(year), track, str(fps), drivers)
 
@@ -66,4 +83,8 @@ def main():
 
     bpy.ops.file.find_missing_files(directory="resources/cars/formula-1-2024-generic/textures")
 
-    render(output_file)
+    print("Starting Rendering...")
+    render_animation.main(render_settings)
+
+
+main()
