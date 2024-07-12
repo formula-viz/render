@@ -1,0 +1,16 @@
+track: "CAN" # must be a 3 letter all capitals string
+year: 2024 # must be a 4 digit integer
+render:
+  should_render: true
+  fps: 30
+  samples: 4096
+  adaptive_sampling: true
+  resolution:
+    width: 1920
+    height: 1080
+
+drivers:
+  - name: "HAM" # must be 3 letter identifier
+    color: "red" # there will be a finite # of color options
+  - name: "VER"
+    color: "blue"
