@@ -19,15 +19,20 @@ def configure_gpu(render_settings):
 
 
 # render settings will be sent in as a dict from yaml
-def main(render_settings):
+def main(render_settings, num_frames):
     if not render_settings["should_render"]:
         print("Set to not render, skipping rendering...")
 
-    print("Starting Render with...")
+    print(f"Starting Rendering of {num_frames} with...")
     print(render_settings)
     configure_gpu(render_settings)
 
+    bpy.context.scene.frame_end = num_frames
+    bpy.context.scene.render.fps = render_settings["fps"]
+
     bpy.context.scene.cycles.samples = render_settings["samples"]
+
+    bpy.context.scene.cycles.use_denoising = False
 
     resolution = render_settings["resolution"]
     bpy.context.scene.render.resolution_x = resolution["width"]
