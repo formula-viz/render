@@ -60,8 +60,8 @@ def smooth_points(track_points: pd.DataFrame):
     outer_points = np.array(track_points[["outer_X", "outer_Y", "outer_Z"]])
 
     # we need to add the first point to the end of both to close the loop
-    inner_points = np.append(inner_points, [inner_points[0]], axis=0)
-    outer_points = np.append(outer_points, [outer_points[0]], axis=0)
+    # inner_points = np.append(inner_points, [inner_points[0]], axis=0)
+    # outer_points = np.append(outer_points, [outer_points[0]], axis=0)
 
     num_new_points = 2000
 

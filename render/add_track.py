@@ -17,7 +17,8 @@ def create_planes(inner_points, outer_points, name, material=None):
 
     for i in range(len(inner_points) - 1):
         bm.faces.new([inner_verts[i], inner_verts[i + 1], outer_verts[i + 1], outer_verts[i]])
-    # bm.faces.new([inner_verts[-1], inner_verts[0], outer_verts[0], outer_verts[-1]])
+
+    bm.faces.new([inner_verts[-1], inner_verts[0], outer_verts[0], outer_verts[-1]])
 
     bm.to_mesh(mesh)
     bm.free()
@@ -38,6 +39,12 @@ def create_material(color, name):
 def main(year: str, track: str):
     main_dir = "data/track_data"
     df = pd.read_csv(f"{main_dir}/{year}_{track}.csv")
+
+    # TODO: for now setting all Z to 0 because cars appear to be under the track
+    df["inner_Z"] = 0
+    df["outer_Z"] = 0
+    df["inner_curb_Z"] = 0
+    df["outer_curb_Z"] = 0
 
     track_collection = bpy.data.collections.new(name="TrackCollection")
     bpy.context.scene.collection.children.link(track_collection)

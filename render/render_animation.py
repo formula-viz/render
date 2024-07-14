@@ -1,3 +1,5 @@
+import os
+
 import bpy
 
 
@@ -28,20 +30,28 @@ def main(render_settings, num_frames):
     configure_gpu(render_settings)
 
     bpy.context.scene.frame_end = num_frames
+    bpy.context.scene.frame_end = 5
     bpy.context.scene.render.fps = render_settings["fps"]
 
     bpy.context.scene.cycles.samples = render_settings["samples"]
 
     bpy.context.scene.cycles.use_denoising = False
 
-    resolution = render_settings["resolution"]
-    bpy.context.scene.render.resolution_x = resolution["width"]
-    bpy.context.scene.render.resolution_y = resolution["height"]
+    if render_settings["is_4k"]:
+        bpy.context.scene.render.resolution_x = 3840
+        bpy.context.scene.render.resolution_y = 2160
+    else:
+        bpy.context.scene.render.resolution_x = 1920
+        bpy.context.scene.render.resolution_y = 1080
 
-    bpy.context.scene.render.image_settings.file_format = "FFMPEG"
-    bpy.context.scene.render.ffmpeg.format = "MPEG4"
-    bpy.context.scene.render.ffmpeg.codec = "H264"
-    bpy.context.scene.render.ffmpeg.constant_rate_factor = "HIGH"
-    bpy.context.scene.render.filepath = "test.mp4"
+    # we want to render as a sequence of pngs so that we can add a background in vse
+    bpy.context.scene.render.film_transparent = True
+    # Set output format to PNG with RGBA channels
+    bpy.context.scene.render.image_settings.file_format = "PNG"
+    bpy.context.scene.render.image_settings.color_mode = "RGBA"
+    # first, let's delete the tmp folder to wipe it
+    os.system("rm -rf tmp")
+    os.system("mkdir tmp")
+    bpy.context.scene.render.filepath = "tmp/frame_"
 
     bpy.ops.render.render(animation=True)

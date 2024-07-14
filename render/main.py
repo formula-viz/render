@@ -3,8 +3,8 @@ import subprocess
 import sys
 
 import bpy
-import yaml
 import numpy
+import yaml
 
 script_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(script_path)
@@ -14,6 +14,7 @@ import add_driver_objects
 import add_sun
 import add_track
 import render_animation
+
 
 def read_from_yaml():
     with open("conf.yaml", "r") as file:
