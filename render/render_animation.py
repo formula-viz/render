@@ -30,6 +30,7 @@ def main(render_settings, num_frames):
     configure_gpu(render_settings)
 
     bpy.context.scene.frame_end = num_frames
+    bpy.context.scene.frame_end = 50
     bpy.context.scene.render.fps = render_settings["fps"]
 
     bpy.context.scene.cycles.samples = render_settings["samples"]
@@ -39,9 +40,17 @@ def main(render_settings, num_frames):
     if render_settings["is_4k"]:
         bpy.context.scene.render.resolution_x = 3840
         bpy.context.scene.render.resolution_y = 2160
+
+        # it is better to use 1 tile because gpu has 12GB of memory
+        bpy.context.scene.cycles.tile_x = 3840
+        bpy.context.scene.cycles.tile_y = 2160
     else:
         bpy.context.scene.render.resolution_x = 1920
         bpy.context.scene.render.resolution_y = 1080
+
+        bpy.context.scene.cycles.tile_x = 1920
+        bpy.context.scene.cycles.tile_y = 1080
+
 
     # we want to render as a sequence of pngs so that we can add a background in vse
     bpy.context.scene.render.film_transparent = True
