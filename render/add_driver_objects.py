@@ -54,12 +54,16 @@ def create_driver_fbx(driver, hex_color):
         if obj != empty_obj:
             obj.parent = empty_obj
 
-        if "wheel" in obj.name.lower():
+        if "wheel" in obj.name.lower() and "steering" not in obj.name.lower():
             wheels_objs.append(obj)
 
         for substr in ["chassis", "appliances", "steering", "wings"]:
             if substr in obj.name.lower():
                 set_color(obj, hex_color)
+
+        if "steering" in obj.name.lower():
+            # we want to set this invisible for now
+            obj.hide_viewport = True
 
     return empty_obj, wheels_objs
 
@@ -69,7 +73,10 @@ def add_keyframes(driver_obj, wheels_objs, df):
     for i in range(len(df)):
         idx = i + 1
 
-        point = mathutils.Vector((df["X"][i], df["Y"][i], df["Z"][i]))
+        # point = mathutils.Vector((df["X"][i], df["Y"][i], df["Z"][i]))
+        # TODO: for now setting all z to 0 because cars appear to be under the track
+        point = mathutils.Vector((df["X"][i], df["Y"][i], 0))
+
         rot_eul = mathutils.Quaternion((df["RotW"][i], df["RotX"][i], df["RotY"][i], df["RotZ"][i])).to_euler()
         harsher_rot_eul = mathutils.Quaternion(
             (df["HarsherRotW"][i], df["HarsherRotX"][i], df["HarsherRotY"][i], df["HarsherRotZ"][i])
@@ -83,9 +90,10 @@ def add_keyframes(driver_obj, wheels_objs, df):
             rot = wheel_obj.rotation_euler  # the other infos for y, z may change so just grab what already exists first
             rot[0] = wheel_rot
 
-            if "frontwheel" in wheel_obj.name.lower():
-                default = -np.pi if wheel_obj.name[-1] == "R" else 0
-                rot[2] = default - front_wheel_diff
+            # TODO: I need to remove the front wheel physics for now because it is janky
+            # if "frontwheel" in wheel_obj.name.lower():
+            #     default = -np.pi if wheel_obj.name[-1] == "R" else 0
+            #     rot[2] = default - front_wheel_diff
 
             wheel_obj.rotation_euler = rot
             wheel_obj.keyframe_insert(data_path="rotation_euler", frame=idx)

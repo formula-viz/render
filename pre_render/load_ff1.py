@@ -1,4 +1,5 @@
 import concurrent.futures
+import json
 import os
 from concurrent.futures import ThreadPoolExecutor
 
@@ -6,8 +7,39 @@ import fastf1 as ff1
 import mathutils
 import numpy as np
 import pandas as pd
+import requests
 from fastf1.core import Laps, Telemetry
 from scipy.interpolate import UnivariateSpline
+
+
+def load_driver_headshots(driver_abbrevs, headshot_urls):
+    count = 0
+
+    # for some reason these url's are given in a weird format
+    # we want this format:
+    # https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/G/GEORUS01_George_Russell/georus01.png
+    # we get this format:
+    # https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/G/GEORUS01_George_Russell/georus01.png.transform/1col/image.png
+    # clearly, the problem is that after georus01, there is extra content, namely the .transform
+    headshot_urls = [url.split(".transform")[0] for url in headshot_urls]
+
+    for driver, url in zip(driver_abbrevs, headshot_urls):
+        if not os.path.exists(f"resources/driver_images/{driver}.png"):
+            response = requests.get(url)
+            with open(f"resources/driver_images/{driver}.png", "wb") as file:
+                file.write(response.content)
+                count += 1
+
+    if count > 0:
+        print(f"Downloaded {count} driver headshots")
+
+
+def save_driver_times(driver_times: dict[str, str], year: int, track: str):
+    if not os.path.exists(f"data/driver_times/{year}_{track}"):
+        os.makedirs(f"data/driver_times/{year}_{track}")
+
+    with open(f"data/driver_times/{year}_{track}/driver_times.json", "w") as file:
+        json.dump(driver_times, file)
 
 
 # this will only need to be called once for a particular year and track
@@ -21,6 +53,10 @@ def load_from_fastf1(year: int, track: str):
     drivers = [session.get_driver(d) for d in drivers]
     driver_abbrevs: list[str] = [d["Abbreviation"] for d in drivers]
 
+    # let's load the driver images if they are not present already
+    headshot_urls = [d["HeadshotUrl"] for d in drivers]
+    load_driver_headshots(driver_abbrevs, headshot_urls)
+
     laps = session.laps
 
     def process_tel(q: Laps):
@@ -33,8 +69,18 @@ def load_from_fastf1(year: int, track: str):
         tel["Y"] = tel["Y"].apply(lambda y: y / 10)
         tel["Z"] = tel["Z"].apply(lambda z: z / 10)
 
+        total_time = str(tel["Time"].iloc[-1])
+        # this is a time_delta, we want format: 1:23.342
+        # it will be in the format of: 00:01:23.342343
+        total_time = total_time.split(" ")[-1][3:12]
+        # it looks like if it is exactly 1:12, then there is no decimal
+        if len(total_time) == 5:
+            total_time += ".000"
+        driver_times[driver] = total_time
+
         driver_tels[driver] = tel
 
+    driver_times: dict[str, str] = {}
     driver_tels: dict[str, Telemetry] = {}
     for driver in driver_abbrevs:
         q1, q2, q3 = laps.pick_driver(driver).split_qualifying_sessions()
@@ -46,6 +92,8 @@ def load_from_fastf1(year: int, track: str):
             process_tel(q2)
         elif q1 is not None:
             process_tel(q1)
+
+    save_driver_times(driver_times, year, track)
 
     return driver_tels
 
