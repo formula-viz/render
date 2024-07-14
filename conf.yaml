@@ -3,13 +3,13 @@ year: 2024 # must be a 4 digit integer
 render:
   should_render: true
   fps: 30
-  samples: 100
+  samples: 4096
   adaptive_sampling: true
   is_4k: true # options are just 4k or 1920 by 1080 which is false
   output: "output.mp4"
 
 drivers:
-  - name: "RIC" # must be 3 letter identifier
+  - name: "RUS" # must be 3 letter identifier
     color: "red" # there will be a finite # of color options
-  - name: "TSU"
+  - name: "VER"
     color: "blue"
