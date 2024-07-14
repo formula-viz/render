@@ -30,7 +30,6 @@ def main(render_settings, num_frames):
     configure_gpu(render_settings)
 
     bpy.context.scene.frame_end = num_frames
-    bpy.context.scene.frame_end = 50
     bpy.context.scene.render.fps = render_settings["fps"]
 
     bpy.context.scene.cycles.samples = render_settings["samples"]
