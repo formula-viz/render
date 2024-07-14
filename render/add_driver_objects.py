@@ -64,6 +64,7 @@ def create_driver_fbx(driver, hex_color):
         if "steering" in obj.name.lower():
             # we want to set this invisible for now
             obj.hide_viewport = True
+            obj.hide_render = True
 
     return empty_obj, wheels_objs
 
