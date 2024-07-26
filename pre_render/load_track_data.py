@@ -9,7 +9,7 @@ from scipy.interpolate import splev, splprep
 
 def load_raw_data(year: int, track: str, use_latest_year: bool = True):
     # the current year may not be available, if it isn't, check if use_latest_year, then get the latest year
-    track_csv_url = f"https://raw.githubusercontent.com/formula-viz/track-data-collection-gui-app/main/track_data/{year}_{track}.csv"
+    track_csv_url = f"https://raw.githubusercontent.com/formula-viz/csv_repo/main/track_data/{year}_{track}.csv"
     response = requests.get(
         track_csv_url, auth=("quinn-caverly", "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"), verify=False
     )
