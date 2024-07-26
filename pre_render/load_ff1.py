@@ -13,6 +13,9 @@ from scipy.interpolate import UnivariateSpline
 
 
 def load_driver_headshots(driver_abbrevs, headshot_urls):
+    project_root = os.getenv("PROJECT_ROOT")
+    render_root = os.path.join(project_root, "render")
+
     count = 0
 
     # for some reason these url's are given in a weird format
@@ -24,9 +27,9 @@ def load_driver_headshots(driver_abbrevs, headshot_urls):
     headshot_urls = [url.split(".transform")[0] for url in headshot_urls]
 
     for driver, url in zip(driver_abbrevs, headshot_urls):
-        if not os.path.exists(f"resources/driver_images/{driver}.png"):
+        if not os.path.exists(f"{render_root}/resources/driver_images/{driver}.png"):
             response = requests.get(url)
-            with open(f"resources/driver_images/{driver}.png", "wb") as file:
+            with open(f"{render_root}/resources/driver_images/{driver}.png", "wb") as file:
                 file.write(response.content)
                 count += 1
 
@@ -35,10 +38,13 @@ def load_driver_headshots(driver_abbrevs, headshot_urls):
 
 
 def save_driver_times(driver_times: dict[str, str], year: int, track: str):
-    if not os.path.exists(f"data/driver_times/{year}_{track}"):
-        os.makedirs(f"data/driver_times/{year}_{track}")
+    project_root = os.getenv("PROJECT_ROOT")
+    render_root = os.path.join(project_root, "render")
 
-    with open(f"data/driver_times/{year}_{track}/driver_times.json", "w") as file:
+    if not os.path.exists(f"{render_root}/data/driver_times/{year}_{track}"):
+        os.makedirs(f"{render_root}/data/driver_times/{year}_{track}")
+
+    with open(f"{render_root}/data/driver_times/{year}_{track}/driver_times.json", "w") as file:
         json.dump(driver_times, file)
 
 
@@ -237,7 +243,10 @@ def add_wheel_rots(df):
 
 
 def save(year: str, track: str, fps: str, dfs: dict[str, pd.DataFrame]):
-    main_dir = "data/car_data"
+    root = os.getenv("PROJECT_ROOT")
+    render_root = os.path.join(root, "render")
+
+    main_dir = render_root + "/data/car_data"
     cur_dir = f"{main_dir}/{year}_{track}_{fps}"
 
     os.makedirs(cur_dir, exist_ok=True)
@@ -247,7 +256,11 @@ def save(year: str, track: str, fps: str, dfs: dict[str, pd.DataFrame]):
 
 
 def already_done(year: str, track: str, fps: str):
-    main_dir = "data/car_data"
+    root = os.getenv("PROJECT_ROOT")
+    print(root)
+    render_root = os.path.join(root, "render")
+
+    main_dir = render_root + "/data/car_data"
     cur_dir = f"{main_dir}/{year}_{track}_{fps}"
     return os.path.exists(cur_dir)
 
@@ -345,7 +358,7 @@ def optimize_smoothness_concurrent(track_edges: pd.DataFrame, fps: int, driver_t
 # in order to run this function, we need to already have the track data for this track and year
 # because this will be necessary to ensure that we have the correct smoothness so the movement
 # looks natural but also so that we are within track limits
-def main(year: int, track: str, fps: int, track_edges: pd.DataFrame):
+def main(year: int, track: str, fps: int):
     if already_done(str(year), track, str(fps)):
         print("Already fetched this car data, skipping...")
         return
@@ -358,6 +371,9 @@ def main(year: int, track: str, fps: int, track_edges: pd.DataFrame):
     for driver, tel in driver_tels.items():
         df = get_driver_df(tel, 3, fps)
         dfs[driver] = df
+    # TODO: this type of functionality should not be necessary because we are
+    # now using the car data in order to geenrate the track in the first place
+    # this means it should not be necessary to do this post-processing sync
     # dfs = optimize_smoothness_concurrent(track_edges, fps, driver_tels)
 
     for driver, df in dfs.items():
