@@ -61,4 +61,4 @@ def main(render_settings, num_frames):
     os.system("mkdir tmp")
     bpy.context.scene.render.filepath = "tmp/frame_"
 
-    bpy.ops.render.render(animation=True)
+    # bpy.ops.render.render(animation=True)

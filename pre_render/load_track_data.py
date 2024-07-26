@@ -25,30 +25,30 @@ def load_raw_data(year: int, track: str, use_latest_year: bool = True):
     response.raise_for_status()
     reader = csv.DictReader(response.text.splitlines())
 
-    inner_x = []
-    inner_y = []
-    inner_z = []
+    left_x = []
+    left_y = []
+    left_z = []
 
-    outer_x = []
-    outer_y = []
-    outer_z = []
+    right_x = []
+    right_y = []
+    right_z = []
     for row in reader:
-        inner_x.append(float(row["inner_X"]))
-        inner_y.append(float(row["inner_Y"]))
-        inner_z.append(float(row["inner_Z"]))
+        left_x.append(float(row["left_X"]))
+        left_y.append(float(row["left_Y"]))
+        left_z.append(float(row["left_Z"]))
 
-        outer_x.append(float(row["outer_X"]))
-        outer_y.append(float(row["outer_Y"]))
-        outer_z.append(float(row["outer_Z"]))
+        right_x.append(float(row["right_X"]))
+        right_y.append(float(row["right_Y"]))
+        right_z.append(float(row["right_Z"]))
 
     track_edges = pd.DataFrame(
         {
-            "inner_X": inner_x,
-            "inner_Y": inner_y,
-            "inner_Z": inner_z,
-            "outer_X": outer_x,
-            "outer_Y": outer_y,
-            "outer_Z": outer_z,
+            "left_X": left_x,
+            "left_Y": left_y,
+            "left_Z": left_z,
+            "right_X": right_x,
+            "right_Y": right_y,
+            "right_Z": right_z,
         }
     )
 
@@ -56,12 +56,12 @@ def load_raw_data(year: int, track: str, use_latest_year: bool = True):
 
 
 def smooth_points(track_points: pd.DataFrame):
-    inner_points = np.array(track_points[["inner_X", "inner_Y", "inner_Z"]])
-    outer_points = np.array(track_points[["outer_X", "outer_Y", "outer_Z"]])
+    lefts = np.array(track_points[["lefts_X", "lefts_Y", "lefts_Z"]])
+    rights = np.array(track_points[["rights_X", "rights_Y", "rights_Z"]])
 
     # we need to add the first point to the end of both to close the loop
-    # inner_points = np.append(inner_points, [inner_points[0]], axis=0)
-    # outer_points = np.append(outer_points, [outer_points[0]], axis=0)
+    # lefts = np.append(lefts, [lefts[0]], axis=0)
+    # rights = np.append(rights, [rights[0]], axis=0)
 
     num_new_points = 2000
 
@@ -79,8 +79,8 @@ def smooth_points(track_points: pd.DataFrame):
 
         return new_points_2d
 
-    new_inner_points_2d = smooth_edge(inner_points, num_new_points)
-    new_outer_points_2d = smooth_edge(outer_points, num_new_points)
+    new_lefts_2d = smooth_edge(lefts, num_new_points)
+    new_rights_2d = smooth_edge(rights, num_new_points)
 
     def linearly_interpolate_z_vals(z_vals, num_new_points):
         # we want to interpolate the z values, not smooth them
@@ -142,25 +142,70 @@ def smooth_points(track_points: pd.DataFrame):
 
         return new_z_vals
 
-    new_inner_z = linearly_interpolate_z_vals(inner_points[:, 2], num_new_points)
-    new_outer_z = linearly_interpolate_z_vals(outer_points[:, 2], num_new_points)
+    new_lefts_z = linearly_interpolate_z_vals(lefts[:, 2], num_new_points)
+    new_rights_z = linearly_interpolate_z_vals(rights[:, 2], num_new_points)
 
-    inner_x = []
-    inner_y = []
-    inner_z = []
+    left_x = []
+    left_y = []
+    left_z = []
 
-    outer_x = []
-    outer_y = []
-    outer_z = []
+    right_x = []
+    right_y = []
+    right_z = []
 
     for i in range(num_new_points):
-        inner_x.append(new_inner_points_2d[i][0])
-        inner_y.append(new_inner_points_2d[i][1])
-        inner_z.append(new_inner_z[i])
+        left_x.append(new_lefts_2d[i][0])
+        left_y.append(new_lefts_2d[i][1])
+        left_z.append(new_lefts_z[i])
 
-        outer_x.append(new_outer_points_2d[i][0])
-        outer_y.append(new_outer_points_2d[i][1])
-        outer_z.append(new_outer_z[i])
+        right_x.append(new_rights_2d[i][0])
+        right_y.append(new_rights_2d[i][1])
+        right_z.append(new_rights_z[i])
+
+    new_track_points = pd.DataFrame(
+        {
+            "left_X": left_x,
+            "left_Y": left_y,
+            "left_Z": left_z,
+            "right_X": right_x,
+            "right_Y": right_y,
+            "right_Z": right_z,
+        }
+    )
+
+    return new_track_points
+
+
+# the idea is that we get just left and right points from the previous api,
+# this is because the car could go clockwise or counter clockwise around the track,
+# which is otuer or inner is not given, so we just use some math to calculate which is which
+def assign_inner_outer(track_points):
+    # grab inner points, the 0th index of each tuple of track_points
+    lefts = [(row["left_X"], row["left_Y"], row["left_Z"]) for _, row in track_points.iterrows()]
+    rights = [(row["right_X"], row["right_Y"], row["right_Z"]) for _, row in track_points.iterrows()]
+
+    # we want to assume the inner points as the shorter distnace, the outer points as the longer distance
+    left_dist = 0
+    right_dist = 0
+    for i in range(len(lefts) - 1):
+        left_dist += ((lefts[i][0] - lefts[i + 1][0]) ** 2 + (lefts[i][1] - lefts[i + 1][1]) ** 2) ** 0.5
+        right_dist += ((rights[i][0] - rights[i + 1][0]) ** 2 + (rights[i][1] - rights[i + 1][1]) ** 2) ** 0.5
+
+    if left_dist <= right_dist:
+        outer_points = lefts
+        inner_points = rights
+    else:
+        inner_points = rights
+        outer_points = lefts
+
+    # we want to make a new track_points of inner_X, inner_Y, inner_Z, outer_X, outer_Y, outer_Z
+    inner_x = [point[0] for point in inner_points]
+    inner_y = [point[1] for point in inner_points]
+    inner_z = [point[2] for point in inner_points]
+
+    outer_x = [point[0] for point in outer_points]
+    outer_y = [point[1] for point in outer_points]
+    outer_z = [point[2] for point in outer_points]
 
     new_track_points = pd.DataFrame(
         {
@@ -173,37 +218,15 @@ def smooth_points(track_points: pd.DataFrame):
         }
     )
 
-    return new_track_points
+    return new_track_points, inner_points, outer_points
 
 
 # the idea is to take the track_points which have already been modified and interpolated
 # then, we add lines which are adjacent to the inner and outer points so that it creates the appearance of a curb
 # then, in blender we can add faces between the outer edge and the outer curb line for example to create the outer curb
-def add_curbs(track_points):
+def add_curbs(inner_points, outer_points):
     # the default track width is 12 meters
     curb_width = 2
-
-    # grab inner points, the 0th index of each tuple of track_points
-    inner_points = [(row["inner_X"], row["inner_Y"], row["inner_Z"]) for _, row in track_points.iterrows()]
-    outer_points = [(row["outer_X"], row["outer_Y"], row["outer_Z"]) for _, row in track_points.iterrows()]
-
-    # first, lets assert that the inner points are actually the inners and the outers actually outer
-    # we will do this by calculating the total distance around both curves, the distance around outer should be larger
-    inner_dist = 0
-    outer_dist = 0
-    for i in range(len(inner_points) - 1):
-        inner_dist += (
-            (inner_points[i][0] - inner_points[i + 1][0]) ** 2 + (inner_points[i][1] - inner_points[i + 1][1]) ** 2
-        ) ** 0.5
-        outer_dist += (
-            (outer_points[i][0] - outer_points[i + 1][0]) ** 2 + (outer_points[i][1] - outer_points[i + 1][1]) ** 2
-        ) ** 0.5
-
-    # instead of asserting, if the outer_points and inners are incorrect, just fix them
-    if outer_dist < inner_dist:
-        temp = inner_points
-        inner_points = outer_points
-        outer_points = temp
 
     inner_curb = curb(inner_points, outer_points, curb_width)
     outer_curb = curb(outer_points, inner_points, curb_width)
@@ -311,7 +334,8 @@ def main(year: int, track: str, use_latest_year: bool = True) -> pd.DataFrame:
     track_edges = load_raw_data(year, track, use_latest_year)
     track_edges = smooth_points(track_edges)
 
-    curbs = add_curbs(track_edges)
+    track_edges, inner_points, outer_points = assign_inner_outer(track_edges)
+    curbs = add_curbs(inner_points, outer_points)
     save_to_csv(track_edges, curbs, str(year), track)
 
     print("Done processing track data")

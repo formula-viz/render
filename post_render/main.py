@@ -58,6 +58,24 @@ def set_background(num_frames):
     image_strip.transform.scale_y = 0.55
 
 
+def add_outro_image(num_frames, outro_frames_length):
+    image_strip = bpy.context.scene.sequence_editor.sequences.new_image(
+        name="OverlayImage", filepath="resources/outros/credit.png", channel=1, frame_start=num_frames + 1
+    )
+
+    image_strip.frame_final_duration = num_frames + outro_frames_length
+    return image_strip
+
+
+# def add_music(total_frames):
+#     audio_path = "resources/music/credit.mp3"
+#     audio_strip = bpy.context.scene.sequence_editor.sequences.new_sound(
+#         name="CreditMusic", filepath=audio_path, channel=2, frame_start=1
+#     )
+#     audio_strip.frame_final_duration = total_frames
+#     return audio_strip
+
+
 # list in the form of HAM, VER, etc.
 def main():
     year, track, fps, drivers, render_settings = read_from_yaml()
@@ -81,8 +99,11 @@ def main():
         bpy.context.scene.render.resolution_y = 1080
 
     bpy.context.scene.render.fps = fps
-    bpy.context.scene.frame_end = num_frames
-    bpy.ops.render.render(animation=True)
+
+    outro_frames_length = fps * 8
+    # add_outro_image(num_frames, outro_frames_length)
+    bpy.context.scene.frame_end = num_frames + outro_frames_length
+    # bpy.ops.render.render(animation=True)
 
 
 main()
