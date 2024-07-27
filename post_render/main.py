@@ -104,9 +104,9 @@ def main():
     bpy.context.scene.render.fps = fps
 
     outro_frames_length = fps * 8
-    # add_outro_image(num_frames, outro_frames_length)
+    add_outro_image(num_frames, outro_frames_length)
     bpy.context.scene.frame_end = num_frames + outro_frames_length
-    # bpy.ops.render.render(animation=True)
+    bpy.ops.render.render(animation=True)
 
 
 main()

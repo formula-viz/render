@@ -19,8 +19,7 @@ python3 pre_render/main.py "yaml"
 
 #####################
 echo "Entering render"
-# blender --background --python render/main.py
-blender --python render/main.py
+blender --background --python render/main.py
 #####################
 
 #####################

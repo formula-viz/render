@@ -117,7 +117,6 @@ def smooth_points(track_points: pd.DataFrame):
     rights = np.array(track_points[["rights_X", "rights_Y"]])
 
     lefts_x, lefts_y = smooth_set(lefts)
-
     # instead of generating a spline for both lefts and rights, we generate a spline for just the lefts
     # this is because around corners, the lines end up overlapping due to the fact that the
     # distances are shorter around the two curves, this way we can ensure that they do not
