@@ -1,4 +1,4 @@
-#!/home/quinn-caverly/render/venv/bin/python3
+#!/home/quinn-caverly/Projects/formula-viz/render/venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys

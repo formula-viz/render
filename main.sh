@@ -13,8 +13,8 @@ echo "Project Root: $PROJECT_ROOT"
 ######################
 echo "Entering pre_render"
 source venv/bin/activate
-pip install -r pre_render/requirements.txt
-python3 pre_render/main.py
+pip install -r requirements.txt
+python3 pre_render/main.py "yaml"
 ######################
 
 #####################

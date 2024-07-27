@@ -1,15 +1,15 @@
-import csv
 import os
+from io import StringIO
 
 import numpy as np
 import pandas as pd
 import requests
-from scipy.interpolate import splev, splprep
+from scipy.interpolate import UnivariateSpline
 
 
 def load_raw_data(year: int, track: str, use_latest_year: bool = True):
     # the current year may not be available, if it isn't, check if use_latest_year, then get the latest year
-    track_csv_url = f"https://raw.githubusercontent.com/formula-viz/csv_repo/main/track_data/{year}_{track}.csv"
+    track_csv_url = f"https://raw.githubusercontent.com/formula-viz/csv_repo/main/track_data/{track}_{year}.csv"
     response = requests.get(
         track_csv_url, auth=("quinn-caverly", "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"), verify=False
     )
@@ -23,153 +23,148 @@ def load_raw_data(year: int, track: str, use_latest_year: bool = True):
         )
 
     response.raise_for_status()
-    reader = csv.DictReader(response.text.splitlines())
-
-    left_x = []
-    left_y = []
-    left_z = []
-
-    right_x = []
-    right_y = []
-    right_z = []
-    for row in reader:
-        left_x.append(float(row["left_X"]))
-        left_y.append(float(row["left_Y"]))
-        left_z.append(float(row["left_Z"]))
-
-        right_x.append(float(row["right_X"]))
-        right_y.append(float(row["right_Y"]))
-        right_z.append(float(row["right_Z"]))
-
-    track_edges = pd.DataFrame(
-        {
-            "left_X": left_x,
-            "left_Y": left_y,
-            "left_Z": left_z,
-            "right_X": right_x,
-            "right_Y": right_y,
-            "right_Z": right_z,
-        }
-    )
+    track_edges = pd.read_csv(StringIO(response.content.decode("utf-8")))
 
     return track_edges
 
 
-def smooth_points(track_points: pd.DataFrame):
-    lefts = np.array(track_points[["lefts_X", "lefts_Y", "lefts_Z"]])
-    rights = np.array(track_points[["rights_X", "rights_Y", "rights_Z"]])
+# this function may be useful if I ever transition to using the 3d data
+def linearly_interpolate_z_vals(z_vals, num_new_points):
+    # we want to interpolate the z values, not smooth them
+    # for now, the z value's will be the same for the inner and outer points
+    # we stretch z values to fit num_new_points
+    # if we have 1000 points and 2000 new points, we need to stretch the z values by 2
+    stretch_val = num_new_points / len(z_vals)
+    new_z_vals = np.zeros(num_new_points)
 
-    # we need to add the first point to the end of both to close the loop
-    # lefts = np.append(lefts, [lefts[0]], axis=0)
-    # rights = np.append(rights, [rights[0]], axis=0)
+    for i, z_val in enumerate(z_vals):
+        new_z_vals[int(i * stretch_val)] = z_val
 
-    num_new_points = 2000
+    # if we have two values which are not 0 and say they are 20 apart, then we fill the vals between them linearly
+    # if a is 10 and b is 20 and there are 3 spots between, we add 10.25, 10.5, 10.75
 
-    def smooth_edge(points, num_new_points):
-        x = points[:, 0]
-        y = points[:, 1]
+    # hold a pointer to the cur non-zero value in i, j is the next non zero value, then we step between them
+    i = 0
+    while new_z_vals[i] == 0:
+        i += 1
 
-        tck, _ = splprep([x, y], s=100)  # Increase s to make the curve smoother
-        unew = np.linspace(0, 1.0, num_new_points)
-        out = splev(unew, tck)
-
-        new_points_2d = []
-        for i in range(len(out[0])):
-            new_points_2d.append((out[0][i], out[1][i]))
-
-        return new_points_2d
-
-    new_lefts_2d = smooth_edge(lefts, num_new_points)
-    new_rights_2d = smooth_edge(rights, num_new_points)
-
-    def linearly_interpolate_z_vals(z_vals, num_new_points):
-        # we want to interpolate the z values, not smooth them
-        # for now, the z value's will be the same for the inner and outer points
-        # we stretch z values to fit num_new_points
-        # if we have 1000 points and 2000 new points, we need to stretch the z values by 2
-        stretch_val = num_new_points / len(z_vals)
-        new_z_vals = np.zeros(num_new_points)
-
-        for i, z_val in enumerate(z_vals):
-            new_z_vals[int(i * stretch_val)] = z_val
-
-        # if we have two values which are not 0 and say they are 20 apart, then we fill the vals between them linearly
-        # if a is 10 and b is 20 and there are 3 spots between, we add 10.25, 10.5, 10.75
-
-        # hold a pointer to the cur non-zero value in i, j is the next non zero value, then we step between them
-        i = 0
-        while new_z_vals[i] == 0:
-            i += 1
-
-        j = i + 1
-        while j < len(new_z_vals):
-            if new_z_vals[j] == 0:
-                j += 1
-                continue  # this should ensure that the loop doesnt break
-
-            # now that we have i pointing to a and j to b, find the spaces between them
-            num_spaces = j - i - 1  # if j = 3 and i = 0, then i 0 0 3, 2 spaces between = 3 - 0 - 1
-            dif = new_z_vals[j] - new_z_vals[i]
-            # if dif is 10 and num_spaces is 3, we add 10/4 to each space
-            step = dif / (num_spaces + 1)
-
-            for k in range(i + 1, j):
-                new_z_vals[k] = new_z_vals[k - 1] + step
-
-            # now we need to replace i with j and find the next non zero value
-            i = j
+    j = i + 1
+    while j < len(new_z_vals):
+        if new_z_vals[j] == 0:
             j += 1
+            continue  # this should ensure that the loop doesnt break
 
-        # now we need to interpolate between the last non zero value and the first non zero value
-        # as it is, i is pointing to the last non zero value
-        j = 0
-        while new_z_vals[j] == 0:
-            j += 1
-
-        # now we have i pointing to the last non zero value and j to the first non zero value
-        # now j is the smaller value, j might be 10 and i is 200, if there are 210 elems, then there are 9 + 11 = 20 spaces
-        num_spaces = len(new_z_vals) - i - 1 + j
+        # now that we have i pointing to a and j to b, find the spaces between them
+        num_spaces = j - i - 1  # if j = 3 and i = 0, then i 0 0 3, 2 spaces between = 3 - 0 - 1
         dif = new_z_vals[j] - new_z_vals[i]
+        # if dif is 10 and num_spaces is 3, we add 10/4 to each space
         step = dif / (num_spaces + 1)
 
-        n = 1
-        while n <= num_spaces:
-            idx = (i + n) % len(new_z_vals)
-            below_idx = (i + n - 1) % len(new_z_vals)
-            new_z_vals[idx] = new_z_vals[below_idx] + step
+        for k in range(i + 1, j):
+            new_z_vals[k] = new_z_vals[k - 1] + step
 
-            n += 1
+        # now we need to replace i with j and find the next non zero value
+        i = j
+        j += 1
 
-        return new_z_vals
+    # now we need to interpolate between the last non zero value and the first non zero value
+    # as it is, i is pointing to the last non zero value
+    j = 0
+    while new_z_vals[j] == 0:
+        j += 1
 
-    new_lefts_z = linearly_interpolate_z_vals(lefts[:, 2], num_new_points)
-    new_rights_z = linearly_interpolate_z_vals(rights[:, 2], num_new_points)
+    # now we have i pointing to the last non zero value and j to the first non zero value
+    # now j is the smaller value, j might be 10 and i is 200, if there are 210 elems, then there are 9 + 11 = 20 spaces
+    num_spaces = len(new_z_vals) - i - 1 + j
+    dif = new_z_vals[j] - new_z_vals[i]
+    step = dif / (num_spaces + 1)
 
-    left_x = []
-    left_y = []
-    left_z = []
+    n = 1
+    while n <= num_spaces:
+        idx = (i + n) % len(new_z_vals)
+        below_idx = (i + n - 1) % len(new_z_vals)
+        new_z_vals[idx] = new_z_vals[below_idx] + step
 
-    right_x = []
-    right_y = []
-    right_z = []
+        n += 1
 
-    for i in range(num_new_points):
-        left_x.append(new_lefts_2d[i][0])
-        left_y.append(new_lefts_2d[i][1])
-        left_z.append(new_lefts_z[i])
+    return new_z_vals
 
-        right_x.append(new_rights_2d[i][0])
-        right_y.append(new_rights_2d[i][1])
-        right_z.append(new_rights_z[i])
+
+def smooth_points(track_points: pd.DataFrame):
+    def smooth_set(points):
+        total_distance = 0
+        distances = [0.0]
+
+        for i in range(1, len(points)):
+            points_a = points[i - 1]
+            points_b = points[i]
+
+            distance = ((points_a[0] - points_b[0]) ** 2 + (points_a[1] - points_b[1]) ** 2) ** 0.5
+            total_distance += distance
+            distances.append(total_distance)
+
+        displacements = [distance / total_distance for distance in distances]
+
+        spl_x = UnivariateSpline(displacements, points[:, 0])
+        spl_y = UnivariateSpline(displacements, points[:, 1])
+
+        final_x = spl_x(np.linspace(0, 1.0, 10000))
+        final_y = spl_y(np.linspace(0, 1.0, 10000))
+
+        return final_x, final_y
+
+    lefts = np.array(track_points[["lefts_X", "lefts_Y"]])
+    rights = np.array(track_points[["rights_X", "rights_Y"]])
+
+    lefts_x, lefts_y = smooth_set(lefts)
+
+    # instead of generating a spline for both lefts and rights, we generate a spline for just the lefts
+    # this is because around corners, the lines end up overlapping due to the fact that the
+    # distances are shorter around the two curves, this way we can ensure that they do not
+    # overlap and also make the width more constant around the track.
+    rights_x, rights_y = [], []
+    track_width = 12  # this is hardcoded from how we generate the track
+    for i in range(len(lefts_x)):
+        next_idx = i + 1 if i + 1 < len(lefts_x) else 0
+        cur_point = (lefts_x[i], lefts_y[i])
+        next_point = (lefts_x[next_idx], lefts_y[next_idx])
+
+        vec = (next_point[0] - cur_point[0], next_point[1] - cur_point[1])
+        mag = (vec[0] ** 2 + vec[1] ** 2) ** 0.5
+        unit_vec = (vec[0] / mag, vec[1] / mag)
+
+        perp_vec = (unit_vec[1], -unit_vec[0])
+        # we go track width in each direction
+        a = (cur_point[0] - perp_vec[0] * track_width, cur_point[1] - perp_vec[1] * track_width)
+        b = (cur_point[0] + perp_vec[0] * track_width, cur_point[1] + perp_vec[1] * track_width)
+        # how do we know which one to choose?
+        # iterate through all rights points, as we are recreating the rights line, and find the shortest distance
+        # between a and b, then choose the one which is further from the closest point
+        min_dist_a = 1000
+        min_dist_b = 1000
+        for right in rights:
+            dist_a = ((right[0] - a[0]) ** 2 + (right[1] - a[1]) ** 2) ** 0.5
+            dist_b = ((right[0] - b[0]) ** 2 + (right[1] - b[1]) ** 2) ** 0.5
+            if dist_a < min_dist_a:
+                min_dist_a = dist_a
+            if dist_b < min_dist_b:
+                min_dist_b = dist_b
+
+        if min_dist_a < min_dist_b:
+            rights_x.append(a[0])
+            rights_y.append(a[1])
+        else:
+            rights_x.append(b[0])
+            rights_y.append(b[1])
 
     new_track_points = pd.DataFrame(
         {
-            "left_X": left_x,
-            "left_Y": left_y,
-            "left_Z": left_z,
-            "right_X": right_x,
-            "right_Y": right_y,
-            "right_Z": right_z,
+            "lefts_X": lefts_x,
+            "lefts_Y": lefts_y,
+            "lefts_Z": np.zeros(len(lefts_x)),
+            "rights_X": rights_x,
+            "rights_Y": rights_y,
+            "rights_Z": np.zeros(len(rights_x)),
         }
     )
 
@@ -181,8 +176,8 @@ def smooth_points(track_points: pd.DataFrame):
 # which is otuer or inner is not given, so we just use some math to calculate which is which
 def assign_inner_outer(track_points):
     # grab inner points, the 0th index of each tuple of track_points
-    lefts = [(row["left_X"], row["left_Y"], row["left_Z"]) for _, row in track_points.iterrows()]
-    rights = [(row["right_X"], row["right_Y"], row["right_Z"]) for _, row in track_points.iterrows()]
+    lefts = [(row["lefts_X"], row["lefts_Y"], row["lefts_Z"]) for _, row in track_points.iterrows()]
+    rights = [(row["rights_X"], row["rights_Y"], row["rights_Z"]) for _, row in track_points.iterrows()]
 
     # we want to assume the inner points as the shorter distnace, the outer points as the longer distance
     left_dist = 0
@@ -260,8 +255,9 @@ def curb(cur, other, curb_width):
     curb = []
     for i in range(len(cur)):
         next_idx = i + 1
-        if next_idx >= len(cur):
-            next_idx = 0
+        if next_idx == len(cur):
+            # this ensures that they won't overlap, because they will be parallel at the end
+            next_idx = i - 1
 
         cur_vec = (cur[next_idx][0] - cur[i][0], cur[next_idx][1] - cur[i][1])
         perp_vec = (cur_vec[1], -cur_vec[0])
@@ -275,35 +271,18 @@ def curb(cur, other, curb_width):
         curb_point_a = (cur[i][0] - curb_vec[0], cur[i][1] - curb_vec[1])
         curb_point_b = (cur[i][0] + curb_vec[0], cur[i][1] + curb_vec[1])
 
-        if i == 0:
-            other_point = other[i]
+        other_point = other[i]
 
-            dist_a = (other_point[0] - curb_point_a[0]) ** 2 + (other_point[1] - curb_point_a[1]) ** 2
-            dist_b = (other_point[0] - curb_point_b[0]) ** 2 + (other_point[1] - curb_point_b[1]) ** 2
+        dist_a = (other_point[0] - curb_point_a[0]) ** 2 + (other_point[1] - curb_point_a[1]) ** 2
+        dist_b = (other_point[0] - curb_point_b[0]) ** 2 + (other_point[1] - curb_point_b[1]) ** 2
 
-            if dist_a > dist_b:
-                # we also need to add the z value of cur to the curb point
-                curb_point_a = (curb_point_a[0], curb_point_a[1], cur[i][2])
-                curb.append(curb_point_a)
-            else:
-                curb_point_b = (curb_point_b[0], curb_point_b[1], cur[i][2])
-                curb.append(curb_point_b)
-
-        # TODO, this code shouldn't be necessary, I don't know why in certain situations the curb is jumping over
-        # granted, this code will work but this function could be more elegant
-        # if i is not 0, then we add the curb point which is closer to the previous curb point
+        if dist_a > dist_b:
+            # we also need to add the z value of cur to the curb point
+            curb_point_a = (curb_point_a[0], curb_point_a[1], cur[i][2])
+            curb.append(curb_point_a)
         else:
-            prev_curb_point = curb[i - 1]
-
-            dist_a = (prev_curb_point[0] - curb_point_a[0]) ** 2 + (prev_curb_point[1] - curb_point_a[1]) ** 2
-            dist_b = (prev_curb_point[0] - curb_point_b[0]) ** 2 + (prev_curb_point[1] - curb_point_b[1]) ** 2
-
-            if dist_a < dist_b:
-                curb_point_a = (curb_point_a[0], curb_point_a[1], cur[i][2])
-                curb.append(curb_point_a)
-            else:
-                curb_point_b = (curb_point_b[0], curb_point_b[1], cur[i][2])
-                curb.append(curb_point_b)
+            curb_point_b = (curb_point_b[0], curb_point_b[1], cur[i][2])
+            curb.append(curb_point_b)
 
     assert len(curb) == len(cur)
     return curb
