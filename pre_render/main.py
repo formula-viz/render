@@ -1,7 +1,10 @@
+import subprocess
 import sys
 
 import load_ff1
 import load_track_data
+
+subprocess.check_call([sys.executable, "-m", "pip", "install", "pyyaml"])
 import yaml
 
 

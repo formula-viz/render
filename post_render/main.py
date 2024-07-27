@@ -1,12 +1,15 @@
 import os
+import subprocess
 import sys
 
+subprocess.check_call([sys.executable, "-m", "pip", "install", "pyyaml"])
+subprocess.check_call([sys.executable, "-m", "pip", "install", "pandas"])
 import bpy
 import yaml
-from fastf1 import plotting
 
 script_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(script_path)
+
 
 import add_drivers
 import load_sequence

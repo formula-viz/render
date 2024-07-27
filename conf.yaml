@@ -1,7 +1,7 @@
-track: "CAN" # must be a 3 letter all capitals string
-year: 2024 # must be a 4 digit integer
+track: "BEL" # must be a 3 letter all capitals string
+year: 2023 # must be a 4 digit integer
 render:
-  should_render: true
+  should_render: false
   fps: 30
   samples: 4096
   adaptive_sampling: true
@@ -9,7 +9,7 @@ render:
   output: "output.mp4"
 
 drivers:
-  - name: "RUS" # must be 3 letter identifier
+  - name: "VER" # must be 3 letter identifier
     color: "red" # there will be a finite # of color options
-  - name: "VER"
+  - name: "LEC"
     color: "blue"

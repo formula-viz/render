@@ -1,6 +1,5 @@
 import bpy
 import mathutils
-import numpy as np
 import pandas as pd
 from fastf1 import plotting
 
