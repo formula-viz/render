@@ -1,11 +1,8 @@
 import os
 import subprocess
 import sys
-
-subprocess.check_call([sys.executable, "-m", "pip", "install", "ruamel.yaml"])
-subprocess.check_call([sys.executable, "-m", "pip", "install", "pandas"])
 import bpy
-from ruamel.yaml import YAML
+import yaml
 
 script_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(script_path)
@@ -18,9 +15,8 @@ import render_animation
 
 
 def read_from_yaml():
-    yaml = YAML()
     with open("conf.yaml", "r") as file:
-        config = yaml.load(file)
+        config = yaml.safe_load(file)
 
     year = config["year"]
     track = config["track"]

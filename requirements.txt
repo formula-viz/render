@@ -2,4 +2,4 @@ fastf1
 mathutils
 numpy
 pyyaml
-ruamel.yaml
+pandas
