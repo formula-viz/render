@@ -1,9 +1,6 @@
 import os
 import subprocess
 import sys
-
-subprocess.check_call([sys.executable, "-m", "pip", "install", "pyyaml"])
-subprocess.check_call([sys.executable, "-m", "pip", "install", "pandas"])
 import bpy
 import yaml
 

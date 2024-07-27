@@ -1,6 +1,11 @@
 #!/bin/bash
 echo "Entering main.sh"
 
+if [ "$EUID" -ne 0 ]; then
+  echo "This script must be run as root (use sudo)" >&2
+  exit 1
+fi
+
 ######################
 # Get the directory of the current script
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
@@ -8,6 +13,9 @@ SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 export PROJECT_ROOT
 echo "Project Root: $PROJECT_ROOT"
+
+BLENDER_SYSTEM_PATH="venv/lib/python3.11"
+export BLENDER_SYSTEM_PATH
 ######################
 
 ######################
