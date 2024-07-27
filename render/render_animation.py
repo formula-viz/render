@@ -29,7 +29,11 @@ def main(render_settings, num_frames):
     print(render_settings)
     configure_gpu(render_settings)
 
-    bpy.context.scene.frame_end = num_frames
+    if render_settings["validate_render"]:
+        bpy.context.scene.frame_end = 100
+    else:
+        bpy.context.scene.frame_end = num_frames
+
     bpy.context.scene.render.fps = render_settings["fps"]
 
     bpy.context.scene.cycles.samples = render_settings["samples"]
@@ -50,7 +54,6 @@ def main(render_settings, num_frames):
         bpy.context.scene.cycles.tile_x = 1920
         bpy.context.scene.cycles.tile_y = 1080
 
-
     # we want to render as a sequence of pngs so that we can add a background in vse
     bpy.context.scene.render.film_transparent = True
     # Set output format to PNG with RGBA channels
@@ -61,4 +64,4 @@ def main(render_settings, num_frames):
     os.system("mkdir tmp")
     bpy.context.scene.render.filepath = "tmp/frame_"
 
-    # bpy.ops.render.render(animation=True)
+    bpy.ops.render.render(animation=True)
