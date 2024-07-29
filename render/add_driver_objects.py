@@ -2,6 +2,7 @@ import bpy
 import mathutils
 import pandas as pd
 from fastf1 import plotting
+import math
 
 
 def set_color(obj, hex_color: str):
@@ -64,6 +65,20 @@ def create_driver_fbx(driver, hex_color):
             # we want to set this invisible for now
             obj.hide_viewport = True
             obj.hide_render = True
+
+    bpy.ops.object.camera_add()
+    camera = bpy.context.object
+    camera.name = driver.title() + "_Camera"
+    camera.location = (0, 0, 2.5)  # Position the camera 5 units above the empty object
+    camera.parent = empty_obj
+
+    camera.rotation_euler = (math.radians(90), 0, math.radians(180))  # Rotate 90 degrees around Z-axis
+
+    # Add a Track To constraint to make the camera look ahead
+    # track_to = camera.constraints.new(type='TRACK_TO')
+    # track_to.target = empty_obj
+    # track_to.track_axis = 'TRACK_NEGATIVE_Z'
+    # track_to.up_axis = 'UP_Y'
 
     return empty_obj, wheels_objs
 
