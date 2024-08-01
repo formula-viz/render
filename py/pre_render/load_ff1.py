@@ -1,7 +1,6 @@
 import concurrent.futures
 import json
 import os
-import sys
 from concurrent.futures import ThreadPoolExecutor
 
 import fastf1 as ff1
@@ -11,9 +10,9 @@ import pandas as pd
 import requests
 from fastf1.core import Laps, Telemetry
 from scipy.interpolate import UnivariateSpline
-
-
-from py.utils.project_structure import MAIN_PROJECT_ROOT
+from utils.project_structure import (get_car_data_dir, get_car_data_path,
+                                     get_driver_image_path,
+                                     get_driver_times_path)
 
 
 def load_driver_headshots(driver_abbrevs, headshot_urls):
@@ -22,7 +21,7 @@ def load_driver_headshots(driver_abbrevs, headshot_urls):
 
     downloaded_count = 0
     for driver, url in zip(driver_abbrevs, headshot_urls):
-        image_path = os.path.join(MAIN_PROJECT_ROOT, "resources", "driver_images", f"{driver}.png")
+        image_path = get_driver_image_path(driver)
 
         if not os.path.exists(image_path):
             try:
@@ -39,16 +38,9 @@ def load_driver_headshots(driver_abbrevs, headshot_urls):
         print(f"Downloaded {downloaded_count} driver headshots")
 
 
-def save_driver_times(driver_times: dict[str, str], year: int, track: str):
-    project_root = os.getenv("PROJECT_ROOT")
-    render_root = os.path.join(project_root, "render")
-
-    if not os.path.exists(f"{render_root}/data/driver_times/{year}_{track}"):
-        os.makedirs(f"{render_root}/data/driver_times/{year}_{track}")
-
-    with open(
-        f"{render_root}/data/driver_times/{year}_{track}/driver_times.json", "w"
-    ) as file:
+def save_driver_times(driver_times: dict[str, str], year: str, track: str):
+    loc = get_driver_times_path(year, track)
+    with open(loc, "w") as file:
         json.dump(driver_times, file)
 
 
@@ -70,9 +62,7 @@ def load_from_fastf1(year: int, track: str):
     laps = session.laps
 
     def process_tel(q: Laps):
-        tel: Telemetry = (
-            q.pick_not_deleted().pick_fastest().get_telemetry(frequency="original")
-        )
+        tel: Telemetry = q.pick_not_deleted().pick_fastest().get_telemetry(frequency="original")
 
         tel = tel[tel["Source"].isin(["pos", "interpolation"])]
         tel.reset_index(drop=True, inplace=True)
@@ -105,7 +95,7 @@ def load_from_fastf1(year: int, track: str):
         elif q1 is not None:
             process_tel(q1)
 
-    save_driver_times(driver_times, year, track)
+    save_driver_times(driver_times, str(year), track)
 
     return driver_tels
 
@@ -133,9 +123,7 @@ def get_driver_df(tel, s_divisor: int, frames_per_second: int):
         point_a = (tel["X"][i - 1], tel["Y"][i - 1])
         point_b = (tel["X"][i], tel["Y"][i])
 
-        distance = (
-            (point_a[0] - point_b[0]) ** 2 + (point_a[1] - point_b[1]) ** 2
-        ) ** 0.5
+        distance = ((point_a[0] - point_b[0]) ** 2 + (point_a[1] - point_b[1]) ** 2) ** 0.5
         total_distance += distance
         distances.append(total_distance)
 
@@ -146,12 +134,8 @@ def get_driver_df(tel, s_divisor: int, frames_per_second: int):
     weights[0] = 1000
     weights[-1] = 1000
 
-    spl_x = UnivariateSpline(
-        displacements, tel["X"], w=weights, s=len(displacements) // s_divisor
-    )
-    spl_y = UnivariateSpline(
-        displacements, tel["Y"], w=weights, s=len(displacements) // s_divisor
-    )
+    spl_x = UnivariateSpline(displacements, tel["X"], w=weights, s=len(displacements) // s_divisor)
+    spl_y = UnivariateSpline(displacements, tel["Y"], w=weights, s=len(displacements) // s_divisor)
 
     # we want to first smooth the speed data using a spline again
     time_floats = tel["Time"].apply(lambda t: t.total_seconds())
@@ -181,9 +165,7 @@ def get_driver_df(tel, s_divisor: int, frames_per_second: int):
     final_y = spl_y(adj_d_covered)
 
     # add the first value to the beginning of sampled_speeds_m_per_s so they match length
-    sampled_speeds_m_per_s = np.insert(
-        sampled_speeds_m_per_s, 0, sampled_speeds_m_per_s[0]
-    )
+    sampled_speeds_m_per_s = np.insert(sampled_speeds_m_per_s, 0, sampled_speeds_m_per_s[0])
 
     return pd.DataFrame(
         {
@@ -240,9 +222,7 @@ def add_car_rots(df):
     df["RotY"] = rot_y
     df["RotZ"] = rot_z
 
-    harsher_rot_w, harsher_rot_x, harsher_rot_y, harsher_rot_z = get_rots(
-        points, lookahead_points=2, slerp_val=0.05
-    )
+    harsher_rot_w, harsher_rot_x, harsher_rot_y, harsher_rot_z = get_rots(points, lookahead_points=2, slerp_val=0.05)
     df["HarsherRotW"] = harsher_rot_w
     df["HarsherRotX"] = harsher_rot_x
     df["HarsherRotY"] = harsher_rot_y
@@ -257,9 +237,7 @@ def add_wheel_rots(df):
     tire_rots = []
     for i in range(len(df)):
         rad_per_s = df["Speed"][i] / 0.33
-        new_rot = -(
-            prev_rot + rad_per_s / 60
-        )  # should rotate in negative x, this is arbitrary, relative to the model
+        new_rot = -(prev_rot + rad_per_s / 60)  # should rotate in negative x, this is arbitrary, relative to the model
         tire_rots.append(new_rot)
         prev_rot = new_rot
 
@@ -268,25 +246,16 @@ def add_wheel_rots(df):
 
 
 def save(year: str, track: str, fps: str, dfs: dict[str, pd.DataFrame]):
-    root = os.getenv("PROJECT_ROOT")
-    render_root = os.path.join(root, "render")
-
-    main_dir = render_root + "/data/car_data"
-    cur_dir = f"{main_dir}/{year}_{track}_{fps}"
-
+    cur_dir = get_car_data_dir(year, track, fps)
     os.makedirs(cur_dir, exist_ok=True)
 
     for driver, df in dfs.items():
-        df.to_csv(f"{cur_dir}/{driver}.csv", index=False)
+        driver_path = get_car_data_path(year, track, fps, driver)
+        df.to_csv(driver_path, index=False)
 
 
 def already_done(year: str, track: str, fps: str):
-    root = os.getenv("PROJECT_ROOT")
-    print(root)
-    render_root = os.path.join(root, "render")
-
-    main_dir = render_root + "/data/car_data"
-    cur_dir = f"{main_dir}/{year}_{track}_{fps}"
+    cur_dir = get_car_data_dir(year, track, fps)
     return os.path.exists(cur_dir)
 
 
@@ -302,12 +271,10 @@ def in_track_limits(driver_df: pd.DataFrame, track_edges: pd.DataFrame):
             track_point_outer = (track_edges["outer_X"][j], track_edges["outer_Y"][j])
 
             dist_inner = (
-                (cur_point[0] - track_point_inner[0]) ** 2
-                + (cur_point[1] - track_point_inner[1]) ** 2
+                (cur_point[0] - track_point_inner[0]) ** 2 + (cur_point[1] - track_point_inner[1]) ** 2
             ) ** 0.5
             dist_outer = (
-                (cur_point[0] - track_point_outer[0]) ** 2
-                + (cur_point[1] - track_point_outer[1]) ** 2
+                (cur_point[0] - track_point_outer[0]) ** 2 + (cur_point[1] - track_point_outer[1]) ** 2
             ) ** 0.5
 
             if dist_inner > 1 or dist_outer > 1:
@@ -316,9 +283,7 @@ def in_track_limits(driver_df: pd.DataFrame, track_edges: pd.DataFrame):
     return True
 
 
-def optimize_smoothness(
-    track_edges: pd.DataFrame, fps: int, driver_tels: dict[str, Telemetry]
-):
+def optimize_smoothness(track_edges: pd.DataFrame, fps: int, driver_tels: dict[str, Telemetry]):
     dfs: dict[str, pd.DataFrame] = {}
 
     s_divisor = 3  # increasing this s_divisor will make the spline more rigid
@@ -350,9 +315,7 @@ def generate_df_and_eval_track_limit(tel, s_divisor, fps, track_edges):
     return df, in_limits
 
 
-def optimize_smoothness_concurrent(
-    track_edges: pd.DataFrame, fps: int, driver_tels: dict[str, Telemetry]
-):
+def optimize_smoothness_concurrent(track_edges: pd.DataFrame, fps: int, driver_tels: dict[str, Telemetry]):
     driver_dfs = {}
 
     s_divisor = 3
@@ -365,9 +328,7 @@ def optimize_smoothness_concurrent(
 
         with ThreadPoolExecutor() as executor:
             futures = {
-                executor.submit(
-                    generate_df_and_eval_track_limit, tel, s_divisor, fps, track_edges
-                ): driver
+                executor.submit(generate_df_and_eval_track_limit, tel, s_divisor, fps, track_edges): driver
                 for driver, tel in driver_tels.items()
             }
 

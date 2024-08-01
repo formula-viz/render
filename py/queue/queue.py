@@ -1,28 +1,30 @@
-import os
-import time
-import shutil
 import logging
+import os
+import shutil
+import time
+from queue import entry.main
 
-from py.utils import setup_logging
-from py.utils.project_structure import JOBS_DIR
-from py.queue import entry
+from utils import setup_logging
+from utils.project_structure import JOBS_DIR
 
 setup_logging()
 logger = logging.getLogger(__name__)
 
-STAGING_DIR = os.path.join(JOBS_DIR, 'staging')
-IN_PROGRESS_DIR = os.path.join(JOBS_DIR, 'in_progress')
-COMPLETED_DIR = os.path.join(JOBS_DIR, 'completed')
+STAGING_DIR = os.path.join(JOBS_DIR, "staging")
+IN_PROGRESS_DIR = os.path.join(JOBS_DIR, "in_progress")
+COMPLETED_DIR = os.path.join(JOBS_DIR, "completed")
+
 
 def get_oldest_file(directory):
-    files = [f for f in os.listdir(directory) if f.endswith('.yaml')]
+    files = [f for f in os.listdir(directory) if f.endswith(".yaml")]
     if not files:
         return None
     return min(files, key=lambda f: os.path.getmtime(os.path.join(directory, f)))
 
+
 # returns whether we should sleep or not, if we just processed a job
 # then we don't want to sleep because there may be many items in queue
-def process_next_job() -> bool:
+def process_next_job():
     job_file = get_oldest_file(STAGING_DIR)
     if not job_file:
         logger.info("No jobs in staging.")
@@ -48,7 +50,6 @@ def process_next_job() -> bool:
         # Optionally, move failed jobs to a separate directory
 
 
-
 def run_queue():
     logger.info("Job queue system started. Checking for jobs every 5 minutes...")
     while True:
@@ -57,6 +58,7 @@ def run_queue():
         if should_sleep:
             logger.info("Sleeping for 5 minutes...")
             time.sleep(300)
+
 
 if __name__ == "__main__":
     run_queue()

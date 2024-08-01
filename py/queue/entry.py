@@ -3,7 +3,6 @@
 import os
 import sys
 import subprocess
-import argparse
 import logging
 from pathlib import Path
 
@@ -29,19 +28,19 @@ def activate_venv():
 
 def main(yaml_path):
     logger.info("Entering main.py")
-    
+
     check_root()
     activate_venv()
-    
+
     run_command("pip install -r ../requirements.txt")
-    
+
     logger.info("Entering pre_render")
-    run_command(f"python3 ../pre_render/main.py {yaml_path}")
-    
+    run_command(f"python3 ../pre_render/pre_render.py {yaml_path}")
+
     logger.info("Entering render")
-    run_command(f"blender --background --python ../render/main.py {yaml_path}")
-    
+    run_command(f"blender --background --python ../render/pre_render.py {yaml_path}")
+
     logger.info("Entering post_render")
-    run_command(f"blender --background --python ../post_render/main.py {yaml_path}")
-    
+    run_command(f"blender --background --python ../post_render/post_render.py {yaml_path}")
+
     logger.info("Ending main.py")

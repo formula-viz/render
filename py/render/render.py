@@ -1,17 +1,20 @@
 import os
-import subprocess
 import sys
+
 import bpy
 import yaml
+from utils.project_structure import PYTHON_PROJECT_ROOT
 
-script_path = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(script_path)
+MAIN_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+PYTHON_PROJECT_ROOT = os.path.join(MAIN_PROJECT_ROOT, "py")
+sys.path.append(PYTHON_PROJECT_ROOT)
 
 import add_camera
 import add_driver_objects
 import add_sun
 import add_track
 import render_animation
+from utils.read_yaml import read_yaml
 
 
 def read_from_yaml():
@@ -51,8 +54,8 @@ def read_from_yaml():
 
 # we already have loaded the track data and the car data for all cars
 # on this year and track, now, we just need the cars to render
-def main():
-    year, track, fps, drivers, render_settings = read_from_yaml()
+def main(yaml_path):
+    year, track, fps, drivers, config = read_yaml(yaml_path)
 
     bpy.data.collections.remove(bpy.data.collections["Collection"], do_unlink=True)
     bpy.context.scene.world.node_tree.nodes["Background"].inputs[0].default_value = (0.6, 0.6, 0.6, 1)
@@ -69,6 +72,7 @@ def main():
 
     bpy.ops.file.find_missing_files(directory="resources/cars/formula-1-2024-generic/textures")
 
+    render_settings = config["render"]
     if render_settings["should_render"]:
         print("Starting Rendering...")
         render_animation.main(render_settings, len(driver_dfs[focused_driver]))
@@ -76,4 +80,9 @@ def main():
         print("should_render is set to false, skipping rendering...")
 
 
-main()
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python render.py <path_to_yaml>")
+        sys.exit(1)
+
+    main(sys.argv[1])

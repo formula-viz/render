@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import requests
 from scipy.interpolate import UnivariateSpline
+from utils.project_structure import get_track_data_path
 
 
 def load_raw_data(year: int, track: str, use_latest_year: bool = True):
@@ -268,20 +269,20 @@ def curb(cur, other, curb_width):
 
 
 def save_to_csv(track_points: pd.DataFrame, curb_points: pd.DataFrame, year: str, track: str):
-    loc = f"data/track_data/{year}_{track}.csv"
+    loc = get_track_data_path(year, track)
     new = track_points.join(curb_points)
     new.to_csv(loc, index=False)
 
 
 def already_done(year: str, track: str):
-    loc = f"data/track_data/{year}_{track}.csv"
+    loc = get_track_data_path(year, track)
     if os.path.exists(loc):
         df = pd.read_csv(loc)
         return True, df
     return False, None
 
 
-def main(year: int, track: str, use_latest_year: bool = True) -> pd.DataFrame:
+def main(year: int, track: str, use_latest_year: bool = True):
     is_done, df = already_done(str(year), track)
     if is_done:
         print("Already fetched this track data, skipping...")

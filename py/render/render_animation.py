@@ -60,8 +60,8 @@ def main(render_settings, num_frames):
     bpy.context.scene.render.image_settings.file_format = "PNG"
     bpy.context.scene.render.image_settings.color_mode = "RGBA"
     # first, let's delete the tmp folder to wipe it
-    os.system("rm -rf tmp")
-    os.system("mkdir tmp")
-    bpy.context.scene.render.filepath = "tmp/frame_"
+    os.system("rm -rf temporary/frames")
+    os.system("mkdir temporary/frames")
+    bpy.context.scene.render.filepath = "temporary/frames/frame_"
 
     bpy.ops.render.render(animation=True)
