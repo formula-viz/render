@@ -1,8 +1,10 @@
+import math
+
 import bpy
 import mathutils
 import pandas as pd
 from fastf1 import plotting
-import math
+from utils.project_structure import get_car_data_path, get_car_fbx_path
 
 
 def set_color(obj, hex_color: str):
@@ -37,8 +39,7 @@ def create_driver_fbx(driver, hex_color):
     bpy.context.scene.collection.children.link(driver_collection)
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
 
-    file_path = "resources/cars/formula-1-2024-generic/source/F1_TexPaintBlender_v01_20210215.fbx"
-    bpy.ops.import_scene.fbx(filepath=file_path)
+    bpy.ops.import_scene.fbx(filepath=get_car_fbx_path())
 
     for obj in bpy.context.selected_objects:
         obj.name = f"{driver.title()}_{obj.name}"
@@ -128,14 +129,10 @@ def create_driver(driver, hex_color, df):
 
 
 def main(year: str, track: str, fps: str, driver_tuples):
-    # year, track, fps simply uniquely define the save location
-    main_dir = "data/car_data"
-    cur_dir = f"{main_dir}/{year}_{track}_{fps}"
-
     driver_dfs = {}
     for driver_tuple in driver_tuples:
         name, color = driver_tuple
-        driver_dfs[name] = pd.read_csv(f"{cur_dir}/{name}.csv")
+        driver_dfs[name] = pd.read_csv(get_car_data_path(year, track, fps, name))
 
     # TODO: I am going to experiment with using the ff1 colors for the drivers
     # if this produces sensible results then it is the best plan long term

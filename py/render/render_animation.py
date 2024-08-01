@@ -24,6 +24,7 @@ def configure_gpu(render_settings):
 def main(render_settings, num_frames):
     if not render_settings["should_render"]:
         print("Set to not render, skipping rendering...")
+        return
 
     print(f"Starting Rendering of {num_frames} with...")
     print(render_settings)

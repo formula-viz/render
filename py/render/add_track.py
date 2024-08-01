@@ -1,6 +1,7 @@
 import bmesh
 import bpy
 import pandas as pd
+from utils.project_structure import get_track_data_path
 
 
 def create_planes(inner_points, outer_points, name, material=None):
@@ -36,8 +37,7 @@ def create_material(color, name):
 
 
 def main(year: str, track: str):
-    main_dir = "data/track_data"
-    df = pd.read_csv(f"{main_dir}/{year}_{track}.csv")
+    df = pd.read_csv(get_track_data_path(year, track))
 
     track_collection = bpy.data.collections.new(name="TrackCollection")
     bpy.context.scene.collection.children.link(track_collection)
