@@ -1,13 +1,16 @@
 import logging
 import os
 import shutil
+import sys
 import time
-from queue import entry.main
 
-from utils import setup_logging
+# add project root directory to the system path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import main_entry
+import query
 from utils.project_structure import JOBS_DIR
 
-setup_logging()
 logger = logging.getLogger(__name__)
 
 STAGING_DIR = os.path.join(JOBS_DIR, "staging")
@@ -40,7 +43,7 @@ def process_next_job():
         logger.info(f"Job {job_file} moved to in_progress")
 
         # Process the job
-        entry.main(in_progress_path)
+        main_entry.main(in_progress_path)
 
         # Move to finished
         shutil.move(in_progress_path, finished_path)
@@ -53,6 +56,9 @@ def process_next_job():
 def run_queue():
     logger.info("Job queue system started. Checking for jobs every 5 minutes...")
     while True:
+        # each time we also need to check if the new data is ready
+        query.main() # this will automatically job in staging
+
         logger.info("Checking for jobs...")
         should_sleep = process_next_job()
         if should_sleep:

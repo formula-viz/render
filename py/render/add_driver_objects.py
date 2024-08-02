@@ -2,7 +2,11 @@ import math
 
 import bpy
 import mathutils
+import numpy as np
 import pandas as pd
+from colormath.color_conversions import convert_color
+from colormath.color_diff import delta_e_cie2000
+from colormath.color_objects import LabColor, sRGBColor
 from fastf1 import plotting
 from utils.project_structure import get_car_data_path, get_car_fbx_path
 

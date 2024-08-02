@@ -4,6 +4,9 @@ MAIN_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.absp
 PYTHON_PROJECT_ROOT = os.path.join(MAIN_PROJECT_ROOT, "py")
 
 JOBS_DIR = os.path.join(MAIN_PROJECT_ROOT, "temporary", "jobs")
+STAGING_DIR = os.path.join(JOBS_DIR, "staging")
+IN_PROGRESS_DIR = os.path.join(JOBS_DIR, "in_progress")
+COMPLETED_DIR = os.path.join(JOBS_DIR, "completed")
 
 # resources
 RESOURCES_DIR = os.path.join(MAIN_PROJECT_ROOT, "persistent", "resources")
@@ -14,6 +17,9 @@ TRACK_DATA_DIR = os.path.join(DATA_DIR, "track_data")
 DRIVER_IMAGES_DIR = os.path.join(DATA_DIR, "driver_images")
 DRIVER_TIMES_DIR = os.path.join(DATA_DIR, "driver_times")
 CAR_DATA_DIR = os.path.join(DATA_DIR, "car_data")
+
+TRACKS_FILE = os.path.join(PYTHON_PROJECT_ROOT, "render_queue", "tracks.txt")
+CUR_YEAR = 2024
 
 
 def get_car_fbx_path() -> str:
