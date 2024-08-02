@@ -1,5 +1,0 @@
-fastf1
-mathutils
-numpy
-pyyaml
-pandas
