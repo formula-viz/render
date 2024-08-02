@@ -62,9 +62,9 @@ def create_driver_fbx(driver, hex_color):
         if "wheel" in obj.name.lower() and "steering" not in obj.name.lower():
             wheels_objs.append(obj)
 
-        for substr in ["chassis", "appliances", "steering", "wings"]:
-            if substr in obj.name.lower():
-                set_color(obj, hex_color)
+        # for substr in ["chassis", "appliances", "steering", "wings"]:
+        #     if substr in obj.name.lower():
+        #         set_color(obj, hex_color)
 
         if "steering" in obj.name.lower():
             # we want to set this invisible for now
@@ -74,10 +74,12 @@ def create_driver_fbx(driver, hex_color):
     bpy.ops.object.camera_add()
     camera = bpy.context.object
     camera.name = driver.title() + "_Camera"
-    camera.location = (0, 0, 2.5)  # Position the camera 5 units above the empty object
+    camera.location = (0, 0.5, 1.25)  # Position the camera 5 units above the empty object
+    camera.data.dof.focus_distance = 15
+
     camera.parent = empty_obj
 
-    camera.rotation_euler = (math.radians(90), 0, math.radians(180))  # Rotate 90 degrees around Z-axis
+    camera.rotation_euler = (math.radians(82), 0, math.radians(180))  # Rotate 90 degrees around Z-axis
 
     # Add a Track To constraint to make the camera look ahead
     # track_to = camera.constraints.new(type='TRACK_TO')

@@ -1,7 +1,7 @@
 track: "BEL" # must be a 3 letter all capitals string
-year: 2023 # must be a 4 digit integer
+year: 2024 # must be a 4 digit integer
 render:
-  should_render: true
+  should_render: false
   validate_render: true # will only create a few frames
   fps: 30
   samples: 4096

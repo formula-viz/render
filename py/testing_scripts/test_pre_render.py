@@ -8,6 +8,7 @@ import pandas as pd
 # add project root directory to the system path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from pre_render import pre_render
 from utils.project_structure import get_track_data_path
 from utils.read_yaml import read_yaml
 
@@ -65,7 +66,7 @@ def main():
 
     # now, we want to visualize the output from pre_render
     # the main thing is the track data, we'll visualize using matplotlib
-    run_command(f"python3 ../pre_render/pre_render.py {yaml_path}")
+    pre_render.main(yaml_path)
 
     # we will need to grab the config to see the output location
     year, track, fps, drivers, config = read_yaml(yaml_path)

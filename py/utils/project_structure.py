@@ -21,6 +21,9 @@ CAR_DATA_DIR = os.path.join(DATA_DIR, "car_data")
 TRACKS_FILE = os.path.join(PYTHON_PROJECT_ROOT, "render_queue", "tracks.txt")
 CUR_YEAR = 2024
 
+FORMULA_ONE_REGULAR_FONT_PATH = os.path.join(RESOURCES_DIR, "fonts", "Formula1-Regular.ttf")
+BACKGROUND_ONE_PATH = os.path.join(RESOURCES_DIR, "backgrounds", "background1.jpeg")
+
 
 def get_car_fbx_path() -> str:
     return os.path.join(
@@ -48,5 +51,5 @@ def get_track_data_path(year: str, track: str) -> str:
     return os.path.join(TRACK_DATA_DIR, f"{year}_{track}.csv")
 
 
-def get_driver_image_path(driver_name: str) -> str:
-    return os.path.join(DRIVER_IMAGES_DIR, f"{driver_name}.png")
+def get_driver_image_path(driver_abbrev: str) -> str:
+    return os.path.join(DRIVER_IMAGES_DIR, f"{driver_abbrev}.png")

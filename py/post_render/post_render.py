@@ -1,56 +1,26 @@
 import os
-import subprocess
 import sys
+
 import bpy
-import yaml
 
-script_path = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(script_path)
+MAIN_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+PYTHON_SCRIPTS_ROOT = os.path.join(MAIN_PROJECT_ROOT, "py")
+sys.path.append(MAIN_PROJECT_ROOT)
+sys.path.append(PYTHON_SCRIPTS_ROOT)
+sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 import add_drivers
 import load_sequence
-
-
-def read_from_yaml():
-    with open("conf.yaml", "r") as file:
-        config = yaml.safe_load(file)
-
-    year = config["year"]
-    track = config["track"]
-    fps = config["render"]["fps"]
-
-    assert isinstance(year, int)
-    assert isinstance(track, str)
-    assert isinstance(fps, int)
-
-    drivers = []
-    for driver in config["drivers"]:
-        name = driver["name"]
-        color = driver["color"]
-
-        assert isinstance(name, str)
-        assert isinstance(color, str)
-
-        drivers.append((name, color))
-
-    print("Received Config:")
-    print(f"    Year: {year}")
-    print(f"    Track: {track}")
-    print(f"    FPS: {fps}")
-    print("Drivers:")
-    for driver in drivers:
-        print("    " + str(driver))
-
-    render_settings = config["render"]
-
-    return year, track, fps, drivers, render_settings
-
+from utils.read_yaml import read_yaml
+from utils.project_structure import BACKGROUND_ONE_PATH
 
 def set_background(num_frames):
-    file_path = "resources/backgrounds/background1.jpeg"
     image_strip = bpy.context.scene.sequence_editor.sequences.new_image(
-        name="BackgroundImage", filepath=file_path, channel=1, frame_start=1
+        name="BackgroundImage", filepath=BACKGROUND_ONE_PATH, channel=1, frame_start=1
     )
     image_strip.frame_final_duration = num_frames
 
@@ -77,10 +47,11 @@ def add_outro_image(num_frames, outro_frames_length):
 
 
 # list in the form of HAM, VER, etc.
-def main():
-    year, track, fps, drivers, render_settings = read_from_yaml()
+def main(yaml_path, frames_dir):
+    year, track, fps, drivers, config = read_yaml(yaml_path)
+    render_settings = config["render"]
 
-    num_frames = load_sequence.main()
+    num_frames = load_sequence.main(frames_dir)
 
     set_background(num_frames)
     add_drivers.main(drivers, num_frames, render_settings["is_4k"], track, str(year))
@@ -103,7 +74,19 @@ def main():
     outro_frames_length = fps * 8
     add_outro_image(num_frames, outro_frames_length)
     bpy.context.scene.frame_end = num_frames + outro_frames_length
-    # bpy.ops.render.render(animation=True)
+
+    if render_settings["should_render"]:
+        bpy.ops.render.render(animation=True)
+    else:
+        logger.info("should_render is set to false, skipping rendering...")
 
 
-main()
+if __name__ == "__main__":
+    if len(sys.argv) < 5:
+        print("Usage: blender --python post_render.py -- <path_to_yaml> <path_to_frames>")
+        sys.exit(1)
+
+    yaml_path = sys.argv[4]
+    frames_dir = sys.argv[5]
+
+    main(yaml_path, frames_dir)

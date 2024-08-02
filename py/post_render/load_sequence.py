@@ -3,16 +3,16 @@ import os
 import bpy
 
 
-def main():
+def main(frames_dir):
     bpy.context.scene.sequence_editor_create()
 
     bpy.context.scene.render.use_sequencer = True
-    file_paths = sorted([f for f in os.listdir("tmp")])
+    file_paths = sorted([f for f in os.listdir(frames_dir)])
 
     for i, file_path in enumerate(file_paths):
         bpy.data.scenes[0].sequence_editor.sequences.new_image(
             name=f"Image{i+1}",
-            filepath=os.path.join("tmp", file_path),
+            filepath=os.path.join(frames_dir, file_path),
             channel=2,
             frame_start=i + 1,
             fit_method="ORIGINAL",

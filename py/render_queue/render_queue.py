@@ -57,7 +57,7 @@ def run_queue():
     logger.info("Job queue system started. Checking for jobs every 5 minutes...")
     while True:
         # each time we also need to check if the new data is ready
-        query.main() # this will automatically job in staging
+        query.main()  # this will automatically job in staging
 
         logger.info("Checking for jobs...")
         should_sleep = process_next_job()

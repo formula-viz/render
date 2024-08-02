@@ -1,20 +1,23 @@
-import argparse
 import logging
 import os
 import sys
 
-# add project root directory to the system path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+MAIN_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+PYTHON_SCRIPTS_ROOT = os.path.join(MAIN_PROJECT_ROOT, "py")
+sys.path.append(MAIN_PROJECT_ROOT)
+sys.path.append(PYTHON_SCRIPTS_ROOT)
+sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 
 
 import load_ff1
 import load_track_data
-
 from utils.read_yaml import read_yaml
 
 logger = logging.getLogger(__name__)
 
 
+# this need not be run in blender so we don't need to worry about receiving args,
+# we can just call as a function in a module like normal
 def main(yaml_path: str) -> None:
     try:
         year, track, fps, _, _ = read_yaml(yaml_path)
@@ -23,13 +26,3 @@ def main(yaml_path: str) -> None:
     except Exception as e:
         logger.error(f"An error occurred: {e}")
         sys.exit(1)
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Process race data based on YAML configuration.")
-    parser.add_argument("yaml_path", help="Path to the YAML configuration file")
-    args = parser.parse_args()
-
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-
-    main(args.yaml_path)

@@ -53,7 +53,7 @@ def main(yaml_path):
 
 if __name__ == "__main__":
     if len(sys.argv) < 5:
-        print("Usage: blender --python render.py <path_to_yaml>")
+        print("Usage: blender --python render.py -- <path_to_yaml>")
         sys.exit(1)
 
     main(sys.argv[4])

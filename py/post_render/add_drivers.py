@@ -2,13 +2,15 @@ import json
 
 import bpy
 from fastf1 import plotting
+from utils.project_structure import (FORMULA_ONE_REGULAR_FONT_PATH,
+                                     get_driver_image_path,
+                                     get_driver_times_path)
 
 
 def add_driver_image(driver_abbrev, num_frames, channel):
-    file_path = f"resources/driver_images/{driver_abbrev}.png"
-
+    loc = get_driver_image_path(driver_abbrev)
     image_strip = bpy.context.scene.sequence_editor.sequences.new_image(
-        name="OverlayImage", filepath=file_path, channel=channel, frame_start=1
+        name="OverlayImage", filepath=loc, channel=channel, frame_start=1
     )
 
     image_strip.frame_final_duration = num_frames
@@ -16,7 +18,8 @@ def add_driver_image(driver_abbrev, num_frames, channel):
 
 
 def load_times_dict(year: str, track: str):
-    with open(f"data/driver_times/{year}_{track}/driver_times.json", "r") as file:
+    loc = get_driver_times_path(year, track)
+    with open(loc, "r") as file:
         retrieved_driver_times = json.load(file)
 
     return retrieved_driver_times
@@ -31,7 +34,7 @@ def add_time_strip(driver_abbrev, num_frames, time_str, channel):
         frame_end=num_frames + 1,
     )
     name_strip.text = time_str
-    name_strip.font = bpy.data.fonts.load("resources/fonts/Formula1-Regular.ttf")
+    name_strip.font = bpy.data.fonts.load(FORMULA_ONE_REGULAR_FONT_PATH)
 
     return name_strip
 

@@ -18,7 +18,9 @@ def load_raw_data(year: int, track: str, use_latest_year: bool = True):
     down_year = year
     while response.status_code != 200 and use_latest_year and down_year > 2000:
         down_year -= 1
-        track_csv_url = f"https://raw.githubusercontent.com/formula-viz/track-data-collection-gui-app/main/track_data/{down_year}_{track}.csv"
+        track_csv_url = (
+            f"https://raw.githubusercontent.com/formula-viz/csv_repo/main/track_data/{track}_{down_year}.csv"
+        )
         response = requests.get(
             track_csv_url, auth=("quinn-caverly", "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"), verify=False
         )
@@ -295,6 +297,18 @@ def main(year: int, track: str, use_latest_year: bool = True):
 
     inner_points, outer_points = assign_inner_outer(track_edges)
     curbs = add_curbs(inner_points, outer_points)
-    save_to_csv(track_edges, curbs, str(year), track)
+
+    new_track_edges = pd.DataFrame(
+        {
+            "inner_X": [point[0] for point in inner_points],
+            "inner_Y": [point[1] for point in inner_points],
+            "inner_Z": [point[2] for point in inner_points],
+            "outer_X": [point[0] for point in outer_points],
+            "outer_Y": [point[1] for point in outer_points],
+            "outer_Z": [point[2] for point in outer_points],
+        }
+    )
+
+    save_to_csv(new_track_edges, curbs, str(year), track)
 
     print("Done processing track data")
