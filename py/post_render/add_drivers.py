@@ -39,9 +39,8 @@ def add_time_strip(driver_abbrev, num_frames, time_str, channel):
     return name_strip
 
 
-def add_color_strip(driver_abbrev, num_frames, channel):
-    color = plotting.DRIVER_COLORS[plotting.DRIVER_TRANSLATE[driver_abbrev]]
-    r, g, b = tuple(int(color[i : i + 2], 16) / 255.0 for i in (1, 3, 5))
+def add_color_strip(hex_color, num_frames, channel):
+    r, g, b = tuple(int(hex_color[i : i + 2], 16) / 255.0 for i in (1, 3, 5))
 
     color_strip = bpy.context.scene.sequence_editor.sequences.new_effect(
         name="Color", type="COLOR", channel=channel, frame_start=1, frame_end=num_frames + 1
@@ -54,13 +53,16 @@ def add_color_strip(driver_abbrev, num_frames, channel):
 # the process for adding the drivers will be different if there are 2 drivers,
 # 3 drivers, 4 drivers, etc. the sizes and the positions will change
 def add_drivers(driver_a, driver_b, num_frames, is_4k, driver_times):
-    image_strip_a = add_driver_image(driver_a, num_frames, 3)
-    color_strip_a = add_color_strip(driver_a, num_frames, 4)
-    time_strip_a = add_time_strip(driver_a, num_frames, driver_times[driver_a], 5)
+    driver_a_abbrev, driver_a_color = driver_a
+    driver_b_abbrev, driver_b_color = driver_b
 
-    image_strip_b = add_driver_image(driver_b, num_frames, 6)
-    color_strip_b = add_color_strip(driver_b, num_frames, 7)
-    time_strip_b = add_time_strip(driver_b, num_frames, driver_times[driver_b], 8)
+    image_strip_a = add_driver_image(driver_a_abbrev, num_frames, 3)
+    color_strip_a = add_color_strip(driver_a_color, num_frames, 4)
+    time_strip_a = add_time_strip(driver_a_abbrev, num_frames, driver_times[driver_a_abbrev], 5)
+
+    image_strip_b = add_driver_image(driver_b_abbrev, num_frames, 6)
+    color_strip_b = add_color_strip(driver_b_color, num_frames, 7)
+    time_strip_b = add_time_strip(driver_b_abbrev, num_frames, driver_times[driver_b_abbrev], 8)
 
     if is_4k:
 
@@ -172,4 +174,4 @@ def main(drivers, num_frames: int, is_4k: bool, track: str, year: str):
     driver_times = load_times_dict(year, track)
 
     if len(drivers) == 2:
-        add_drivers(drivers[0][0], drivers[1][0], num_frames, is_4k, driver_times)
+        add_drivers(drivers[0], drivers[1], num_frames, is_4k, driver_times)

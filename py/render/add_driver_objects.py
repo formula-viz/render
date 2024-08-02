@@ -62,9 +62,9 @@ def create_driver_fbx(driver, hex_color):
         if "wheel" in obj.name.lower() and "steering" not in obj.name.lower():
             wheels_objs.append(obj)
 
-        # for substr in ["chassis", "appliances", "steering", "wings"]:
-        #     if substr in obj.name.lower():
-        #         set_color(obj, hex_color)
+        for substr in ["chassis", "appliances", "steering", "wings"]:
+            if substr in obj.name.lower():
+                set_color(obj, hex_color)
 
         if "steering" in obj.name.lower():
             # we want to set this invisible for now
@@ -80,12 +80,6 @@ def create_driver_fbx(driver, hex_color):
     camera.parent = empty_obj
 
     camera.rotation_euler = (math.radians(82), 0, math.radians(180))  # Rotate 90 degrees around Z-axis
-
-    # Add a Track To constraint to make the camera look ahead
-    # track_to = camera.constraints.new(type='TRACK_TO')
-    # track_to.target = empty_obj
-    # track_to.track_axis = 'TRACK_NEGATIVE_Z'
-    # track_to.up_axis = 'UP_Y'
 
     return empty_obj, wheels_objs
 
@@ -136,15 +130,14 @@ def create_driver(driver, hex_color, df):
 
 def main(year: str, track: str, fps: str, driver_tuples):
     driver_dfs = {}
+    driver_colors = {}
     for driver_tuple in driver_tuples:
-        name, color = driver_tuple
+        name, hex_color = driver_tuple
         driver_dfs[name] = pd.read_csv(get_car_data_path(year, track, fps, name))
+        driver_colors[name] = hex_color
 
-    # TODO: I am going to experiment with using the ff1 colors for the drivers
-    # if this produces sensible results then it is the best plan long term
     driver_objs = {}
     for driver in driver_dfs:
-        hex_color = plotting.DRIVER_COLORS[plotting.DRIVER_TRANSLATE[driver]]
-        driver_objs[driver] = create_driver(driver, hex_color, driver_dfs[driver])
+        driver_objs[driver] = create_driver(driver, driver_colors[driver], driver_dfs[driver])
 
     return driver_objs, driver_dfs
