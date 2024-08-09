@@ -2,3 +2,4 @@ venv
 temporary/jobs/
 temporary/output/
 temporary/tmp/
+persistent/data/
