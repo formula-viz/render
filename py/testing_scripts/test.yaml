@@ -8,6 +8,7 @@ render:
   adaptive_sampling: true
   is_4k: true
   output: output.mp4
+  max_cam_distance: 70
 drivers:
 - name: VER # must be 3 letter identifier
   pos: 1
