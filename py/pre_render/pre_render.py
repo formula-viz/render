@@ -26,3 +26,10 @@ def main(yaml_path: str) -> None:
     except Exception as e:
         logger.error(f"An error occurred: {e}")
         sys.exit(1)
+
+if __name__ == "__main__":
+    if len(sys.argv) < 4:
+        print("Usage: python3 pre_render.py -- <path_to_yaml>")
+        sys.exit(1)
+
+    main(sys.argv[3])
