@@ -1,6 +1,14 @@
 venv
+persistent/data/
+
 temporary/jobs/*
 temporary/output/*
 temporary/tmp/*
 temporary/car_paints/*
-persistent/data/
+temporary/frames/*
+
+!temporary/jobs/.gitkeep
+!temporary/output/.gitkeep
+!temporary/tmp/.gitkeep
+!temporary/car_paints/.gitkeep
+!temporary/frames/.gitkeep
