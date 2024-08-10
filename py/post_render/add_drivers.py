@@ -1,20 +1,127 @@
 import json
 
 import bpy
-from fastf1 import plotting
+from utils.colors import hex_to_blender_rgb
 from utils.project_structure import (FORMULA_ONE_REGULAR_FONT_PATH,
                                      get_driver_image_path,
                                      get_driver_times_path)
 
 
-def add_driver_image(driver_abbrev, num_frames, channel):
-    loc = get_driver_image_path(driver_abbrev)
-    image_strip = bpy.context.scene.sequence_editor.sequences.new_image(
-        name="OverlayImage", filepath=loc, channel=channel, frame_start=1
-    )
+# currently configured for 2 driver videos, where the drivers are either is_left or !is_left
+class DriverGraphic:
+    # where start_channel is the lowest channel number
+    def __init__(
+        self,
+        driver_abbrev: str,
+        driver_hex_color: str,
+        num_frames: int,
+        driver_time: str,
+        is_4k: bool,
+        start_channel: int,
+        is_left: bool,
+    ):
+        self.driver_abbrev = driver_abbrev
+        self.driver_hex_color = driver_hex_color
+        self.num_frames = num_frames
+        self.driver_time = driver_time
+        self.is_4k = is_4k
+        self.start_channel = start_channel
+        self.is_left = is_left
 
-    image_strip.frame_final_duration = num_frames
-    return image_strip
+        image_strip = self._add_driver_image()
+        color_strip = self._add_color_strip()
+        time_strip = self._add_time_strip()
+
+        self._scale_strips(image_strip, color_strip, time_strip)
+        self._position_strips(image_strip, color_strip, time_strip)
+
+    def _scale_strips(self, image_strip, color_strip, time_strip):
+        if self.is_4k:
+            image_strip.transform.scale_x = 0.6
+            image_strip.transform.scale_y = 0.6
+
+            color_strip.transform.scale_x = 0.13
+            color_strip.transform.scale_y = 0.015
+
+            time_strip.font_size = 60
+        else:
+            # TODO: This may be incorrect for 1920x1080
+            image_strip.transform.scale_x = 0.3
+            image_strip.transform.scale_y = 0.3
+
+            color_strip.transform.scale_x = 0.13
+            color_strip.transform.scale_y = 0.01
+
+            time_strip.font_size = 30
+
+    def _position_strips(self, image_strip, color_strip, time_strip):
+        if self.is_4k:
+            image_strip.transform.offset_x = 1600
+            image_strip.transform.offset_y = -650
+
+            color_strip.transform.offset_x = 1615
+            color_strip.transform.offset_y = -900
+
+            time_strip.location[0] = 0.08
+            time_strip.location[1] = 0.05
+
+            # we just overwrite the above values if is_left
+            if self.is_left:
+                image_strip.use_flip_x = True
+                color_strip.use_flip_x = True
+
+                time_strip.location[0] = 0.92
+        else:
+            image_strip.transform.offset_x = 800
+            image_strip.transform.offset_y = -328
+
+            color_strip.transform.offset_x = 808
+            color_strip.transform.offset_y = -457
+
+            time_strip.location[0] = 0.08
+            time_strip.location[1] = 0.05
+
+            if self.is_left:
+                image_strip.use_flip_x = True
+                color_strip.use_flip_x = True
+
+                time_strip.location[0] = 0.92
+
+    def _add_driver_image(self):
+        loc = get_driver_image_path(self.driver_abbrev)
+        image_strip = bpy.context.scene.sequence_editor.sequences.new_image(
+            name=self.driver_abbrev + "_OverlayImage", filepath=loc, channel=self.start_channel, frame_start=1
+        )
+
+        image_strip.frame_final_duration = self.num_frames
+        return image_strip
+
+    def _add_color_strip(self):
+        r, g, b = hex_to_blender_rgb(self.driver_hex_color)
+
+        color_strip = bpy.context.scene.sequence_editor.sequences.new_effect(
+            name=self.driver_abbrev + "_Color",
+            type="COLOR",
+            channel=self.start_channel + 1,
+            frame_start=1,
+            frame_end=self.num_frames + 1,
+        )
+
+        color_strip.color = (r, g, b)
+        return color_strip
+
+    def _add_time_strip(self):
+        name_strip = bpy.context.scene.sequence_editor.sequences.new_effect(
+            name=self.driver_abbrev + "_Text",
+            type="TEXT",
+            channel=self.start_channel + 2,
+            frame_start=1,
+            frame_end=self.num_frames + 1,
+        )
+        name_strip.text = self.driver_time
+        name_strip.font = bpy.data.fonts.load(FORMULA_ONE_REGULAR_FONT_PATH)
+
+        return name_strip
 
 
 def load_times_dict(year: str, track: str):
@@ -25,153 +132,24 @@ def load_times_dict(year: str, track: str):
     return retrieved_driver_times
 
 
-def add_time_strip(driver_abbrev, num_frames, time_str, channel):
-    name_strip = bpy.context.scene.sequence_editor.sequences.new_effect(
-        name=driver_abbrev + "_Text",
-        type="TEXT",
-        channel=channel,
-        frame_start=1,
-        frame_end=num_frames + 1,
-    )
-    name_strip.text = time_str
-    name_strip.font = bpy.data.fonts.load(FORMULA_ONE_REGULAR_FONT_PATH)
-
-    return name_strip
-
-
-def add_color_strip(hex_color, num_frames, channel):
-    r, g, b = tuple(int(hex_color[i : i + 2], 16) / 255.0 for i in (1, 3, 5))
-
-    color_strip = bpy.context.scene.sequence_editor.sequences.new_effect(
-        name="Color", type="COLOR", channel=channel, frame_start=1, frame_end=num_frames + 1
-    )
-
-    color_strip.color = (r, g, b)
-    return color_strip
-
-
-# the process for adding the drivers will be different if there are 2 drivers,
-# 3 drivers, 4 drivers, etc. the sizes and the positions will change
-def add_drivers(driver_a, driver_b, num_frames, is_4k, driver_times):
-    driver_a_abbrev, driver_a_color = driver_a
-    driver_b_abbrev, driver_b_color = driver_b
-
-    image_strip_a = add_driver_image(driver_a_abbrev, num_frames, 3)
-    color_strip_a = add_color_strip(driver_a_color, num_frames, 4)
-    time_strip_a = add_time_strip(driver_a_abbrev, num_frames, driver_times[driver_a_abbrev], 5)
-
-    image_strip_b = add_driver_image(driver_b_abbrev, num_frames, 6)
-    color_strip_b = add_color_strip(driver_b_color, num_frames, 7)
-    time_strip_b = add_time_strip(driver_b_abbrev, num_frames, driver_times[driver_b_abbrev], 8)
-
-    if is_4k:
-
-        def configure_4k_images():
-            # first set the scale based on resolution
-            image_strip_a.transform.scale_x = 0.6
-            image_strip_a.transform.scale_y = 0.6
-
-            image_strip_b.transform.scale_x = 0.6
-            image_strip_b.transform.scale_y = 0.6
-
-            # now for the image locations
-            # the negative values indicate left or below
-            image_strip_a.transform.offset_x = 1600
-            # for the a image on the left, we will mirror flip x,
-            # this way both drivers will have their shoulders faced inward
-            image_strip_a.use_flip_x = True
-            image_strip_a.transform.offset_y = -650
-
-            image_strip_b.transform.offset_x = 1600
-            image_strip_b.transform.offset_y = -650
-
-        def configure_4k_colors():
-            # set scale
-            color_strip_a.transform.scale_x = 0.13
-            color_strip_a.transform.scale_y = 0.015
-
-            color_strip_b.transform.scale_x = 0.13
-            color_strip_b.transform.scale_y = 0.015
-
-            # set locations
-            color_strip_a.transform.offset_x = -1615
-            color_strip_a.transform.offset_y = -900
-
-            color_strip_b.transform.offset_x = 1615
-            color_strip_b.transform.offset_y = -900
-
-        def configure_4k_times():
-            # now for the text strip locations
-            time_strip_a.location[0] = 0.08
-            time_strip_a.location[1] = 0.05
-
-            time_strip_b.location[0] = 0.92
-            time_strip_b.location[1] = 0.05
-
-            # we need to set the font size for the 4k resolution
-            time_strip_a.font_size = 60
-            time_strip_b.font_size = 60
-
-        configure_4k_images()
-        configure_4k_colors()
-        configure_4k_times()
-
-    else:
-
-        def configure_1920_images():
-            # first set the scale based on resolution
-            image_strip_a.transform.scale_x = 0.3
-            image_strip_a.transform.scale_y = 0.3
-
-            image_strip_b.transform.scale_x = 0.3
-            image_strip_b.transform.scale_y = 0.3
-
-            # now for the image locations
-            # the negative values indicate left or below
-            image_strip_a.transform.offset_x = 800
-            # for the a image on the left, we will mirror flip x,
-            # this way both drivers will have their shoulders faced inward
-            image_strip_a.use_flip_x = True
-            image_strip_a.transform.offset_y = -328
-
-            image_strip_b.transform.offset_x = 800
-            image_strip_b.transform.offset_y = -328
-
-        def configure_1920_colors():
-            # set scale
-            color_strip_a.transform.scale_x = 0.13
-            color_strip_a.transform.scale_y = 0.01
-
-            color_strip_b.transform.scale_x = 0.13
-            color_strip_b.transform.scale_y = 0.01
-
-            # set locations
-            color_strip_a.transform.offset_x = -808
-            color_strip_a.transform.offset_y = -457
-
-            color_strip_b.transform.offset_x = 808
-            color_strip_b.transform.offset_y = -457
-
-        def configure_1920_times():
-            # now for the text strip locations
-            time_strip_a.location[0] = 0.08
-            time_strip_a.location[1] = 0.05
-
-            time_strip_b.location[0] = 0.92
-            time_strip_b.location[1] = 0.05
-
-            # we need to set the font size for the 4k resolution
-            time_strip_a.font_size = 30
-            time_strip_b.font_size = 30
-
-        configure_1920_images()
-        configure_1920_colors()
-        configure_1920_times()
-
-
 # [(name, color), ...]
 def main(drivers, num_frames: int, is_4k: bool, track: str, year: str):
     driver_times = load_times_dict(year, track)
 
-    if len(drivers) == 2:
-        add_drivers(drivers[0], drivers[1], num_frames, is_4k, driver_times)
+    # for now, we just assume that there will be 2 drivers
+    num_strips = 3
+    main_start = 5
+
+    left_driver = drivers[0]
+    DriverGraphic(left_driver[0], left_driver[1], num_frames, driver_times[left_driver[0]], is_4k, main_start, True)
+
+    right_driver = drivers[1]
+    DriverGraphic(
+        right_driver[0],
+        right_driver[1],
+        num_frames,
+        driver_times[right_driver[0]],
+        is_4k,
+        main_start + num_strips,
+        False,
+    )
