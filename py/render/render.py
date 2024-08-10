@@ -12,6 +12,7 @@ sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 
 import add_camera
 import add_driver_objects
+import add_indicators
 import add_sun
 import add_track
 import render_animation
@@ -30,11 +31,14 @@ def main(yaml_path):
     add_sun.main()
 
     print("Adding Track...")
-    add_track.main(str(year), track)
+    inner_points, outer_points, inner_curb_points, outer_curb_points = add_track.main(str(year), track)
 
     print("Adding Drivers...")
     focused_driver = drivers[0][0]  # the camera driver is just the first listed
     driver_objs, driver_dfs = add_driver_objects.main(str(year), track, str(fps), drivers)
+
+    print("Adding Indicators...")
+    add_indicators.main(inner_points, outer_points, inner_curb_points, outer_curb_points, driver_dfs[focused_driver], 0)
 
     render_settings = config["render"]
 
