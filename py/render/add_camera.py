@@ -19,6 +19,21 @@ def scale_frames(df_for_cam):
     return pd.DataFrame({"X": cam_x, "Y": cam_y, "Z": cam_z})
 
 
+# move along the vector between cam_df and car_df, ensuring we are at most max_distance away
+def move_with_min_distance(cam_df, car_df, max_distance):
+    for i in range(len(cam_df)):
+        cam_point = (cam_df["X"][i], cam_df["Y"][i], cam_df["Z"][i])
+        car_point = (car_df["X"][i], car_df["Y"][i], car_df["Z"][i])
+
+        vector = mathutils.Vector(cam_point) - mathutils.Vector(car_point)
+
+        if vector.length > max_distance:
+            cam_df.loc[i, "X"] = car_df["X"][i] + vector.normalized().x * max_distance
+            cam_df.loc[i, "Y"] = car_df["Y"][i] + vector.normalized().y * max_distance
+            cam_df.loc[i, "Z"] = car_df["Z"][i] + vector.normalized().z * max_distance
+
+
+
 # Time,X,Y,Z,RotW,RotX,RotY,RotZ
 def add_keyframes(camera_obj, df):
     # iterate through rows of df
@@ -34,7 +49,7 @@ def add_keyframes(camera_obj, df):
 # df for cam is the df used to create the keyframes for the driver obj passed
 # we will create the camera path using these driver points and then point the
 # camera towards the driver object
-def main(df_for_cam, driver_obj):
+def main(df_for_cam, driver_obj, max_distance):
     camera_collection = bpy.data.collections.new(name="CameraCollection")
     bpy.context.scene.collection.children.link(camera_collection)
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
@@ -44,6 +59,7 @@ def main(df_for_cam, driver_obj):
     bpy.context.collection.objects.link(camera_obj)
 
     cam_df = scale_frames(df_for_cam)
+    move_with_min_distance(cam_df, df_for_cam, max_distance)
 
     add_keyframes(camera_obj, cam_df)
 

@@ -28,7 +28,6 @@ def main(yaml_path):
     print(config)
 
     bpy.data.collections.remove(bpy.data.collections["Collection"], do_unlink=True)
-    bpy.context.scene.world.node_tree.nodes["Background"].inputs[0].default_value = (0.6, 0.6, 0.6, 1)
     add_sun.main()
 
     print("Adding Track...")
@@ -38,10 +37,11 @@ def main(yaml_path):
     focused_driver = drivers[0][0]  # the camera driver is just the first listed
     driver_objs, driver_dfs = add_driver_objects.main(str(year), track, str(fps), drivers)
 
-    add_camera.main(driver_dfs[focused_driver], driver_objs[focused_driver])
+    render_settings = config["render"]
+
+    add_camera.main(driver_dfs[focused_driver], driver_objs[focused_driver], render_settings["max_cam_distance"])
     bpy.ops.file.find_missing_files(directory=get_car_textures_dir())
 
-    render_settings = config["render"]
     if render_settings["should_render"]:
         print("Starting Rendering...")
         render_animation.main(render_settings, len(driver_dfs[focused_driver]))

@@ -3,6 +3,8 @@ import os
 MAIN_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PYTHON_PROJECT_ROOT = os.path.join(MAIN_PROJECT_ROOT, "py")
 
+TEMPORARY_DIR = os.path.join(MAIN_PROJECT_ROOT, "temporary")
+CAR_PAINTS_DIR = os.path.join(TEMPORARY_DIR, "car_paints")
 JOBS_DIR = os.path.join(MAIN_PROJECT_ROOT, "temporary", "jobs")
 STAGING_DIR = os.path.join(JOBS_DIR, "staging")
 IN_PROGRESS_DIR = os.path.join(JOBS_DIR, "in_progress")
@@ -23,6 +25,11 @@ CUR_YEAR = 2024
 
 FORMULA_ONE_REGULAR_FONT_PATH = os.path.join(RESOURCES_DIR, "fonts", "Formula1-Regular.ttf")
 BACKGROUND_ONE_PATH = os.path.join(RESOURCES_DIR, "backgrounds", "background1.jpeg")
+
+
+# where part is chassis, applicances, etc.
+def get_car_paints_path(driver_abbrev: str, part: str) -> str:
+    return os.path.join(CAR_PAINTS_DIR, f"{driver_abbrev}_{part}.png")
 
 
 def get_car_fbx_path() -> str:
