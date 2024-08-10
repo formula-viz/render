@@ -2,4 +2,5 @@ venv
 temporary/jobs/
 temporary/output/
 temporary/tmp/
+temporary/car_paints/
 persistent/data/

@@ -27,6 +27,7 @@ def general_write_yaml(track: str, year: int, drivers: list):
             "adaptive_sampling": True,
             "is_4k": True,
             "output": "output.mp4",
+            "max_cam_distance": 70,
         },
         "drivers": drivers,
     }

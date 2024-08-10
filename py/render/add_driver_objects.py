@@ -1,14 +1,13 @@
 import math
+import os
 
 import bpy
 import mathutils
-import numpy as np
 import pandas as pd
-from colormath.color_conversions import convert_color
-from colormath.color_diff import delta_e_cie2000
-from colormath.color_objects import LabColor, sRGBColor
-from fastf1 import plotting
-from utils.project_structure import get_car_data_path, get_car_fbx_path
+import PIL.Image as Image
+from utils.colors import hex_to_blender_rgb, hex_to_normal_rgb
+from utils.project_structure import (get_car_data_path, get_car_fbx_path,
+                                     get_car_paints_path, get_car_textures_dir)
 
 
 def set_color(obj, hex_color: str):
@@ -38,12 +37,56 @@ def set_color(obj, hex_color: str):
     principled_bsdf.inputs["Base Color"].default_value = (r, g, b, 1)
 
 
+def replace_color_in_image(blender_obj, hex_color, driver_abbrev):
+    material = blender_obj.material_slots[0].material
+    if not material.node_tree.nodes:
+        print(f"Material {material.name} has no nodes.")
+        return
+
+    image_node = None
+    for node in material.node_tree.nodes:
+        if node.type == "TEX_IMAGE":
+            image_node = node
+            break
+
+    image_path = bpy.path.abspath(image_node.image.filepath)
+    new_image_path = get_car_paints_path(driver_abbrev, blender_obj.name)
+
+    with Image.open(image_path) as img:
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+
+        width, height = img.size
+        new_img = Image.new("RGB", (width, height))
+
+        pixels = img.load()
+        new_pixels = new_img.load()
+
+        # this is hardcoded for the fbx file, this is fine to hardcode here
+        old_color = hex_to_normal_rgb("#FF472C")
+        new_color = hex_to_normal_rgb(hex_color)
+
+        for x in range(width):
+            for y in range(height):
+                if pixels[x, y] == old_color:
+                    new_pixels[x, y] = new_color
+                else:
+                    new_pixels[x, y] = pixels[x, y]
+
+        new_img.save(new_image_path)
+
+    # Load the new image into Blender and assign it to the material
+    new_image = bpy.data.images.load(new_image_path)
+    image_node.image = new_image
+
+
 def create_driver_fbx(driver, hex_color):
     driver_collection = bpy.data.collections.new(name=driver.title() + "Collection")
     bpy.context.scene.collection.children.link(driver_collection)
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
 
     bpy.ops.import_scene.fbx(filepath=get_car_fbx_path())
+    bpy.ops.file.find_missing_files(directory=get_car_textures_dir())
 
     for obj in bpy.context.selected_objects:
         obj.name = f"{driver.title()}_{obj.name}"
@@ -62,9 +105,10 @@ def create_driver_fbx(driver, hex_color):
         if "wheel" in obj.name.lower() and "steering" not in obj.name.lower():
             wheels_objs.append(obj)
 
-        for substr in ["chassis", "appliances", "steering", "wings"]:
+        for substr in ["chassis", "wings"]:
             if substr in obj.name.lower():
-                set_color(obj, hex_color)
+                replace_color_in_image(obj, hex_color, driver)
+            #     set_color(obj, hex_color)
 
         if "steering" in obj.name.lower():
             # we want to set this invisible for now
