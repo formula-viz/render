@@ -36,8 +36,11 @@ def main(yaml_path):
     commands_to_run = [
         f"source {get_bash_venv_path()}",
         f"pip install -r {get_requirements_path()}",
+        "echo Entering Pre-Render",
         f"python {get_pre_render_path()} {yaml_path}",
+        "echo Entering Render",
         f"blender --background --python {get_render_path()} {yaml_path}",
+        "echo Entering Post-Render",
         f"blender --background --python {get_post_render_path()} {yaml_path}",
     ]
 
