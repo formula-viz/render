@@ -9,14 +9,6 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
-def run_command(command):
-    try:
-        subprocess.run(command, check=True, shell=True)
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Command failed: {e}")
-        sys.exit(1)
-
-
 def main():
     current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -26,15 +18,15 @@ def main():
         sys.exit(1)
 
     # make sure we run the test file in pre_render so that the data is ready
-    run_command(f"python3 ../pre_render/pre_render.py {yaml_path}")
+    subprocess.run(f"python3 ../pre_render/pre_render.py -- {yaml_path}", shell=True, executable="/bin/bash")
 
     # activate the virtual env, we assume we're using fish
     # run_command("source ../venv/bin/activate.fish")
     # now ensure we have installed requirements.txt
-    run_command("pip install -r ../requirements.txt")
+    subprocess.run("pip install -r ../requirements.txt", shell=True, executable="/bin/bash")
 
     # now run render through blender, ensuring it is not in headless mode
-    run_command(f"blender --python ../render/render.py -- {yaml_path}")
+    subprocess.run(f"blender --python ../render/render.py -- {yaml_path}", shell=True, executable="/bin/bash")
 
 
 main()

@@ -8,21 +8,11 @@ import pandas as pd
 # add project root directory to the system path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from pre_render import pre_render
-from utils.project_structure import get_track_data_path
+from utils.project_structure import get_pre_render_path, get_track_data_path
 from utils.read_yaml import read_yaml
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
-
-
-def run_command(command):
-    try:
-        subprocess.run(command, check=True, shell=True)
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Command failed: {e}")
-        sys.exit(1)
-
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -36,7 +26,6 @@ def plot_inner_outer_lines(df):
 
     # Create a new figure and axis
     fig, ax = plt.subplots(figsize=(10, 6))
-
     # Plot inner line
     ax.plot(df["inner_X"], df["inner_Y"], label="Inner Line", color="blue")
 
@@ -66,7 +55,7 @@ def main():
 
     # now, we want to visualize the output from pre_render
     # the main thing is the track data, we'll visualize using matplotlib
-    pre_render.main(yaml_path)
+    subprocess.run(f"python {get_pre_render_path()} -- {yaml_path}", shell=True, executable="/bin/bash")
 
     # we will need to grab the config to see the output location
     year, track, fps, drivers, config = read_yaml(yaml_path)
