@@ -1,46 +1,46 @@
 #!/usr/bin/env python3
 
-import os
-import sys
-import subprocess
 import logging
-from pathlib import Path
+import os
+import subprocess
+import sys
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(name)s - %(filename)s:%(lineno)d - %(funcName)s - [%(threadName)s] - %(message)s",
+)
 logger = logging.getLogger(__name__)
+
+MAIN_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+PYTHON_SCRIPTS_ROOT = os.path.join(MAIN_PROJECT_ROOT, "py")
+sys.path.append(MAIN_PROJECT_ROOT)
+sys.path.append(PYTHON_SCRIPTS_ROOT)
+sys.path.append(os.path.dirname(os.path.realpath(__file__)))
+
+from utils.project_structure import (get_bash_venv_path, get_post_render_path,
+                                     get_pre_render_path, get_render_path,
+                                     get_requirements_path)
+
 
 def check_root():
     if os.geteuid() != 0:
         logger.error("This script must be run as root (use sudo)")
         sys.exit(1)
 
-def run_command(command):
-    try:
-        subprocess.run(command, check=True, shell=True)
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Command failed: {e}")
-        sys.exit(1)
-
-def activate_venv():
-    venv_activate = Path('venv/bin/activate').resolve()
-    activate_this = str(venv_activate)
-    exec(open(activate_this).read(), {'__file__': activate_this})
 
 def main(yaml_path):
     logger.info("Entering main.py")
 
     check_root()
-    activate_venv()
 
-    run_command("pip install -r ../requirements.txt")
+    commands_to_run = [
+        f"source {get_bash_venv_path()}",
+        f"pip install -r {get_requirements_path()}",
+        f"python {get_pre_render_path()} {yaml_path}",
+        f"blender --background --python {get_render_path()} {yaml_path}",
+        f"blender --background --python {get_post_render_path()} {yaml_path}",
+    ]
 
-    logger.info("Entering pre_render")
-    run_command(f"python3 ../pre_render/pre_render.py {yaml_path}")
-
-    logger.info("Entering render")
-    run_command(f"blender --background --python ../render/pre_render.py {yaml_path}")
-
-    logger.info("Entering post_render")
-    run_command(f"blender --background --python ../post_render/post_render.py {yaml_path}")
+    subprocess.run(" && ".join(commands_to_run), shell=True, executable="/bin/bash")
 
     logger.info("Ending main.py")

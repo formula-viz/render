@@ -142,6 +142,3 @@ def main():
             general_write_yaml(track, CUR_YEAR, drivers)
 
     save_tracks(uncomplete)
-
-
-main()

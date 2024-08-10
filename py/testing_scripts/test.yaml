@@ -4,7 +4,7 @@ render:
   should_render: false # whether to render the video, applies to both render and post_render
   validate_render: false # will only create a few frames
   fps: 30
-  samples: 4096
+  samples: 32
   adaptive_sampling: true
   is_4k: true
   output: output.mp4
