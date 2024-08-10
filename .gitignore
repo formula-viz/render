@@ -1,13 +1,17 @@
 venv
 persistent/data/
 
-temporary/jobs/*
+temporary/jobs/completed/*
+temporary/jobs/in_progress/*
+temporary/jobs/staging/*
 temporary/output/*
 temporary/tmp/*
 temporary/car_paints/*
 temporary/frames/*
 
-!temporary/jobs/.gitkeep
+!temporary/jobs/completed/.gitkeep
+!temporary/jobs/in_progress/.gitkeep
+!temporary/jobs/staging/.gitkeep
 !temporary/output/.gitkeep
 !temporary/tmp/.gitkeep
 !temporary/car_paints/.gitkeep
