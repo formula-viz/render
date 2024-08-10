@@ -27,6 +27,26 @@ FORMULA_ONE_REGULAR_FONT_PATH = os.path.join(RESOURCES_DIR, "fonts", "Formula1-R
 BACKGROUND_ONE_PATH = os.path.join(RESOURCES_DIR, "backgrounds", "background1.jpeg")
 
 
+def get_fish_venv_path() -> str:
+    return os.path.join(PYTHON_PROJECT_ROOT, "venv", "bin", "activate.fish")
+
+
+def get_bash_venv_path() -> str:
+    return os.path.join(PYTHON_PROJECT_ROOT, "venv", "bin", "activate")
+
+def get_requirements_path() -> str:
+    return os.path.join(PYTHON_PROJECT_ROOT, "requirements.txt")
+
+def get_render_path() -> str:
+    return os.path.join(PYTHON_PROJECT_ROOT, "render", "render.py")
+
+def get_post_render_path() -> str:
+    return os.path.join(PYTHON_PROJECT_ROOT, "post_render", "post_render.py")
+
+def get_pre_render_path() -> str:
+    return os.path.join(PYTHON_PROJECT_ROOT, "pre_render", "pre_render.py")
+
+
 # where part is chassis, applicances, etc.
 def get_car_paints_path(driver_abbrev: str, part: str) -> str:
     return os.path.join(CAR_PAINTS_DIR, f"{driver_abbrev}_{part}.png")
