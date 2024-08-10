@@ -15,7 +15,6 @@ import add_driver_objects
 import add_sun
 import add_track
 import render_animation
-from utils.project_structure import get_car_textures_dir
 from utils.read_yaml import read_yaml
 
 
@@ -40,12 +39,13 @@ def main(yaml_path):
     render_settings = config["render"]
 
     add_camera.main(driver_dfs[focused_driver], driver_objs[focused_driver], render_settings["max_cam_distance"])
-    bpy.ops.file.find_missing_files(directory=get_car_textures_dir())
 
     if render_settings["should_render"]:
         print("Starting Rendering...")
         render_animation.main(render_settings, len(driver_dfs[focused_driver]))
     else:
+        bpy.context.scene.frame_end = max([len(driver_dfs[driver]) for driver in driver_dfs])
+        bpy.context.scene.render.fps = fps
         print("should_render is set to false, skipping rendering...")
 
     print("End script")
