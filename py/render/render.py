@@ -15,6 +15,7 @@ import add_driver_objects
 import add_indicators
 import add_sun
 import add_track
+import load_track_data
 import render_animation
 from utils.read_yaml import read_yaml
 
@@ -30,8 +31,11 @@ def main(yaml_path):
     bpy.data.collections.remove(bpy.data.collections["Collection"], do_unlink=True)
     add_sun.main()
 
+    print("Loading Track Data...")
+    inner_points, outer_points, inner_curb_points, outer_curb_points = load_track_data.main(year, track)
+
     print("Adding Track...")
-    inner_points, outer_points, inner_curb_points, outer_curb_points = add_track.main(str(year), track)
+    add_track.main(inner_points, outer_points, inner_curb_points, outer_curb_points)
 
     print("Adding Drivers...")
     focused_driver = drivers[0][0]  # the camera driver is just the first listed

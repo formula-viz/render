@@ -1,10 +1,11 @@
 import os
 from io import StringIO
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
 import requests
-from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import UnivariateSpline, splev, splprep
 from utils.project_structure import get_track_data_path
 
 
@@ -94,32 +95,29 @@ def linearly_interpolate_z_vals(z_vals, num_new_points):
 
 
 def smooth_points(track_points: pd.DataFrame):
-    def smooth_set(points):
-        total_distance = 0
-        distances = [0.0]
+    def smooth_closed_loop(points, num_points=10000, smoothing=100):
+        # Ensure points is a numpy array
+        points = np.asarray(points)
 
-        for i in range(1, len(points)):
-            points_a = points[i - 1]
-            points_b = points[i]
+        # Separate x and y coordinates
+        x, y = points.T
 
-            distance = ((points_a[0] - points_b[0]) ** 2 + (points_a[1] - points_b[1]) ** 2) ** 0.5
-            total_distance += distance
-            distances.append(total_distance)
+        # Fit a periodic spline
+        tck, _ = splprep([x, y], s=smoothing, per=True)
 
-        displacements = [distance / total_distance for distance in distances]
+        # Generate smooth points
+        u_new = np.linspace(0, 1, num_points)
+        smooth_x, smooth_y = splev(u_new, tck)
 
-        spl_x = UnivariateSpline(displacements, points[:, 0])
-        spl_y = UnivariateSpline(displacements, points[:, 1])
-
-        final_x = spl_x(np.linspace(0, 1.0, 10000))
-        final_y = spl_y(np.linspace(0, 1.0, 10000))
-
-        return final_x, final_y
+        return smooth_x, smooth_y
 
     lefts = np.array(track_points[["lefts_X", "lefts_Y"]])
     rights = np.array(track_points[["rights_X", "rights_Y"]])
 
-    lefts_x, lefts_y = smooth_set(lefts)
+    lefts = np.roll(lefts, len(lefts) // 2, axis=0)
+    rights = np.roll(rights, len(rights) // 2, axis=0)
+
+    lefts_x, lefts_y = smooth_closed_loop(lefts)
     # instead of generating a spline for both lefts and rights, we generate a spline for just the lefts
     # this is because around corners, the lines end up overlapping due to the fact that the
     # distances are shorter around the two curves, this way we can ensure that they do not
@@ -198,15 +196,6 @@ def assign_inner_outer(track_points):
     return inner_points, outer_points
 
 
-# the idea is to take the track_points which have already been modified and interpolated
-# then, we add lines which are adjacent to the inner and outer points so that it creates the appearance of a curb
-# then, in blender we can add faces between the outer edge and the outer curb line for example to create the outer curb
-def add_curbs(inner_points, outer_points):
-    # the default track width is 12 meters
-
-    return curbs
-
-
 def curb(cur, other, curb_width):
     # take the line which is perpendicular to the cur inner_point and the next inner_point
     # then, go curb_width along that line, away from the current outer_point
@@ -247,38 +236,10 @@ def curb(cur, other, curb_width):
     return curb
 
 
-def save_to_csv(track_points: pd.DataFrame, curb_points: pd.DataFrame, year: str, track: str):
+def save_to_csv(inner_points, outer_points, inner_curb_points, outer_curb_points, year: str, track: str):
     loc = get_track_data_path(year, track)
-    new = track_points.join(curb_points)
-    new.to_csv(loc, index=False)
 
-
-def already_done(year: str, track: str):
-    loc = get_track_data_path(year, track)
-    if os.path.exists(loc):
-        df = pd.read_csv(loc)
-        return True, df
-    return False, None
-
-
-def main(year: int, track: str, use_latest_year: bool = True):
-    is_done, df = already_done(str(year), track)
-    if is_done:
-        print("Already fetched this track data, skipping...")
-        return df
-
-    print("Fetching and processing track data")
-
-    track_edges = load_raw_data(year, track, use_latest_year)
-    track_edges = smooth_points(track_edges)
-
-    inner_points, outer_points = assign_inner_outer(track_edges)
-    curb_width = 2
-
-    inner_curb = curb(inner_points, outer_points, curb_width)
-    outer_curb = curb(outer_points, inner_points, curb_width)
-
-    new_track_edges = pd.DataFrame(
+    df = pd.DataFrame(
         {
             "inner_X": [point[0] for point in inner_points],
             "inner_Y": [point[1] for point in inner_points],
@@ -286,9 +247,50 @@ def main(year: int, track: str, use_latest_year: bool = True):
             "outer_X": [point[0] for point in outer_points],
             "outer_Y": [point[1] for point in outer_points],
             "outer_Z": [point[2] for point in outer_points],
+            "inner_curb_X": [point[0] for point in inner_curb_points],
+            "inner_curb_Y": [point[1] for point in inner_curb_points],
+            "inner_curb_Z": [point[2] for point in inner_curb_points],
+            "outer_curb_X": [point[0] for point in outer_curb_points],
+            "outer_curb_Y": [point[1] for point in outer_curb_points],
+            "outer_curb_Z": [point[2] for point in outer_curb_points],
         }
     )
 
-    save_to_csv(new_track_edges, curbs, str(year), track)
+    df.to_csv(loc, index=False)
+
+
+def already_done(year: str, track: str):
+    loc = get_track_data_path(year, track)
+    if os.path.exists(loc):
+        df = pd.read_csv(loc)
+
+        inner_points = df[["inner_X", "inner_Y", "inner_Z"]].values.tolist()
+        outer_points = df[["outer_X", "outer_Y", "outer_Z"]].values.tolist()
+        inner_curb_points = df[["inner_curb_X", "inner_curb_Y", "inner_curb_Z"]].values.tolist()
+        outer_curb_points = df[["outer_curb_X", "outer_curb_Y", "outer_curb_Z"]].values.tolist()
+
+        return True, (inner_points, outer_points, inner_curb_points, outer_curb_points)
+    return False, ([], [], [], [])
+
+
+def main(year: int, track: str):
+    is_done, track_points = already_done(str(year), track)
+    if is_done:
+        print("Already fetched this track data, skipping...")
+        return track_points
+
+    print("Fetching and processing track data")
+
+    use_latest_year = True  # this may cause problems if the track changes year to year
+    track_edges = load_raw_data(year, track, use_latest_year)
+    track_edges = smooth_points(track_edges)
+
+    inner_points, outer_points = assign_inner_outer(track_edges)
+    curb_width = 2
+    inner_curb_points = curb(inner_points, outer_points, curb_width)
+    outer_curb_points = curb(outer_points, inner_points, curb_width)
+
+    save_to_csv(inner_points, outer_points, inner_curb_points, outer_curb_points, str(year), track)
 
     print("Done processing track data")
+    return (inner_points, outer_points, inner_curb_points, outer_curb_points)
