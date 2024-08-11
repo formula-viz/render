@@ -17,9 +17,6 @@ def main():
         logger.error(f"File {yaml_path} not found")
         sys.exit(1)
 
-    # make sure we run the test file in pre_render so that the data is ready
-    subprocess.run(f"python3 ../pre_render/pre_render.py -- {yaml_path}", shell=True, executable="/bin/bash")
-
     # activate the virtual env, we assume we're using fish
     # run_command("source ../venv/bin/activate.fish")
     # now ensure we have installed requirements.txt

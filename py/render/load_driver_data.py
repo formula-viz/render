@@ -256,7 +256,16 @@ def save(year: str, track: str, fps: str, dfs: dict[str, pd.DataFrame]):
 
 def already_done(year: str, track: str, fps: str):
     cur_dir = get_car_data_dir(year, track, fps)
-    return os.path.exists(cur_dir)
+
+    if os.path.exists(cur_dir):
+        driver_dfs = {}
+        for driver in os.listdir(cur_dir):
+            driver_path = os.path.join(cur_dir, driver)
+            driver_dfs[driver.split(".")[0]] = pd.read_csv(driver_path)
+
+        return True, driver_dfs
+
+    return False, {}
 
 
 # if all 4 wheels go off the track, then they are out of track limits
@@ -353,28 +362,26 @@ def optimize_smoothness_concurrent(track_edges: pd.DataFrame, fps: int, driver_t
 # because this will be necessary to ensure that we have the correct smoothness so the movement
 # looks natural but also so that we are within track limits
 def main(year: int, track: str, fps: int):
-    if already_done(str(year), track, str(fps)):
-        print("Already fetched this car data, skipping...")
-        return
+    is_done, driver_dfs = already_done(str(year), track, str(fps))
+    if is_done:
+        print("Already fetched this car data, don't nead to load...")
+        return driver_dfs
     print("Fetching and processing car data")
 
     driver_tels = load_from_fastf1(year, track)
     process_grouped_driver_tels(driver_tels)
 
-    dfs = {}
+    driver_dfs = {}
     for driver, tel in driver_tels.items():
         df = get_driver_df(tel, 3, fps)
-        dfs[driver] = df
-    # TODO: this type of functionality should not be necessary because we are
-    # now using the car data in order to geenrate the track in the first place
-    # this means it should not be necessary to do this post-processing sync
-    # dfs = optimize_smoothness_concurrent(track_edges, fps, driver_tels)
+        driver_dfs[driver] = df
 
-    for driver, df in dfs.items():
+    for driver, df in driver_dfs.items():
         df = add_car_rots(df)
         df = add_wheel_rots(df)
-        dfs[driver] = df
+        driver_dfs[driver] = df
 
-    save(str(year), track, str(fps), dfs)
+    save(str(year), track, str(fps), driver_dfs)
 
-    print(f"Done processing car data, wrote {len(dfs)} files")
+    print(f"Done processing car data")
+    return driver_dfs
