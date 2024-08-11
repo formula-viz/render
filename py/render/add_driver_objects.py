@@ -172,16 +172,9 @@ def create_driver(driver, hex_color, df):
     return driver_obj
 
 
-def main(year: str, track: str, fps: str, driver_tuples):
-    driver_dfs = {}
-    driver_colors = {}
-    for driver_tuple in driver_tuples:
-        name, hex_color = driver_tuple
-        driver_dfs[name] = pd.read_csv(get_car_data_path(year, track, fps, name))
-        driver_colors[name] = hex_color
-
+def main(driver_dfs, driver_tuples):
     driver_objs = {}
-    for driver in driver_dfs:
-        driver_objs[driver] = create_driver(driver, driver_colors[driver], driver_dfs[driver])
+    for driver_abbrev, hex_color in driver_tuples:
+        driver_objs[driver_abbrev] = create_driver(driver_abbrev, hex_color, driver_dfs[driver_abbrev])
 
-    return driver_objs, driver_dfs
+    return driver_objs

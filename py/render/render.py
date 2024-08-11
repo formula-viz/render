@@ -15,6 +15,7 @@ import add_driver_objects
 import add_indicators
 import add_sun
 import add_track
+import load_driver_data
 import load_track_data
 import render_animation
 from utils.read_yaml import read_yaml
@@ -39,7 +40,8 @@ def main(yaml_path):
 
     print("Adding Drivers...")
     focused_driver = drivers[0][0]  # the camera driver is just the first listed
-    driver_objs, driver_dfs = add_driver_objects.main(str(year), track, str(fps), drivers)
+    driver_dfs = load_driver_data.main(year, track, fps)
+    driver_objs = add_driver_objects.main(driver_dfs, drivers)
 
     print("Adding Indicators...")
     add_indicators.main(inner_points, outer_points, inner_curb_points, outer_curb_points, driver_dfs[focused_driver], 0)
