@@ -36,9 +36,7 @@ def create_material(color, name):
     return mat
 
 
-def main(year: str, track: str):
-    df = pd.read_csv(get_track_data_path(year, track))
-
+def main(inner_points, outer_points, inner_curb_points, outer_curb_points):
     track_collection = bpy.data.collections.new(name="TrackCollection")
     bpy.context.scene.collection.children.link(track_collection)
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
@@ -47,12 +45,6 @@ def main(year: str, track: str):
     darker_gray = (0.01, 0.01, 0.01)
     track_mat = create_material(dark_gray, "Main")
     curb_mat = create_material(darker_gray, "Curb")
-
-    inner_points = df[["inner_X", "inner_Y", "inner_Z"]].values.tolist()
-    outer_points = df[["outer_X", "outer_Y", "outer_Z"]].values.tolist()
-
-    inner_curb_points = df[["inner_curb_X", "inner_curb_Y", "inner_curb_Z"]].values.tolist()
-    outer_curb_points = df[["outer_curb_X", "outer_curb_Y", "outer_curb_Z"]].values.tolist()
 
     create_planes(inner_points, outer_points, "Main", track_mat)
     create_planes(outer_points, outer_curb_points, "CurbOuter", curb_mat)
