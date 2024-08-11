@@ -40,11 +40,11 @@ def main(yaml_path):
 
     print("Adding Drivers...")
     focused_driver = drivers[0][0]  # the camera driver is just the first listed
-    driver_dfs = load_driver_data.main(year, track, fps)
+    driver_dfs, start_finish_line_idx = load_driver_data.main(year, track, fps, inner_points, outer_points)
     driver_objs = add_driver_objects.main(driver_dfs, drivers)
 
     print("Adding Indicators...")
-    add_indicators.main(inner_points, outer_points, inner_curb_points, outer_curb_points, driver_dfs[focused_driver], 0)
+    add_indicators.main(inner_points, outer_points, inner_curb_points, outer_curb_points, driver_dfs[focused_driver], start_finish_line_idx)
 
     render_settings = config["render"]
 

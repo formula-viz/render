@@ -100,20 +100,78 @@ def load_from_fastf1(year: int, track: str):
     return driver_tels
 
 
-# synchronize the start and finish times of all the driver tels
-# this way, even after interpolation, the data will make sense for the
-# important bits, namely the start and end
-def process_grouped_driver_tels(driver_tels: dict[str, Telemetry]):
-    def plant_median_at_i(i: int, driver_tels):
-        median_x = np.median([tel["X"].iloc[i] for tel in driver_tels.values()])
-        median_y = np.median([tel["Y"].iloc[i] for tel in driver_tels.values()])
+# the data for the start and end of runs from fastf1 is unrelaibale, we can get close to the actual
+# start/finish line by getting the average of all the start and end points, it is the same line for
+# start and finish. Then, use track data to define a line based on these points, the starting and end
+# point of each car will be the part on the line which is closest to the actual data we have for that
+# car's start or end point
+def process_grouped_driver_tels(driver_tels: dict[str, Telemetry], inner_points, outer_points):
+    def get_average_start_end():
+        start_points = np.array(
+            [[driver_tels[k]["X"].iloc[0], driver_tels[k]["Y"].iloc[0]] for k in driver_tels.keys()]
+        )
+        end_points = np.array(
+            [[driver_tels[k]["X"].iloc[-1], driver_tels[k]["Y"].iloc[-1]] for k in driver_tels.keys()]
+        )
+        all_points = np.vstack((start_points, end_points))
+        return np.mean(all_points, axis=0)
 
-        for tel in driver_tels.values():
-            tel.at[tel.index[i], "X"] = median_x
-            tel.at[tel.index[i], "Y"] = median_y
+    # using inner_points, outer_points find the idx which is closest to our start/finish line
+    # we know that len(inner_points) == len(outer_points)
+    def get_line(inner_points, outer_points, start_end_point):
+        closest_idx = 0
+        closest_dist = float("inf")
+        for i, (inner_point, outer_point) in enumerate(zip(inner_points, outer_points)):
+            dist_to_inner = (
+                (start_end_point[0] - inner_point[0]) ** 2 + (start_end_point[1] - inner_point[1]) ** 2
+            ) ** 0.5
+            dist_to_outer = (
+                (start_end_point[0] - outer_point[0]) ** 2 + (start_end_point[1] - outer_point[1]) ** 2
+            ) ** 0.5
 
-    plant_median_at_i(0, driver_tels)
-    plant_median_at_i(-1, driver_tels)
+            if dist_to_inner + dist_to_outer < closest_dist:
+                closest_dist = dist_to_inner + dist_to_outer
+                closest_idx = i
+
+        # now, we have two points, the inner and outer points, and we want to represent
+        # the line between these two points
+
+        return closest_idx, (inner_points[closest_idx], outer_points[closest_idx])
+
+    # using point_a, point_b, we want to set the start and end points of each driver to be the
+    # point on the line between point_a and point_b which is closest to the actual start/end point
+    def set_as_closest_to_line(driver_tels, point_a, point_b):
+        for _, driver_tel in driver_tels.items():
+            original_start = (driver_tel["X"].iloc[0], driver_tel["Y"].iloc[0])
+            original_end = (driver_tel["X"].iloc[-1], driver_tel["Y"].iloc[-1])
+
+            def get_closest_point_on_line(point_a, point_b, point):
+                # the line is defined by the equation y = mx + b
+                m = (point_b[1] - point_a[1]) / (point_b[0] - point_a[0])
+                b = point_a[1] - m * point_a[0]
+
+                # the line perpendicular to this line is y = -1/m * x + b2
+                m_perp = -1 / m
+                b2 = point[1] - m_perp * point[0]
+
+                # now we want to solve for the intersection of these two lines
+                x = (b2 - b) / (m - m_perp)
+                y = m * x + b
+
+                return (x, y)
+
+            driver_tel["X"].iloc[0], driver_tel["Y"].iloc[0] = get_closest_point_on_line(
+                point_a, point_b, original_start
+            )
+            driver_tel["X"].iloc[-1], driver_tel["Y"].iloc[-1] = get_closest_point_on_line(
+                point_a, point_b, original_end
+            )
+
+    start_end_point = get_average_start_end()
+    line_idx, (point_a, point_b) = get_line(inner_points, outer_points, start_end_point)
+    set_as_closest_to_line(driver_tels, point_a, point_b)
+
+    return line_idx
 
 
 def get_driver_df(tel, s_divisor: int, frames_per_second: int):
@@ -245,7 +303,7 @@ def add_wheel_rots(df):
     return df
 
 
-def save(year: str, track: str, fps: str, dfs: dict[str, pd.DataFrame]):
+def save(year: str, track: str, fps: str, dfs: dict[str, pd.DataFrame], start_finish_line_idx: int):
     cur_dir = get_car_data_dir(year, track, fps)
     os.makedirs(cur_dir, exist_ok=True)
 
@@ -253,19 +311,27 @@ def save(year: str, track: str, fps: str, dfs: dict[str, pd.DataFrame]):
         driver_path = get_car_data_path(year, track, fps, driver)
         df.to_csv(driver_path, index=False)
 
+    with open(os.path.join(cur_dir, "start_finish_line_idx.txt"), "w") as file:
+        file.write(str(start_finish_line_idx))
+
 
 def already_done(year: str, track: str, fps: str):
     cur_dir = get_car_data_dir(year, track, fps)
+    start_finish_line_idx = 0
 
     if os.path.exists(cur_dir):
         driver_dfs = {}
         for driver in os.listdir(cur_dir):
+            if driver == "start_finish_line_idx.txt":
+                with open(os.path.join(cur_dir, driver), "r") as file:
+                    start_finish_line_idx = int(file.read())
+                continue
             driver_path = os.path.join(cur_dir, driver)
             driver_dfs[driver.split(".")[0]] = pd.read_csv(driver_path)
 
-        return True, driver_dfs
+        return True, driver_dfs, start_finish_line_idx
 
-    return False, {}
+    return False, {}, start_finish_line_idx
 
 
 # if all 4 wheels go off the track, then they are out of track limits
@@ -361,15 +427,15 @@ def optimize_smoothness_concurrent(track_edges: pd.DataFrame, fps: int, driver_t
 # in order to run this function, we need to already have the track data for this track and year
 # because this will be necessary to ensure that we have the correct smoothness so the movement
 # looks natural but also so that we are within track limits
-def main(year: int, track: str, fps: int):
-    is_done, driver_dfs = already_done(str(year), track, str(fps))
+def main(year: int, track: str, fps: int, inner_points, outer_points):
+    is_done, driver_dfs, start_finish_line_idx = already_done(str(year), track, str(fps))
     if is_done:
         print("Already fetched this car data, don't nead to load...")
-        return driver_dfs
+        return driver_dfs, start_finish_line_idx
     print("Fetching and processing car data")
 
     driver_tels = load_from_fastf1(year, track)
-    process_grouped_driver_tels(driver_tels)
+    start_finish_line_idx = process_grouped_driver_tels(driver_tels, inner_points, outer_points)
 
     driver_dfs = {}
     for driver, tel in driver_tels.items():
@@ -381,7 +447,7 @@ def main(year: int, track: str, fps: int):
         df = add_wheel_rots(df)
         driver_dfs[driver] = df
 
-    save(str(year), track, str(fps), driver_dfs)
+    save(str(year), track, str(fps), driver_dfs, start_finish_line_idx)
 
     print(f"Done processing car data")
-    return driver_dfs
+    return driver_dfs, start_finish_line_idx
