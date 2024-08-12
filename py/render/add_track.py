@@ -49,5 +49,3 @@ def main(inner_points, outer_points, inner_curb_points, outer_curb_points):
     create_planes(inner_points, outer_points, "Main", track_mat)
     create_planes(outer_points, outer_curb_points, "CurbOuter", curb_mat)
     create_planes(inner_points, inner_curb_points, "CurbInner", curb_mat)
-
-    return inner_points, outer_points, inner_curb_points, outer_curb_points

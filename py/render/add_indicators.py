@@ -1,8 +1,5 @@
-import math
-
 import bmesh
 import bpy
-from utils.colors import hex_to_blender_rgb
 
 
 # we have gotten the index of the inner_points, outer_points defining the start/finish line
@@ -41,11 +38,15 @@ def add_start_finish_line(inner_points, outer_points, start_finish_line_idx):
     mat.use_nodes = True
 
     bsdf = mat.node_tree.nodes["Principled BSDF"]
-    bsdf.inputs["Base Color"].default_value = (0.01, 0.01, 0.01, 1)
+    bsdf.inputs["Base Color"].default_value = (0.38, 0.38, 0.38, 1)
 
     obj.data.materials.append(mat)
 
 
 # where at_start is the index of the point where the car is at the start/finish line
-def main(inner_points, outer_points, inner_curb_points, outer_curb_points, car_df, start_finish_line_idx):
+def main(inner_curb_points, outer_curb_points, start_finish_line_idx):
+    indicators_collection = bpy.data.collections.new(name="IndicatorsCollection")
+    bpy.context.scene.collection.children.link(indicators_collection)
+    bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
+
     add_start_finish_line(inner_curb_points, outer_curb_points, start_finish_line_idx)

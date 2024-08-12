@@ -26,6 +26,8 @@ from utils.read_yaml import read_yaml
 def main(yaml_path):
     print(f"YAML_PATH: {yaml_path}")
     year, track, fps, drivers, config = read_yaml(yaml_path)
+    start_buffer_frames = 45
+    end_buffer_frames = 75
 
     print(config)
 
@@ -40,21 +42,30 @@ def main(yaml_path):
 
     print("Adding Drivers...")
     focused_driver = drivers[0][0]  # the camera driver is just the first listed
-    driver_dfs, start_finish_line_idx = load_driver_data.main(year, track, fps, inner_points, outer_points)
+    driver_dfs, start_finish_line_idx = load_driver_data.main(
+        year, track, fps, start_buffer_frames, end_buffer_frames, inner_points, outer_points
+    )
     driver_objs = add_driver_objects.main(driver_dfs, drivers)
 
     print("Adding Indicators...")
-    add_indicators.main(inner_points, outer_points, inner_curb_points, outer_curb_points, driver_dfs[focused_driver], start_finish_line_idx)
+    add_indicators.main(inner_curb_points, outer_curb_points, start_finish_line_idx)
 
     render_settings = config["render"]
 
-    add_camera.main(driver_dfs[focused_driver], driver_objs[focused_driver], render_settings["max_cam_distance"])
+    add_camera.main(
+        driver_dfs[focused_driver],
+        driver_objs[focused_driver],
+        render_settings["max_cam_distance"],
+        start_buffer_frames,
+        end_buffer_frames,
+    )
 
     if render_settings["should_render"]:
         print("Starting Rendering...")
         render_animation.main(render_settings, len(driver_dfs[focused_driver]))
     else:
-        bpy.context.scene.frame_end = max([len(driver_dfs[driver]) for driver in driver_dfs])
+        # for driver in drivers not all ~20 in the lineup
+        bpy.context.scene.frame_end = min([len(driver_dfs[driver_abbrev]) for (driver_abbrev, _) in drivers]) - 1
         bpy.context.scene.render.fps = fps
         print("should_render is set to false, skipping rendering...")
 
