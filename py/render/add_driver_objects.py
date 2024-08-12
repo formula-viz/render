@@ -1,13 +1,11 @@
 import math
-import os
+import mathutils
 
 import bpy
-import mathutils
-import pandas as pd
 import PIL.Image as Image
-from utils.colors import hex_to_blender_rgb, hex_to_normal_rgb
-from utils.project_structure import (get_car_data_path, get_car_fbx_path,
-                                     get_car_paints_path, get_car_textures_dir)
+from utils.colors import hex_to_normal_rgb
+from utils.project_structure import (get_car_fbx_path, get_car_paints_path,
+                                     get_car_textures_dir)
 
 
 def set_color(obj, hex_color: str):

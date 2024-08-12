@@ -235,6 +235,71 @@ def get_driver_df(tel, s_divisor: int, frames_per_second: int):
     )
 
 
+# driver_df has: X, Y, Z, Speed
+# get the vector between the first and the second frame, extend that vector infront of the start
+def add_start_buffer(driver_df, start_buffer_frames):
+    start_x, start_y, start_z = driver_df["X"][0], driver_df["Y"][0], driver_df["Z"][0]
+    second_x, second_y, second_z = driver_df["X"][1], driver_df["Y"][1], driver_df["Z"][1]
+
+    x_diff, y_diff, z_diff = second_x - start_x, second_y - start_y, second_z - start_z
+
+    start_speed = driver_df["Speed"][0]
+    new_x, new_y, new_z = [], [], []
+
+    prev = (start_x, start_y, start_z)
+    for _ in range(start_buffer_frames):
+        cur_x, cur_y, cur_z = prev[0] - x_diff, prev[1] - y_diff, prev[2] - z_diff
+        new_x.append(cur_x)
+        new_y.append(cur_y)
+        new_z.append(cur_z)
+        prev = (cur_x, cur_y, cur_z)
+
+    # reverse the lists so that the first frame is at the beginning
+    new_x = new_x[::-1]
+    new_y = new_y[::-1]
+    new_z = new_z[::-1]
+
+    new_speeds = [start_speed] * start_buffer_frames
+    before_startline_df = pd.DataFrame({"X": new_x, "Y": new_y, "Z": new_z, "Speed": new_speeds})
+
+    driver_df = pd.concat([before_startline_df, driver_df], ignore_index=True)
+
+    driver_df.reset_index(drop=True, inplace=True)
+    return driver_df
+
+
+# driver_df has: X, Y, Z, Speed
+# get vector between second to last and last, extend that vector infront of the end
+def add_end_buffer(driver_df, end_buffer_frames):
+    last_x, last_y, last_z = driver_df["X"].iloc[-1], driver_df["Y"].iloc[-1], driver_df["Z"].iloc[-1]
+    second_last_x, second_last_y, second_last_z = (
+        driver_df["X"].iloc[-2],
+        driver_df["Y"].iloc[-2],
+        driver_df["Z"].iloc[-2],
+    )
+
+    x_diff, y_diff, z_diff = last_x - second_last_x, last_y - second_last_y, last_z - second_last_z
+
+    start_speed = driver_df["Speed"].iloc[-1]
+    new_x, new_y, new_z = [], [], []
+
+    prev = (last_x, last_y, last_z)
+    for _ in range(end_buffer_frames):
+        cur_x, cur_y, cur_z = prev[0] + x_diff, prev[1] + y_diff, prev[2] + z_diff
+        new_x.append(cur_x)
+        new_y.append(cur_y)
+        new_z.append(cur_z)
+        prev = (cur_x, cur_y, cur_z)
+
+    new_speeds = [start_speed] * end_buffer_frames
+    after_endline_df = pd.DataFrame({"X": new_x, "Y": new_y, "Z": new_z, "Speed": new_speeds})
+
+    driver_df = pd.concat([driver_df, after_endline_df], ignore_index=True)
+
+    driver_df.reset_index(drop=True, inplace=True)
+    return driver_df
+
+
 def add_car_rots(df):
     points = [(df["X"][i], df["Y"][i], df["Z"][i]) for i in range(len(df))]
 
@@ -427,10 +492,10 @@ def optimize_smoothness_concurrent(track_edges: pd.DataFrame, fps: int, driver_t
 # in order to run this function, we need to already have the track data for this track and year
 # because this will be necessary to ensure that we have the correct smoothness so the movement
 # looks natural but also so that we are within track limits
-def main(year: int, track: str, fps: int, inner_points, outer_points):
+def main(year: int, track: str, fps: int, start_buffer_frames, end_buffer_frames, inner_points, outer_points):
     is_done, driver_dfs, start_finish_line_idx = already_done(str(year), track, str(fps))
     if is_done:
-        print("Already fetched this car data, don't nead to load...")
+        print("Already fetched this car data, don't need to load...")
         return driver_dfs, start_finish_line_idx
     print("Fetching and processing car data")
 
@@ -440,6 +505,8 @@ def main(year: int, track: str, fps: int, inner_points, outer_points):
     driver_dfs = {}
     for driver, tel in driver_tels.items():
         df = get_driver_df(tel, 3, fps)
+        df = add_start_buffer(df, start_buffer_frames)
+        df = add_end_buffer(df, end_buffer_frames)
         driver_dfs[driver] = df
 
     for driver, df in driver_dfs.items():
