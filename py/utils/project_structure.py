@@ -80,3 +80,6 @@ def get_track_data_path(year: str, track: str) -> str:
 
 def get_driver_image_path(driver_abbrev: str) -> str:
     return os.path.join(DRIVER_IMAGES_DIR, f"{driver_abbrev}.png")
+
+def get_background_music_path() -> str:
+    return os.path.join(RESOURCES_DIR, "audio", "lofi-hiphop-background.m4a")
