@@ -72,6 +72,7 @@ def main(yaml_path, frames_dir):
         bpy.context.scene.render.resolution_y = 1080
 
     bpy.context.scene.render.fps = fps
+    bpy.context.scene.frame_end = num_frames
 
     # outro_frames_length = fps * 8
     # add_outro_image(num_frames, outro_frames_length)
