@@ -15,8 +15,10 @@ logger = logging.getLogger(__name__)
 
 import add_drivers
 import load_sequence
+from utils.project_structure import (BACKGROUND_ONE_PATH,
+                                     get_background_music_path)
 from utils.read_yaml import read_yaml
-from utils.project_structure import BACKGROUND_ONE_PATH
+
 
 def set_background(num_frames):
     image_strip = bpy.context.scene.sequence_editor.sequences.new_image(
@@ -37,13 +39,12 @@ def add_outro_image(num_frames, outro_frames_length):
     return image_strip
 
 
-# def add_music(total_frames):
-#     audio_path = "resources/music/credit.mp3"
-#     audio_strip = bpy.context.scene.sequence_editor.sequences.new_sound(
-#         name="CreditMusic", filepath=audio_path, channel=2, frame_start=1
-#     )
-#     audio_strip.frame_final_duration = total_frames
-#     return audio_strip
+def add_music(total_frames):
+    audio_strip = bpy.context.scene.sequence_editor.sequences.new_sound(
+        name="BackgroundMusic", filepath=get_background_music_path(), channel=3, frame_start=1
+    )
+    audio_strip.frame_final_duration = total_frames
+    return audio_strip
 
 
 # list in the form of HAM, VER, etc.
@@ -53,6 +54,7 @@ def main(yaml_path, frames_dir):
 
     num_frames = load_sequence.main(frames_dir)
 
+    add_music(num_frames)
     set_background(num_frames)
     add_drivers.main(drivers, num_frames, render_settings["is_4k"], track, str(year))
 
@@ -71,9 +73,9 @@ def main(yaml_path, frames_dir):
 
     bpy.context.scene.render.fps = fps
 
-    outro_frames_length = fps * 8
-    add_outro_image(num_frames, outro_frames_length)
-    bpy.context.scene.frame_end = num_frames + outro_frames_length
+    # outro_frames_length = fps * 8
+    # add_outro_image(num_frames, outro_frames_length)
+    # bpy.context.scene.frame_end = num_frames + outro_frames_length
 
     if render_settings["should_render"]:
         bpy.ops.render.render(animation=True)
