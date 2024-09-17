@@ -1,5 +1,6 @@
 import json
 import logging
+import sys
 
 import bpy
 
@@ -39,8 +40,9 @@ def add_music(total_frames):
     return audio_strip
 
 
-# list in the form of HAM, VER, etc.
 def main(config_json):
+    print("Enter post_render.py")
+
     config = Config.from_dict(json.loads(config_json))
 
     num_frames = load_sequence.main(config.frames_dir)
@@ -73,3 +75,9 @@ def main(config_json):
         bpy.ops.render.render(animation=True)
     else:
         logger.info("should_render is set to false, skipping rendering...")
+
+    print("Exiting post_render.py")
+
+
+if __name__ == "__main__":
+    main(sys.argv[-1])

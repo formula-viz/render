@@ -1,12 +1,12 @@
 import json
 import sys
 
-import bpy
 import add_camera
 import add_driver_objects
 import add_indicators
 import add_sun
 import add_track
+import bpy
 import load_driver_data
 import load_track_data
 import render_animation
@@ -59,7 +59,7 @@ def main(config_json):
         bpy.context.scene.render.fps = config.fps
         print("should_render is set to false, skipping rendering...")
 
-    print("End script")
+    print("Exiting render.py")
 
 
 if __name__ == "__main__":
