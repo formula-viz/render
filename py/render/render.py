@@ -1,23 +1,7 @@
-import site
-import sys
-
-print("Python executable:", sys.executable)
-print("Python version:", sys.version)
-print("Sys.path:", sys.path)
-print("Site packages:", site.getsitepackages())
-
 import json
-import os
 import sys
 
 import bpy
-
-MAIN_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-PYTHON_SCRIPTS_ROOT = os.path.join(MAIN_PROJECT_ROOT, "py")
-sys.path.append(MAIN_PROJECT_ROOT)
-sys.path.append(PYTHON_SCRIPTS_ROOT)
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-
 import add_camera
 import add_driver_objects
 import add_indicators
@@ -32,10 +16,9 @@ from utils.config import Config
 # we already have loaded the track data and the car data for all cars
 # on this year and track, now, we just need the cars to render
 def main(config_json):
+    print("Enter render.py")
 
     config = Config.from_dict(json.loads(config_json))
-
-    print("Start script")
 
     start_buffer_frames = 45
     end_buffer_frames = 75

@@ -1,16 +1,7 @@
 import json
-import os
-import sys
+import logging
 
 import bpy
-
-MAIN_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-PYTHON_SCRIPTS_ROOT = os.path.join(MAIN_PROJECT_ROOT, "py")
-sys.path.append(MAIN_PROJECT_ROOT)
-sys.path.append(PYTHON_SCRIPTS_ROOT)
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-
-import logging
 
 logger = logging.getLogger(__name__)
 
