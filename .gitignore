@@ -1,5 +1,5 @@
-pyvenv
-venv
+pyvenv/
+venv/
 persistent/data/
 
 temporary/jobs/completed/*
@@ -17,3 +17,5 @@ temporary/frames/*
 !temporary/tmp/.gitkeep
 !temporary/car_paints/.gitkeep
 !temporary/frames/.gitkeep
+
+__pycache__/

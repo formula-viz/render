@@ -1,25 +1,15 @@
 import json
 import os
 import subprocess
-import sys
-
-MAIN_PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__))
-PYTHON_SCRIPTS_ROOT = os.path.join(MAIN_PROJECT_ROOT, "py")
-sys.path.append(MAIN_PROJECT_ROOT)
-sys.path.append(PYTHON_SCRIPTS_ROOT)
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 
 from utils.config import Config
 
 
 def run_blender_script(blender_path, script_path, config: Config):
-    # Expand user directory if necessary
     script_path = os.path.expanduser(script_path)
 
-    # Convert config to JSON string
     config_json = json.dumps(config.to_dict())
 
-    # Construct the full command
     full_command = [
         blender_path,
         "--background",
@@ -29,7 +19,6 @@ def run_blender_script(blender_path, script_path, config: Config):
         config_json,
     ]
 
-    # Run the Blender process
     try:
         result = subprocess.run(full_command, check=True, capture_output=True, text=True)
         print(f"Blender script output for {script_path}:", result.stdout)
@@ -46,7 +35,7 @@ def run_blender_pipeline(blender_path, script_paths, config: Config):
         result = run_blender_script(blender_path, script_path, config)
         results.append(result)
         if result["status"] == "error":
-            break  # Stop the pipeline if an error occurs
+            break
     return results
 
 

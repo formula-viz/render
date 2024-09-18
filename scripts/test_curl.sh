@@ -10,7 +10,7 @@ render:
   is_4k: true
   output: output.mp4
   max_cam_distance: 70
-  frames_dir: "temporary/frames"
+  frames_dir: "../temporary/frames"
 drivers:
 - name: VER
   pos: 1

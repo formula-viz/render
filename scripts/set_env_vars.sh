@@ -1,8 +1,15 @@
 #!/bin/bash
 
-source "pyvenv/bin/activate"
+export PROJECT_ROOT=$(dirname "$(cd "$(dirname "$0")" && pwd)")
+export VENV_PATH="$PROJECT_ROOT/pyvenv"
 
-# Function to recursively add directories to PYTHONPATH
+# blender system python refers to the site packages location
+export BLENDER_SYSTEM_PYTHON="$VENV_PATH/lib/python3.*/site-packages"
+
+export REQUIREMENTS_PATH="$PROJECT_ROOT/requirements.txt"
+
+export FLASK_PY_PATH="$PROJECT_ROOT/scripts/start_flask.py"
+
 add_to_pythonpath() {
     local dir="$1"
     if [[ "$(basename "$dir")" != "__pycache__" ]]; then
@@ -15,20 +22,10 @@ add_to_pythonpath() {
     fi
 }
 
-# Add the project root (current dir) to PYTHONPATH
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH"
-
-echo "Python path: $PYTHONPATH"
-
 # Recursively add all subdirectories under 'py' to PYTHONPATH
 add_to_pythonpath "$PROJECT_ROOT/py"
-
 # Export the modified PYTHONPATH
+PYTHONPATH="$PROJECT_ROOT/scripts:$PYTHONPATH"
+
 export PYTHONPATH
-
-# Print the PYTHONPATH for verification
-echo "PYTHONPATH: $PYTHONPATH"
-
-# Start the RQ worker
-rq worker

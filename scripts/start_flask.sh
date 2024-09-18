@@ -1,5 +1,8 @@
 #!/bin/bash
 
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+source "$SCRIPT_DIR/set_env_vars.sh"
+
 set -e  # Exit immediately if a command exits with a non-zero status
 
 # Function to execute command with sudo if necessary
@@ -44,42 +47,33 @@ setup_redis() {
     fi
 }
 
-VENV_NAME="pyvenv"
-
 # Check if virtual environment exists
-if [ ! -d "$VENV_NAME" ]; then
+if [ ! -d "$VENV_PATH" ]; then
     echo "Creating virtual environment..."
-    python3 -m venv $VENV_NAME
+    python3 -m venv "$VENV_PATH"
 else
     echo "Virtual environment already exists."
 fi
 
 # Activate virtual environment
-source $VENV_NAME/bin/activate
-
-export BLENDER_SYSTEM_PYTHON="$PWD/$VENV_NAME/lib/python3.*/site-packages"
+source "$VENV_PATH/bin/activate"
 
 # Install or upgrade pip
 pip install --upgrade pip
 
 # Install requirements
-if [ -f "requirements.txt" ]; then
+if [ -f "$REQUIREMENTS_PATH" ]; then
     echo "Installing requirements..."
-    pip install -r requirements.txt
+    pip install -r "$REQUIREMENTS_PATH"
 else
-    echo "No requirements.txt found. Skipping package installation."
+    echo "Requirements file not found: $REQUIREMENTS_PATH"
+    exit 1
 fi
 
-# Create necessary directories
-mkdir -p persistent/data/{track_data,car_data}
+mkdir -p "$PROJECT_ROOT/persistent/data/{track_data,car_data}"
 
-# Setup and start Redis
 setup_redis
 
-echo $BLENDER_SYSTEM_PYTHON
+python3 "$FLASK_PY_PATH"
 
-# Start the application
-python3 app.py
-
-# Deactivate virtual environment
 deactivate
