@@ -243,51 +243,8 @@ def curb(cur, other, curb_width):
     return curb
 
 
-def save_to_csv(inner_points, outer_points, inner_curb_points, outer_curb_points, year: str, track: str):
-    loc = get_track_data_path(year, track)
-
-    df = pd.DataFrame(
-        {
-            "inner_X": [point[0] for point in inner_points],
-            "inner_Y": [point[1] for point in inner_points],
-            "inner_Z": [point[2] for point in inner_points],
-            "outer_X": [point[0] for point in outer_points],
-            "outer_Y": [point[1] for point in outer_points],
-            "outer_Z": [point[2] for point in outer_points],
-            "inner_curb_X": [point[0] for point in inner_curb_points],
-            "inner_curb_Y": [point[1] for point in inner_curb_points],
-            "inner_curb_Z": [point[2] for point in inner_curb_points],
-            "outer_curb_X": [point[0] for point in outer_curb_points],
-            "outer_curb_Y": [point[1] for point in outer_curb_points],
-            "outer_curb_Z": [point[2] for point in outer_curb_points],
-        }
-    )
-
-    df.to_csv(loc, index=False)
-
-
-def already_done(year: str, track: str):
-    loc = get_track_data_path(year, track)
-    if os.path.exists(loc):
-        df = pd.read_csv(loc)
-
-        inner_points = df[["inner_X", "inner_Y", "inner_Z"]].values.tolist()
-        outer_points = df[["outer_X", "outer_Y", "outer_Z"]].values.tolist()
-        inner_curb_points = df[["inner_curb_X", "inner_curb_Y", "inner_curb_Z"]].values.tolist()
-        outer_curb_points = df[["outer_curb_X", "outer_curb_Y", "outer_curb_Z"]].values.tolist()
-
-        return True, (inner_points, outer_points, inner_curb_points, outer_curb_points)
-    return False, ([], [], [], [])
-
-
 def main(year: int, track: str):
-    is_done, track_points = already_done(str(year), track)
-    if is_done:
-        print("Already fetched this track data, skipping...")
-        return track_points
-
-    print("Fetching and processing track data")
-
+    print("Processing track data")
     use_latest_year = True  # this may cause problems if the track changes year to year
     track_edges = load_raw_data(year, track, use_latest_year)
     track_edges = smooth_points(track_edges)
@@ -296,8 +253,6 @@ def main(year: int, track: str):
     curb_width = 2
     inner_curb_points = curb(inner_points, outer_points, curb_width)
     outer_curb_points = curb(outer_points, inner_points, curb_width)
-
-    save_to_csv(inner_points, outer_points, inner_curb_points, outer_curb_points, str(year), track)
 
     print("Done processing track data")
     return (inner_points, outer_points, inner_curb_points, outer_curb_points)
