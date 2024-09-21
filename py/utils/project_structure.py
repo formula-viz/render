@@ -34,8 +34,16 @@ TRACK_DATA_DIR = os.environ.get("TRACK_DATA_DIR")
 
 class TrackData:
     @staticmethod
-    def get_track_data_path(year: str, track: str) -> str:
-        return os.path.join(TRACK_DATA_DIR, f"{year}_{track}.csv")
+    def get_track_data_dir() -> str:
+        return TRACK_DATA_DIR
+
+    @staticmethod
+    def get_year_of_track_file(track_file: str) -> int:
+        return track_file.split("_")[0]
+
+    @staticmethod
+    def get_track_file(year: str, track: str) -> str:
+        return f"{year}_{track}.csv"
 
 
 BACKGROUND_MUSIC_PATH = os.environ.get("BACKGROUND_MUSIC_PATH")

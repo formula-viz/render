@@ -13,6 +13,15 @@ cd "$PROJECT_ROOT"
 FLASK_CMD="chmod +x scripts/start_flask.sh && ./scripts/start_flask.sh"
 REDIS_CMD="chmod +x scripts/start_rq.sh && ./scripts/start_rq.sh"
 
+# I am going to clone csv_repo locally, assumes ssh keys are setup
+if [ -d "csv_repo" ]; then
+    cd csv_repo
+    git pull
+    cd ..
+else
+    git clone git@github.com:formula-viz/csv_repo.git
+fi
+
 if [ -n "$TMUX" ]; then
     # We're inside tmux, create new windows based on current count
     window_count=$(tmux list-windows | wc -l)

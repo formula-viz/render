@@ -36,6 +36,7 @@ python_env_vars() {
     TEMPORARY_DIR="$PROJECT_ROOT/temporary"
     RESOURCES_DIR="$PROJECT_ROOT/resources"
     DATA_DIR="$PROJECT_ROOT/persistent/data"
+    CSV_REPO_DIR="$PROJECT_ROOT/csv_repo"
 
     export CAR_FBX_PATH="$RESOURCES_DIR/cars/formula-1-2024-generic/source/F1_TexPaintBlender_v01_20210215.fbx"
     export CAR_PAINTS_DIR="$PROJECT_ROOT/temporary/car_paints"
@@ -44,7 +45,7 @@ python_env_vars() {
     export CAR_DATA_DIR="$DATA_DIR/car_data"
     export DRIVER_TIMES_DIR="$DATA_DIR/driver_times"
     export DRIVER_IMAGES_DIR="$DATA_DIR/driver_images"
-    export TRACK_DATA_DIR="$DATA_DIR/track_data"
+    export TRACK_DATA_DIR="$CSV_REPO_DIR/track_data"
 
     export BACKGROUND_MUSIC_PATH="$RESOURCES_DIR/audio/lofi-hiphop-background.m4a"
     export BACKGROUND_IMAGE_PATH="$RESOURCES_DIR/backgrounds/background1.jpeg"
