@@ -1,5 +1,3 @@
-import os
-
 import bpy
 from utils.config import Config
 from utils.project_structure import get_frames_dir

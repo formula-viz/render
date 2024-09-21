@@ -1,7 +1,5 @@
 import bmesh
 import bpy
-import pandas as pd
-from utils.project_structure import get_track_data_path
 
 
 def create_planes(inner_points, outer_points, name, material=None):

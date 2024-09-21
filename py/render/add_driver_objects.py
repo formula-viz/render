@@ -1,11 +1,10 @@
 import math
-import mathutils
 
 import bpy
+import mathutils
 import PIL.Image as Image
 from utils.colors import hex_to_normal_rgb
-from utils.project_structure import (get_car_fbx_path, get_car_paints_path,
-                                     get_car_textures_dir)
+from utils.project_structure import Resources
 
 
 def set_color(obj, hex_color: str):
@@ -48,7 +47,7 @@ def replace_color_in_image(blender_obj, hex_color, driver_abbrev):
             break
 
     image_path = bpy.path.abspath(image_node.image.filepath)
-    new_image_path = get_car_paints_path(driver_abbrev, blender_obj.name)
+    new_image_path = Resources.get_new_texture_image_path
 
     with Image.open(image_path) as img:
         if img.mode != "RGB":
@@ -83,8 +82,8 @@ def create_driver_fbx(driver, hex_color):
     bpy.context.scene.collection.children.link(driver_collection)
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
 
-    bpy.ops.import_scene.fbx(filepath=get_car_fbx_path())
-    bpy.ops.file.find_missing_files(directory=get_car_textures_dir())
+    bpy.ops.import_scene.fbx(filepath=Resources.get_car_fbx_path())
+    bpy.ops.file.find_missing_files(directory=Resources.get_car_textures_dir())
 
     for obj in bpy.context.selected_objects:
         obj.name = f"{driver.title()}_{obj.name}"

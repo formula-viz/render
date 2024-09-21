@@ -1,30 +1,31 @@
 import os
 from io import StringIO
-from typing import Tuple
 
 import numpy as np
 import pandas as pd
 import requests
-from scipy.interpolate import UnivariateSpline, splev, splprep
+from scipy.interpolate import splev, splprep
 from utils.project_structure import get_track_data_path
 
 
 def load_raw_data(year: int, track: str, use_latest_year: bool = True):
+    # from git@github.com:formula-viz/csv_repo.git, we want to clone the track_data dir
+
+    print("frames_dir: ", os.environ.get("FRAMES_DIR"))
+
     # the current year may not be available, if it isn't, check if use_latest_year, then get the latest year
     track_csv_url = f"https://raw.githubusercontent.com/formula-viz/csv_repo/main/track_data/{track}_{year}.csv"
     response = requests.get(
         track_csv_url, auth=("quinn-caverly", "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"), verify=False
     )
 
-    down_year = year
-    while response.status_code != 200 and use_latest_year and down_year > 2000:
-        down_year -= 1
-        track_csv_url = (
-            f"https://raw.githubusercontent.com/formula-viz/csv_repo/main/track_data/{track}_{down_year}.csv"
-        )
-        response = requests.get(
-            track_csv_url, auth=("quinn-caverly", "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"), verify=False
-        )
+    if use_latest_year:
+        while response.status_code != 200 and year > 2000:
+            year -= 1
+            track_csv_url = f"https://raw.githubusercontent.com/formula-viz/csv_repo/main/track_data/{track}_{year}.csv"
+            response = requests.get(
+                track_csv_url, auth=("quinn-caverly", "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"), verify=False
+            )
 
     response.raise_for_status()
     track_edges = pd.read_csv(StringIO(response.content.decode("utf-8")))

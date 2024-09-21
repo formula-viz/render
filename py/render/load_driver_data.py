@@ -10,9 +10,7 @@ import pandas as pd
 import requests
 from fastf1.core import Laps, Telemetry
 from scipy.interpolate import UnivariateSpline
-from utils.project_structure import (get_car_data_dir, get_car_data_path,
-                                     get_driver_image_path,
-                                     get_driver_times_path)
+from utils.project_structure import DriverData
 
 
 def load_driver_headshots(driver_abbrevs, headshot_urls):
@@ -21,7 +19,7 @@ def load_driver_headshots(driver_abbrevs, headshot_urls):
 
     downloaded_count = 0
     for driver, url in zip(driver_abbrevs, headshot_urls):
-        image_path = get_driver_image_path(driver)
+        image_path = DriverData.get_driver_image_path(driver)
 
         if not os.path.exists(image_path):
             try:
@@ -39,7 +37,7 @@ def load_driver_headshots(driver_abbrevs, headshot_urls):
 
 
 def save_driver_times(driver_times: dict[str, str], year: str, track: str):
-    loc = get_driver_times_path(year, track)
+    loc = DriverData.get_driver_times_path(year, track)
     with open(loc, "w") as file:
         json.dump(driver_times, file)
 
@@ -369,11 +367,11 @@ def add_wheel_rots(df):
 
 
 def save(year: str, track: str, fps: str, dfs: dict[str, pd.DataFrame], start_finish_line_idx: int):
-    cur_dir = get_car_data_dir(year, track, fps)
+    cur_dir = DriverData.get_car_data_dir(year, track, fps)
     os.makedirs(cur_dir, exist_ok=True)
 
     for driver, df in dfs.items():
-        driver_path = get_car_data_path(year, track, fps, driver)
+        driver_path = DriverData.get_car_data_path(year, track, fps, driver)
         df.to_csv(driver_path, index=False)
 
     with open(os.path.join(cur_dir, "start_finish_line_idx.txt"), "w") as file:
@@ -381,7 +379,7 @@ def save(year: str, track: str, fps: str, dfs: dict[str, pd.DataFrame], start_fi
 
 
 def already_done(year: str, track: str, fps: str):
-    cur_dir = get_car_data_dir(year, track, fps)
+    cur_dir = DriverData.get_car_data_dir(year, track, fps)
     start_finish_line_idx = 0
 
     if os.path.exists(cur_dir):

@@ -26,7 +26,6 @@ class Config:
                 "is_4k": self.is_4k,
                 "output": self.output,
                 "max_cam_distance": self.max_cam_distance,
-                "frames_dir": self.frames_dir,
             },
             "drivers": [{"name": name, "color": color} for name, color in self.drivers],
         }
@@ -43,7 +42,6 @@ class Config:
         self.is_4k = render_settings["is_4k"]
         self.output = render_settings["output"]
         self.max_cam_distance = render_settings["max_cam_distance"]
-        self.frames_dir = render_settings["frames_dir"]
         self.drivers: List[Tuple[str, str]] = [(driver["name"], driver["color"]) for driver in yaml_dict["drivers"]]
 
     def _validate_config(self):
@@ -69,8 +67,6 @@ class Config:
             raise ValueError(f"Output must be a string, got {type(self.output)}")
         if not isinstance(self.max_cam_distance, int):
             raise ValueError(f"Max Cam Distance must be an integer, got {type(self.max_cam_distance)}")
-        if not isinstance(self.frames_dir, str):
-            raise ValueError(f"Frames Dir must be a string, got {type(self.frames_dir)}")
 
         for driver in self.drivers:
             name, color = driver
