@@ -13,11 +13,37 @@ import render_animation
 from utils.config import Config
 
 
+def gen_sample_config_for_render_test():
+    yaml_dict = {
+        "track": "SIN",
+        "year": "2024",
+        "render": {
+            "should_render": False,
+            "validate_render": False,
+            "fps": 30,
+            "samples": 32,
+            "adaptive_sampling": True,
+            "is_4k": True,
+            "output": "output.mp4",
+            "max_cam_distance": 70,
+        },
+        "drivers": [
+            {"name": "NOR", "color": "#00FF00"},
+            {"name": "VER", "color": "#0000FF"},
+        ],
+    }
+
+    return Config.from_dict(yaml_dict)
+
+
 # we already have loaded the track data and the car data for all cars
 # on this year and track, now, we just need the cars to render
-def main(config_json):
+def main(inp):
     print("Enter render.py")
-    config = Config.from_dict(json.loads(config_json))
+    if inp == "testing":
+        config = gen_sample_config_for_render_test()
+    else:
+        config = Config.from_dict(json.loads(inp))
 
     start_buffer_frames = 45
     end_buffer_frames = 75

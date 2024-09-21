@@ -97,6 +97,8 @@ class DriverGraphic:
     def _add_color_strip(self):
         r, g, b = hex_to_blender_rgb(self.driver_hex_color)
 
+        print("self.num_frames", self.num_frames)
+
         color_strip = bpy.context.scene.sequence_editor.sequences.new_effect(
             name=self.driver_abbrev + "_Color",
             type="COLOR",

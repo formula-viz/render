@@ -9,6 +9,7 @@ from utils.project_structure import TrackData
 # in the earlier bash script, we clone the repository locally
 def load_raw_data(year: int, track: str, use_latest_year: bool = True):
     track_data_dir = TrackData.get_track_data_dir()
+    print("Track data dir: ", track_data_dir)
     # iterate through contents of track_data, finding all files containing track
     # then, we find the file with the latest year
     # if use_latest_year is false, we use the year given

@@ -47,7 +47,7 @@ def replace_color_in_image(blender_obj, hex_color, driver_abbrev):
             break
 
     image_path = bpy.path.abspath(image_node.image.filepath)
-    new_image_path = Resources.get_new_texture_image_path
+    new_image_path = Resources.get_new_texture_image_path(driver_abbrev, blender_obj.name)
 
     with Image.open(image_path) as img:
         if img.mode != "RGB":

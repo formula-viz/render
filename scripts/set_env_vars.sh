@@ -34,7 +34,7 @@ export PYTHONPATH
 # Env Vars which will be used in the Python scripts
 python_env_vars() {
     TEMPORARY_DIR="$PROJECT_ROOT/temporary"
-    RESOURCES_DIR="$PROJECT_ROOT/resources"
+    RESOURCES_DIR="$PROJECT_ROOT/persistent/resources"
     DATA_DIR="$PROJECT_ROOT/persistent/data"
     CSV_REPO_DIR="$PROJECT_ROOT/csv_repo"
 
@@ -56,4 +56,4 @@ python_env_vars() {
     mkdir -p "$FRAMES_DIR"
 }
 
-
+python_env_vars

@@ -22,6 +22,8 @@ else
     git clone git@github.com:formula-viz/csv_repo.git
 fi
 
+mkdir -p "$PROJECT_ROOT/persistent/data/"{track_data,car_data,driver_times,driver_images}
+
 if [ -n "$TMUX" ]; then
     # We're inside tmux, create new windows based on current count
     window_count=$(tmux list-windows | wc -l)

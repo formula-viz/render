@@ -70,8 +70,6 @@ else
     exit 1
 fi
 
-mkdir -p "$PROJECT_ROOT/persistent/data/"{track_data,car_data}
-
 setup_redis
 
 python3 "$FLASK_PY_PATH"
