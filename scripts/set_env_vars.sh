@@ -10,6 +10,10 @@ export REQUIREMENTS_PATH="$PROJECT_ROOT/requirements.txt"
 
 export FLASK_PY_PATH="$PROJECT_ROOT/scripts/start_flask.py"
 
+export FRAMES_DIR="$PROJECT_ROOT/temporary/frames"
+rm -rf "$FRAMES_DIR"
+mkdir -p "$FRAMES_DIR"
+
 add_to_pythonpath() {
     local dir="$1"
     if [[ "$(basename "$dir")" != "__pycache__" ]]; then
