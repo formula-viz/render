@@ -59,8 +59,12 @@ def load_from_fastf1(year: int, track: str):
 
     laps = session.laps
 
-    def process_tel(q: Laps):
-        tel: Telemetry = q.pick_not_deleted().pick_fastest().get_telemetry(frequency="original")
+    def process_tel(q: Laps, driver: str):
+        try:
+            tel: Telemetry = q.pick_not_deleted().pick_fastest().get_telemetry(frequency="original")
+        except:
+            print(f"Couldn't get proper telemetry for {driver}")
+            return
 
         tel = tel[tel["Source"].isin(["pos", "interpolation"])]
         tel.reset_index(drop=True, inplace=True)
@@ -87,11 +91,11 @@ def load_from_fastf1(year: int, track: str):
         # we want to get the fastest lap for the highest qualifying session which the driver reached
 
         if q3 is not None:
-            process_tel(q3)
+            process_tel(q3, driver)
         elif q2 is not None:
-            process_tel(q2)
+            process_tel(q2, driver)
         elif q1 is not None:
-            process_tel(q1)
+            process_tel(q1, driver)
 
     save_driver_times(driver_times, str(year), track)
 
