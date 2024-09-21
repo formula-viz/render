@@ -2,6 +2,7 @@ import os
 
 import bpy
 from utils.config import Config
+from utils.project_structure import get_frames_dir
 
 
 def configure_gpu(config):
@@ -59,8 +60,7 @@ def main(config: Config, num_frames):
     bpy.context.scene.render.image_settings.file_format = "PNG"
     bpy.context.scene.render.image_settings.color_mode = "RGBA"
     # first, let's delete the tmp folder to wipe it
-    os.system("rm -rf temporary/frames")
-    os.system("mkdir temporary/frames")
-    bpy.context.scene.render.filepath = "temporary/frames/frame_"
+    frames_dir = get_frames_dir()
+    bpy.context.scene.render.filepath = f"{frames_dir}/frame_"
 
     bpy.ops.render.render(animation=True)

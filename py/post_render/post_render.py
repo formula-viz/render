@@ -45,7 +45,7 @@ def main(config_json):
 
     config = Config.from_dict(json.loads(config_json))
 
-    num_frames = load_sequence.main(config.frames_dir)
+    num_frames = load_sequence.main()
 
     add_music(num_frames)
     set_background(num_frames)

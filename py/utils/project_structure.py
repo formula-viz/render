@@ -83,3 +83,6 @@ def get_driver_image_path(driver_abbrev: str) -> str:
 
 def get_background_music_path() -> str:
     return os.path.join(RESOURCES_DIR, "audio", "lofi-hiphop-background.m4a")
+
+def get_frames_dir() -> str:
+    return os.path.join(TEMPORARY_DIR, "frames")

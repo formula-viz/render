@@ -17,7 +17,6 @@ from utils.config import Config
 # on this year and track, now, we just need the cars to render
 def main(config_json):
     print("Enter render.py")
-
     config = Config.from_dict(json.loads(config_json))
 
     start_buffer_frames = 45

@@ -1,12 +1,14 @@
 import os
 
 import bpy
+from utils.project_structure import get_frames_dir
 
 
-def main(frames_dir):
+def main():
     bpy.context.scene.sequence_editor_create()
 
     bpy.context.scene.render.use_sequencer = True
+    frames_dir = get_frames_dir()
     file_paths = sorted([f for f in os.listdir(frames_dir)])
 
     for i, file_path in enumerate(file_paths):
