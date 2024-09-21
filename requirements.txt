@@ -6,3 +6,6 @@ pandas
 scipy
 logger
 colormath
+redis
+rq
+flask
