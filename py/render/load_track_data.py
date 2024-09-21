@@ -1,36 +1,42 @@
 import os
-from io import StringIO
 
 import numpy as np
 import pandas as pd
-import requests
 from scipy.interpolate import splev, splprep
-from utils.project_structure import get_track_data_path
+from utils.project_structure import TrackData
 
 
+# in the earlier bash script, we clone the repository locally
 def load_raw_data(year: int, track: str, use_latest_year: bool = True):
-    # from git@github.com:formula-viz/csv_repo.git, we want to clone the track_data dir
+    track_data_dir = TrackData.get_track_data_dir()
+    # iterate through contents of track_data, finding all files containing track
+    # then, we find the file with the latest year
+    # if use_latest_year is false, we use the year given
+    track_data_files = os.listdir(track_data_dir)
+    track_data_files = [file for file in track_data_files if track in file]
 
-    print("frames_dir: ", os.environ.get("FRAMES_DIR"))
-
-    # the current year may not be available, if it isn't, check if use_latest_year, then get the latest year
-    track_csv_url = f"https://raw.githubusercontent.com/formula-viz/csv_repo/main/track_data/{track}_{year}.csv"
-    response = requests.get(
-        track_csv_url, auth=("quinn-caverly", "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"), verify=False
-    )
+    if not track_data_files:
+        raise FileNotFoundError(f"Track data not found for {track}")
 
     if use_latest_year:
-        while response.status_code != 200 and year > 2000:
-            year -= 1
-            track_csv_url = f"https://raw.githubusercontent.com/formula-viz/csv_repo/main/track_data/{track}_{year}.csv"
-            response = requests.get(
-                track_csv_url, auth=("quinn-caverly", "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"), verify=False
-            )
+        latest_year = 0
+        latest_file = ""
+        for file in track_data_files:
+            year = TrackData.get_year_of_track_file(file)
+            if int(year) > latest_year:
+                latest_year = int(year)
+                latest_file = file
+        track_data_file = latest_file
+    else:
+        track_data_file = TrackData.get_track_file(str(year), track)
 
-    response.raise_for_status()
-    track_edges = pd.read_csv(StringIO(response.content.decode("utf-8")))
+        if track_data_file not in track_data_files:
+            raise FileNotFoundError(f"Track data not found for {track} in {year}, use_latest_year is set to False")
 
-    return track_edges
+    track_data_path = os.path.join(track_data_dir, track_data_file)
+    track_data = pd.read_csv(track_data_path)
+
+    return track_data
 
 
 # this function may be useful if I ever transition to using the 3d data
