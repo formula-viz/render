@@ -9,13 +9,12 @@ logger = logging.getLogger(__name__)
 import add_drivers
 import load_sequence
 from utils.config import Config
-from utils.project_structure import (BACKGROUND_ONE_PATH,
-                                     get_background_music_path)
+from utils.project_structure import Resources
 
 
 def set_background(num_frames):
     image_strip = bpy.context.scene.sequence_editor.sequences.new_image(
-        name="BackgroundImage", filepath=BACKGROUND_ONE_PATH, channel=1, frame_start=1
+        name="BackgroundImage", filepath=Resources.get_background_image_path(), channel=1, frame_start=1
     )
     image_strip.frame_final_duration = num_frames
 
@@ -34,7 +33,7 @@ def add_outro_image(num_frames, outro_frames_length):
 
 def add_music(total_frames):
     audio_strip = bpy.context.scene.sequence_editor.sequences.new_sound(
-        name="BackgroundMusic", filepath=get_background_music_path(), channel=3, frame_start=1
+        name="BackgroundMusic", filepath=Resources.get_background_music_path(), channel=3, frame_start=1
     )
     audio_strip.frame_final_duration = total_frames
     return audio_strip

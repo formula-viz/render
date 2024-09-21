@@ -39,7 +39,7 @@ class TrackData:
 
     @staticmethod
     def get_year_of_track_file(track_file: str) -> int:
-        return track_file.split("_")[0]
+        return track_file.split("_")[1].split(".")[0]
 
     @staticmethod
     def get_track_file(year: str, track: str) -> str:
