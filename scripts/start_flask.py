@@ -29,7 +29,7 @@ def render():
         yaml_data = yaml.safe_load(request.data)
         config = Config(yaml_data)
 
-        job = queue.enqueue(run_job, args=(config,))
+        job = queue.enqueue(run_job, args=(config,), timeout=36000)
 
         result = {"status": "success", "message": "Render job enqueued", "job_id": job.id}
         return jsonify(result), 202

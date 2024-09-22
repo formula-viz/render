@@ -4,7 +4,6 @@ import subprocess
 
 from utils.config import Config
 
-
 def run_blender_script(blender_path, script_path, config: Config):
     script_path = os.path.expanduser(script_path)
 
