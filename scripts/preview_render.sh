@@ -1,6 +1,7 @@
 #!/bin/bash
 
-source prepare_blender.sh
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+source "$SCRIPT_DIR/prepare_blender.sh"
 
 # we want to directly invoke render from blender with args such that
 # the render doesn't actually happen, we can see the complete blender scene

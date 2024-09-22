@@ -42,8 +42,8 @@ def run_blender_pipeline(blender_path, script_paths, config: Config):
 def run_job(config: Config):
     blender_path = "/usr/bin/blender"
     script_paths = [
-        "~/Projects/formula-viz/render/py/render/render.py",
-        "~/Projects/formula-viz/render/py/post_render/post_render.py",
+        os.environ.get("RENDER_PY"),
+        os.environ.get("POSTRENDER_PY"),
     ]
     results = run_blender_pipeline(blender_path, script_paths, config)
     return results

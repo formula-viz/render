@@ -19,3 +19,6 @@ temporary/frames/*
 !temporary/frames/.gitkeep
 
 __pycache__/
+
+# this dir must be ignored because git submodule causes bug here
+csv_repo/
