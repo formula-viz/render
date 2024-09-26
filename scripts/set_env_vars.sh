@@ -52,8 +52,6 @@ python_env_vars() {
     export MAIN_FONT="$RESOURCES_DIR/fonts/Formula1-Regular.ttf"
 
     export FRAMES_DIR="$TEMPORARY_DIR/frames"
-    rm -rf "$FRAMES_DIR"
-    mkdir -p "$FRAMES_DIR"
 
     export RENDER_PY="$PROJECT_ROOT/py/render/render.py"
     export POSTRENDER_PY="$PROJECT_ROOT/py/post_render/post_render.py"

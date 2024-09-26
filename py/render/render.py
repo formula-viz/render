@@ -23,7 +23,7 @@ def gen_sample_config_for_render_test():
         "track": "SIN",
         "year": "2024",
         "render": {
-            "should_render": True,
+            "should_render": False,
             "validate_render": True,
             "fps": 30,
             "samples": 32,

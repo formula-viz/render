@@ -7,4 +7,4 @@ source "$SCRIPT_DIR/prepare_blender.sh"
 # the render doesn't actually happen, we can see the complete blender scene
 
 # the config for this test is within render.py
-blender --python "$PROJECT_ROOT/py/post_render/post_render.py" -- "testing"
+blender --python "$PROJECT_ROOT/py/post_render/post_render.py" -- "end-to-end"
