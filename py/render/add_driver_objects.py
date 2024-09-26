@@ -3,7 +3,7 @@ import math
 import bpy
 import mathutils
 import PIL.Image as Image
-from utils.colors import hex_to_normal_rgb
+from utils.colors import hex_to_normal_rgb, get_driver_colors
 from utils.project_structure import Resources
 
 
@@ -175,7 +175,9 @@ def create_driver(driver, hex_color, df):
 
 def main(driver_dfs, driver_tuples):
     driver_objs = {}
-    for driver_abbrev, hex_color in driver_tuples:
-        driver_objs[driver_abbrev] = create_driver(driver_abbrev, hex_color, driver_dfs[driver_abbrev])
+    driver_colors = get_driver_colors(*[driver_abbrev for driver_abbrev, _ in driver_tuples])
+
+    for i, (driver_abbrev, driver_hex) in enumerate(driver_tuples):
+        driver_objs[driver_abbrev] = create_driver(driver_abbrev, driver_colors[i], driver_dfs[driver_abbrev])
 
     return driver_objs
