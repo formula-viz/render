@@ -39,8 +39,8 @@ def main(inner_points, outer_points, inner_curb_points, outer_curb_points):
     bpy.context.scene.collection.children.link(track_collection)
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
 
-    dark_gray = (0.02, 0.02, 0.02)
-    darker_gray = (0.01, 0.01, 0.01)
+    dark_gray = (0.05, 0.05, 0.05)
+    darker_gray = (0.03, 0.03, 0.03)
     track_mat = create_material(dark_gray, "Main")
     curb_mat = create_material(darker_gray, "Curb")
 

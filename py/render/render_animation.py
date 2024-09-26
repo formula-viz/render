@@ -1,4 +1,5 @@
 import bpy
+import os
 from utils.config import Config
 from utils.project_structure import get_frames_dir
 
@@ -57,8 +58,10 @@ def main(config: Config, num_frames):
     # Set output format to PNG with RGBA channels
     bpy.context.scene.render.image_settings.file_format = "PNG"
     bpy.context.scene.render.image_settings.color_mode = "RGBA"
-    # first, let's delete the tmp folder to wipe it
+
     frames_dir = get_frames_dir()
+    os.system(f"rm -rf {frames_dir}")
+    os.system(f"mkdir {frames_dir}")
     bpy.context.scene.render.filepath = f"{frames_dir}/frame_"
 
     bpy.ops.render.render(animation=True)

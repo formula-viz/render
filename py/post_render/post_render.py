@@ -54,8 +54,8 @@ def gen_sample_config_for_render_test():
             "max_cam_distance": 70,
         },
         "drivers": [
-            {"name": "NOR", "color": "#00FF00"},
-            {"name": "VER", "color": "#0000FF"},
+            {"name": "TSU", "color": "#00FF00"},
+            {"name": "RIC", "color": "#0000FF"},
         ],
     }
 
@@ -67,6 +67,9 @@ def main(inp):
     if inp == "testing":
         config = gen_sample_config_for_render_test()
         num_frames = 100
+    elif inp == "end-to-end":
+        config = gen_sample_config_for_render_test()
+        num_frames = load_sequence.main()
     else:
         config = Config.from_dict(json.loads(inp))
         num_frames = load_sequence.main()
