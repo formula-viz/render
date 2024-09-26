@@ -1,6 +1,11 @@
 import json
 import sys
 
+# print python path
+print("Python path:")
+print(sys.path)
+
+
 import add_camera
 import add_driver_objects
 import add_indicators
@@ -18,8 +23,8 @@ def gen_sample_config_for_render_test():
         "track": "SIN",
         "year": "2024",
         "render": {
-            "should_render": False,
-            "validate_render": False,
+            "should_render": True,
+            "validate_render": True,
             "fps": 30,
             "samples": 32,
             "adaptive_sampling": True,
@@ -28,8 +33,8 @@ def gen_sample_config_for_render_test():
             "max_cam_distance": 70,
         },
         "drivers": [
-            {"name": "NOR", "color": "#00FF00"},
-            {"name": "VER", "color": "#0000FF"},
+            {"name": "TSU", "color": "#00FF00"},
+            {"name": "RIC", "color": "#0000FF"},
         ],
     }
 
