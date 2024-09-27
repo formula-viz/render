@@ -8,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 import add_drivers
 import load_sequence
-from utils.config import Config
 from utils.project_structure import Resources
 
 
@@ -39,44 +38,18 @@ def add_music(total_frames):
     return audio_strip
 
 
-def gen_sample_config_for_render_test():
-    yaml_dict = {
-        "track": "SIN",
-        "year": "2024",
-        "render": {
-            "should_render": False,
-            "validate_render": False,
-            "fps": 30,
-            "samples": 32,
-            "adaptive_sampling": True,
-            "is_4k": True,
-            "output": "output.mp4",
-            "max_cam_distance": 70,
-        },
-        "drivers": [
-            {"name": "TSU", "color": "#00FF00"},
-            {"name": "RIC", "color": "#0000FF"},
-        ],
-    }
-
-    return Config.from_dict(yaml_dict)
-
-
 def main(inp):
     print("Enter post_render.py")
-    if inp == "testing":
-        config = gen_sample_config_for_render_test()
+    config = json.loads(inp)
+
+    num_frames = load_sequence.main()
+    if num_frames == 0:
         num_frames = 100
-    elif inp == "end-to-end":
-        config = gen_sample_config_for_render_test()
-        num_frames = load_sequence.main()
-    else:
-        config = Config.from_dict(json.loads(inp))
-        num_frames = load_sequence.main()
+        print(f"No frames, assuming this is a run for testing, setting num_frames to {num_frames}")
 
     add_music(num_frames)
     set_background(num_frames)
-    add_drivers.main(config.drivers, num_frames, config.is_4k, config.track, str(config.year))
+    add_drivers.main(config["drivers"], num_frames, config["render"]["is_4k"], config["track"], str(config["year"]))
 
     bpy.context.scene.render.use_sequencer = True
 
@@ -91,7 +64,7 @@ def main(inp):
         bpy.context.scene.render.resolution_x = 1920
         bpy.context.scene.render.resolution_y = 1080
 
-    bpy.context.scene.render.fps = config.fps
+    bpy.context.scene.render.fps = config["render"]["fps"]
     bpy.context.scene.frame_end = num_frames
 
     # outro_frames_length = fps * 8

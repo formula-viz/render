@@ -22,5 +22,4 @@ CONFIG='{
   "drivers": ["TSU", "RIC"]
 }'
 
-# the config for this test is within render.py
 blender --python "$PROJECT_ROOT/py/render/render.py" -- "$CONFIG"
