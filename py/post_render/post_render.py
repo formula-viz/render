@@ -55,9 +55,9 @@ def main(inp):
 
     bpy.context.scene.render.image_settings.file_format = "FFMPEG"
     bpy.context.scene.render.ffmpeg.format = "MPEG4"
-    bpy.context.scene.render.filepath = f"output/{config.output}"
+    bpy.context.scene.render.filepath = f"output/{config["render"]["output"]}"
 
-    if config.is_4k:
+    if config["render"]["is_4k"]:
         bpy.context.scene.render.resolution_x = 3840
         bpy.context.scene.render.resolution_y = 2160
     else:
@@ -71,12 +71,12 @@ def main(inp):
     # add_outro_image(num_frames, outro_frames_length)
     # bpy.context.scene.frame_end = num_frames + outro_frames_length
 
-    if config.should_render:
+    if config["render"]["should_render"]:
         bpy.ops.render.render(animation=True)
+        print("Exiting post_render.py")
+        bpy.ops.wm.quit_blender()
     else:
         logger.info("should_render is set to false, skipping rendering...")
-
-    print("Exiting post_render.py")
 
 
 if __name__ == "__main__":

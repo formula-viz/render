@@ -1,6 +1,8 @@
 import bmesh
 import bpy
 
+from add_track import create_material
+
 
 # we have gotten the index of the inner_points, outer_points defining the start/finish line
 # from a previous function, so we just use that index here
@@ -34,11 +36,7 @@ def add_start_finish_line(inner_points, outer_points, start_finish_line_idx):
     bm.free()
     mesh.update()
 
-    mat = bpy.data.materials.new(name="StartFinishLineMaterial")
-    mat.use_nodes = True
-
-    bsdf = mat.node_tree.nodes["Principled BSDF"]
-    bsdf.inputs["Base Color"].default_value = (0.38, 0.38, 0.38, 1)
+    mat = create_material((0.03, 0.03, 0.03), "StartFinishLineMaterial")
 
     obj.data.materials.append(mat)
 

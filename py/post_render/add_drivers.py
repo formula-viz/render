@@ -1,7 +1,7 @@
 import json
 
 import bpy
-from utils.colors import hex_to_blender_rgb
+from utils.colors import get_driver_colors, hex_to_blender_rgb
 from utils.project_structure import DriverData, Resources
 
 
@@ -132,23 +132,22 @@ def load_times_dict(year: str, track: str):
     return retrieved_driver_times
 
 
-# [(name, color), ...]
 def main(drivers, num_frames: int, is_4k: bool, track: str, year: str):
     driver_times = load_times_dict(year, track)
+
+    driver_colors = get_driver_colors(*drivers)
 
     # for now, we just assume that there will be 2 drivers
     num_strips = 3
     main_start = 5
 
-    left_driver = drivers[0]
-    DriverGraphic(left_driver[0], left_driver[1], num_frames, driver_times[left_driver[0]], is_4k, main_start, True)
+    DriverGraphic(drivers[0], driver_colors[0], num_frames, driver_times[drivers[0]], is_4k, main_start, True)
 
-    right_driver = drivers[1]
     DriverGraphic(
-        right_driver[0],
-        right_driver[1],
+        drivers[1],
+        driver_colors[1],
         num_frames,
-        driver_times[right_driver[0]],
+        driver_times[drivers[1]],
         is_4k,
         main_start + num_strips,
         False,
