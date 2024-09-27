@@ -173,11 +173,11 @@ def create_driver(driver, hex_color, df):
     return driver_obj
 
 
-def main(driver_dfs, driver_tuples):
+def main(driver_dfs, drivers):
     driver_objs = {}
-    driver_colors = get_driver_colors(*[driver_abbrev for driver_abbrev, _ in driver_tuples])
+    driver_colors = get_driver_colors(*[driver_abbrev for driver_abbrev in drivers])
 
-    for i, (driver_abbrev, driver_hex) in enumerate(driver_tuples):
+    for i, driver_abbrev in enumerate(drivers):
         driver_objs[driver_abbrev] = create_driver(driver_abbrev, driver_colors[i], driver_dfs[driver_abbrev])
 
     return driver_objs
