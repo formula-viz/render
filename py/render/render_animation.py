@@ -1,6 +1,5 @@
 import bpy
 import os
-from utils.config import Config
 from utils.project_structure import get_frames_dir
 
 
@@ -18,28 +17,28 @@ def configure_gpu(config):
             d["use"] = 1
             print(f"Using GPU: {d['name']}")
 
-    bpy.context.scene.cycles.use_adaptive_sampling = config.adaptive_sampling
+    bpy.context.scene.cycles.use_adaptive_sampling = config["render"]["adaptive_sampling"]
 
 
 # render settings will be sent in as a dict from yaml
-def main(config: Config, num_frames):
-    if not config.should_render:
+def main(config, num_frames):
+    if not config["render"]["should_render"]:
         print("Set to not render, skipping rendering...")
         return
 
     print(f"Starting Rendering of {num_frames}")
     configure_gpu(config)
 
-    if config.validate_render:
+    if config["render"]["validate_render"]:
         bpy.context.scene.frame_end = 100
     else:
         bpy.context.scene.frame_end = num_frames
 
-    bpy.context.scene.render.fps = config.fps
-    bpy.context.scene.cycles.samples = config.samples
+    bpy.context.scene.render.fps = config["render"]["fps"]
+    bpy.context.scene.cycles.samples = config["render"]["samples"]
     bpy.context.scene.cycles.use_denoising = False
 
-    if config.is_4k:
+    if config["render"]["is_4k"]:
         bpy.context.scene.render.resolution_x = 3840
         bpy.context.scene.render.resolution_y = 2160
 
