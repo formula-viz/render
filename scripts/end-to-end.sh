@@ -10,8 +10,8 @@ CONFIG='{
   "track": "SIN",
   "year": 2024,
   "render": {
-    "should_render": false,
-    "validate_render": true,
+    "should_render": true,
+    "validate_render": false,
     "fps": 30,
     "samples": 32,
     "adaptive_sampling": true,
@@ -22,4 +22,5 @@ CONFIG='{
   "drivers": ["TSU", "RIC"]
 }'
 
-blender --python "$PROJECT_ROOT/py/post_render/post_render.py" -- "$CONFIG"
+blender -b --python "$PROJECT_ROOT/py/render/render.py" -- "$CONFIG"
+blender -b --python "$PROJECT_ROOT/py/post_render/post_render.py" -- "$CONFIG"

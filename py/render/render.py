@@ -56,16 +56,16 @@ def main(inp):
         end_buffer_frames,
     )
 
-    if config"":
+    if config["render"]["should_render"]:
         print("Starting Rendering...")
         render_animation.main(config, len(driver_dfs[focused_driver]))
+        print("Exiting render.py")
+        bpy.ops.wm.quit_blender()
     else:
         # for driver in drivers not all ~20 in the lineup
         bpy.context.scene.frame_end = min([len(driver_dfs[driver_abbrev]) for driver_abbrev in config["drivers"]]) - 1
         bpy.context.scene.render.fps = config["render"]["fps"]
         print("should_render is set to false, skipping rendering...")
-
-    print("Exiting render.py")
 
 
 if __name__ == "__main__":
