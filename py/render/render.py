@@ -15,6 +15,7 @@ import render_animation
 # we already have loaded the track data and the car data for all cars
 # on this year and track, now, we just need the cars to render
 def main(inp):
+    print("Enter render.py")
     config = json.loads(inp)
 
     start_buffer_frames = 45
@@ -55,7 +56,7 @@ def main(inp):
         end_buffer_frames,
     )
 
-    if config["render"]["should_render"]:
+    if config"":
         print("Starting Rendering...")
         render_animation.main(config, len(driver_dfs[focused_driver]))
     else:

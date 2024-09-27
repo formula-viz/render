@@ -6,5 +6,20 @@ source "$SCRIPT_DIR/prepare_blender.sh"
 # we want to directly invoke render from blender with args such that
 # the render doesn't actually happen, we can see the complete blender scene
 
-# the config for this test is within render.py
-blender --python "$PROJECT_ROOT/py/post_render/post_render.py" -- "end-to-end"
+CONFIG='{
+  "track": "SIN",
+  "year": 2024,
+  "render": {
+    "should_render": false,
+    "validate_render": true,
+    "fps": 30,
+    "samples": 32,
+    "adaptive_sampling": true,
+    "is_4k": true,
+    "output": "output.mp4",
+    "max_cam_distance": 70
+  },
+  "drivers": ["TSU", "RIC"]
+}'
+
+blender --python "$PROJECT_ROOT/py/post_render/post_render.py" -- "$CONFIG"
