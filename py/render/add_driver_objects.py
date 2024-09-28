@@ -2,15 +2,13 @@ import math
 
 import bpy
 import mathutils
+import numpy as np
 import PIL.Image as Image
-from utils.colors import hex_to_normal_rgb, get_driver_colors
+from utils.colors import get_driver_colors, hex_to_normal_rgb
 from utils.project_structure import Resources
 
 
-def set_color(obj, hex_color: str):
-    # Convert hex color to RGB (values between 0 and 1)
-    r, g, b = tuple(int(hex_color[i : i + 2], 16) / 255.0 for i in (1, 3, 5))
-
+def set_color(obj, rgb_color: tuple[float, float, float]):
     # if obj has no mat at all, we need to create one
     if not obj.data.materials:
         mat = bpy.data.materials.new(name="CustomColorMaterial")
@@ -26,12 +24,11 @@ def set_color(obj, hex_color: str):
         if node.type == "BSDF_PRINCIPLED":
             principled_bsdf = node
             break
-
     for link in mat.node_tree.links:
         if link.to_node == principled_bsdf and link.to_socket.name == "Base Color":
             mat.node_tree.links.remove(link)
 
-    principled_bsdf.inputs["Base Color"].default_value = (r, g, b, 1)
+    principled_bsdf.inputs["Base Color"].default_value = (*rgb_color, 1)
 
 
 def replace_color_in_image(blender_obj, hex_color, driver_abbrev):
@@ -173,7 +170,15 @@ def create_driver(driver, hex_color, df):
     return driver_obj
 
 
-def main(driver_dfs, drivers):
+# def main(driver_dfs, drivers, render_type):
+#     # first driver in a specific color, every other driver in grayscale
+#     if render_type == "rest-of-field":
+#         hex_scale = [(x, x, x) for x in np.linspace(70, 255, 19, dtype=float)]
+#
+
+
+
+def main(driver_dfs, drivers, render_type):
     driver_objs = {}
     driver_colors = get_driver_colors(*[driver_abbrev for driver_abbrev in drivers])
 

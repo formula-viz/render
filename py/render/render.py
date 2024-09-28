@@ -1,5 +1,6 @@
 import json
 import sys
+from abc import ABC, abstractmethod
 
 import add_camera
 import add_driver_objects
@@ -12,61 +13,81 @@ import load_track_data
 import render_animation
 
 
-# we already have loaded the track data and the car data for all cars
-# on this year and track, now, we just need the cars to render
-def main(inp):
-    print("Enter render.py")
-    config = json.loads(inp)
+class AbstractRenderer(ABC):
+    def __init__(self, config):
+        self.config = config
 
-    start_buffer_frames = 45
-    end_buffer_frames = 75
+    @abstractmethod
+    def setup_track(self):
+        pass
 
-    bpy.data.collections.remove(bpy.data.collections["Collection"], do_unlink=True)
-    add_sun.main()
+    @abstractmethod
+    def add_drivers(self):
+        pass
 
-    print("Loading Track Data...")
-    inner_points, outer_points, inner_curb_points, outer_curb_points = load_track_data.main(
-        config["year"], config["track"]
-    )
+    @abstractmethod
+    def add_camera(self):
+        pass
 
-    print("Adding Track...")
-    add_track.main(inner_points, outer_points, inner_curb_points, outer_curb_points)
+    # this should be the same for all jobs
+    def trigger_render(self):
+        if self.config["render"]["should_render"]:
+            print("Starting Rendering...")
+            render_animation.main(self.config, len(self.driver_dfs[self.focused_driver]))
+            print("Exiting render.py")
+            bpy.ops.wm.quit_blender()
+        else:
+            bpy.context.scene.frame_end = (
+                min([len(self.driver_dfs[driver_abbrev]) for driver_abbrev in self.config["drivers"]]) - 1
+            )
+            bpy.context.scene.render.fps = self.config["render"]["fps"]
+            print("should_render is set to false, skipping rendering...")
 
-    print("Adding Drivers...")
-    focused_driver = config["drivers"][0]  # the camera driver is just the first listed
-    driver_dfs, start_finish_line_idx = load_driver_data.main(
-        config["year"],
-        config["track"],
-        config["render"]["fps"],
-        start_buffer_frames,
-        end_buffer_frames,
-        inner_points,
-        outer_points,
-    )
-    driver_objs = add_driver_objects.main(driver_dfs, config["drivers"])
+    # this has to be a separate function because the car data must be loaded before in order to get an
+    # accurate estimation of the location of the start finish line
+    # should be the same for all renders so it is not abstract
+    def add_indicators(self):
+        add_indicators.main(
+            self.track_data.inner_curb_points, self.track_data.outer_curb_points, self.start_finish_line_idx
+        )
 
-    print("Adding Indicators...")
-    add_indicators.main(inner_curb_points, outer_curb_points, start_finish_line_idx)
+    def render(self):
+        """Main process which should be called"""
+        self.setup_track()  # track_data is a dependency for later operations
+        self.add_drivers()
+        self.add_indicators()
+        self.add_camera()
+        self.trigger_render()
 
-    add_camera.main(
-        driver_dfs[focused_driver],
-        driver_objs[focused_driver],
-        config["render"]["max_cam_distance"],
-        start_buffer_frames,
-        end_buffer_frames,
-    )
 
-    if config["render"]["should_render"]:
-        print("Starting Rendering...")
-        render_animation.main(config, len(driver_dfs[focused_driver]))
-        print("Exiting render.py")
-        bpy.ops.wm.quit_blender()
-    else:
-        # for driver in drivers not all ~20 in the lineup
-        bpy.context.scene.frame_end = min([len(driver_dfs[driver_abbrev]) for driver_abbrev in config["drivers"]]) - 1
-        bpy.context.scene.render.fps = config["render"]["fps"]
-        print("should_render is set to false, skipping rendering...")
+class HeadToHeadRenderer(AbstractRenderer):
+    def setup_track(self):
+        bpy.data.collections.remove(bpy.data.collections["Collection"], do_unlink=True)  # default collection
+        add_sun.main()
+        self.track_data = load_track_data.main(self.config["year"], self.config["track"])
+        add_track.main(self.track_data)
+
+    def add_drivers(self):
+        self.driver_dfs, self.start_finish_line_idx = load_driver_data.main(self.config, self.track_data)
+        self.driver_objs = add_driver_objects.main(self.driver_dfs, self.config["drivers"], "head-to-head")
+
+    def add_camera(self):
+        focused_driver = self.config["drivers"][0]  # in head to head, focus on the first driver
+        add_camera.main(
+            self.driver_dfs[focused_driver],
+            self.driver_objs[focused_driver],
+            self.config["render"]["max_cam_distance"],
+            self.config["render"]["start_buffer_frames"],
+            self.config["render"]["end_buffer_frames"],
+        )
 
 
 if __name__ == "__main__":
-    main(sys.argv[-1])
+    print("Enter render.py")
+    config = json.loads(sys.argv[-1])
+    video_type = config["type"]
+
+    if video_type == "head-to-head":
+        print("Creating HeadToHeadRenderer...")
+        renderer = HeadToHeadRenderer(config)
+        renderer.render()

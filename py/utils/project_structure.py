@@ -11,14 +11,15 @@ def get_frames_dir():
     return FRAMES_DIR
 
 
-class DriverData:
+# add PS to the class name to avoid conflicts
+class DriverDataPS:
     @staticmethod
     def get_car_data_dir(year: str, track: str, fps: str) -> str:
         return os.path.join(CAR_DATA_DIR, f"{year}_{track}_{fps}")
 
     @staticmethod
     def get_car_data_path(year: str, track: str, fps: str, driver: str) -> str:
-        return os.path.join(DriverData.get_car_data_dir(year, track, fps), f"{driver}.csv")
+        return os.path.join(DriverDataPS.get_car_data_dir(year, track, fps), f"{driver}.csv")
 
     @staticmethod
     def get_driver_times_path(year: str, track: str) -> str:
@@ -32,7 +33,8 @@ class DriverData:
 TRACK_DATA_DIR = os.environ.get("TRACK_DATA_DIR")
 
 
-class TrackData:
+# add PS to the class name to avoid conflicts with the built-in class TrackData
+class TrackDataPS:
     @staticmethod
     def get_track_data_dir() -> str:
         return TRACK_DATA_DIR

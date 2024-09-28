@@ -10,7 +10,7 @@ import pandas as pd
 import requests
 from fastf1.core import Laps, Telemetry
 from scipy.interpolate import UnivariateSpline
-from utils.project_structure import DriverData
+from utils.project_structure import DriverDataPS
 
 
 def load_driver_headshots(driver_abbrevs, headshot_urls):
@@ -19,7 +19,7 @@ def load_driver_headshots(driver_abbrevs, headshot_urls):
 
     downloaded_count = 0
     for driver, url in zip(driver_abbrevs, headshot_urls):
-        image_path = DriverData.get_driver_image_path(driver)
+        image_path = DriverDataPS.get_driver_image_path(driver)
 
         if not os.path.exists(image_path):
             try:
@@ -37,7 +37,7 @@ def load_driver_headshots(driver_abbrevs, headshot_urls):
 
 
 def save_driver_times(driver_times: dict[str, str], year: str, track: str):
-    loc = DriverData.get_driver_times_path(year, track)
+    loc = DriverDataPS.get_driver_times_path(year, track)
     with open(loc, "w") as file:
         json.dump(driver_times, file)
 
@@ -371,11 +371,11 @@ def add_wheel_rots(df):
 
 
 def save(year: str, track: str, fps: str, dfs: dict[str, pd.DataFrame], start_finish_line_idx: int):
-    cur_dir = DriverData.get_car_data_dir(year, track, fps)
+    cur_dir = DriverDataPS.get_car_data_dir(year, track, fps)
     os.makedirs(cur_dir, exist_ok=True)
 
     for driver, df in dfs.items():
-        driver_path = DriverData.get_car_data_path(year, track, fps, driver)
+        driver_path = DriverDataPS.get_car_data_path(year, track, fps, driver)
         df.to_csv(driver_path, index=False)
 
     with open(os.path.join(cur_dir, "start_finish_line_idx.txt"), "w") as file:
@@ -383,7 +383,7 @@ def save(year: str, track: str, fps: str, dfs: dict[str, pd.DataFrame], start_fi
 
 
 def already_done(year: str, track: str, fps: str):
-    cur_dir = DriverData.get_car_data_dir(year, track, fps)
+    cur_dir = DriverDataPS.get_car_data_dir(year, track, fps)
     start_finish_line_idx = 0
 
     if os.path.exists(cur_dir):
@@ -494,21 +494,21 @@ def optimize_smoothness_concurrent(track_edges: pd.DataFrame, fps: int, driver_t
 # in order to run this function, we need to already have the track data for this track and year
 # because this will be necessary to ensure that we have the correct smoothness so the movement
 # looks natural but also so that we are within track limits
-def main(year: int, track: str, fps: int, start_buffer_frames, end_buffer_frames, inner_points, outer_points):
-    is_done, driver_dfs, start_finish_line_idx = already_done(str(year), track, str(fps))
+def main(config, track_data):
+    is_done, driver_dfs, start_finish_line_idx = already_done(str(config["year"]), config["track"], str(config["render"]["fps"]))
     if is_done:
         print("Already fetched this car data, don't need to load...")
         return driver_dfs, start_finish_line_idx
     print("Fetching and processing car data")
 
-    driver_tels = load_from_fastf1(year, track)
-    start_finish_line_idx = process_grouped_driver_tels(driver_tels, inner_points, outer_points)
+    driver_tels = load_from_fastf1(config["year"], config["track"])
+    start_finish_line_idx = process_grouped_driver_tels(driver_tels, track_data.inner_points, track_data.outer_points)
 
     driver_dfs = {}
     for driver, tel in driver_tels.items():
-        df = get_driver_df(tel, 3, fps)
-        df = add_start_buffer(df, start_buffer_frames)
-        df = add_end_buffer(df, end_buffer_frames)
+        df = get_driver_df(tel, 3, track_data["fps"])
+        df = add_start_buffer(df, config["render"]["start_buffer_frames"])
+        df = add_end_buffer(df, config["render"]["end_buffer_frames"])
         driver_dfs[driver] = df
 
     for driver, df in driver_dfs.items():
@@ -516,7 +516,7 @@ def main(year: int, track: str, fps: int, start_buffer_frames, end_buffer_frames
         df = add_wheel_rots(df)
         driver_dfs[driver] = df
 
-    save(str(year), track, str(fps), driver_dfs, start_finish_line_idx)
+    save(str(config["year"]), config["track"], str(config["fps"]), driver_dfs, start_finish_line_idx)
 
     print(f"Done processing car data")
     return driver_dfs, start_finish_line_idx
