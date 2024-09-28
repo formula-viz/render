@@ -2,7 +2,7 @@ import json
 
 import bpy
 from utils.colors import get_driver_colors, hex_to_blender_rgb
-from utils.project_structure import DriverData, Resources
+from utils.project_structure import DriverDataPS, Resources
 
 
 # currently configured for 2 driver videos, where the drivers are either is_left or !is_left
@@ -86,7 +86,7 @@ class DriverGraphic:
                 time_strip.location[0] = 0.92
 
     def _add_driver_image(self):
-        loc = DriverData.get_driver_image_path(self.driver_abbrev)
+        loc = DriverDataPS.get_driver_image_path(self.driver_abbrev)
         image_strip = bpy.context.scene.sequence_editor.sequences.new_image(
             name=self.driver_abbrev + "_OverlayImage", filepath=loc, channel=self.start_channel, frame_start=1
         )
@@ -125,7 +125,7 @@ class DriverGraphic:
 
 
 def load_times_dict(year: str, track: str):
-    loc = DriverData.get_driver_times_path(year, track)
+    loc = DriverDataPS.get_driver_times_path(year, track)
     with open(loc, "r") as file:
         retrieved_driver_times = json.load(file)
 
