@@ -1,4 +1,4 @@
-import bmesh
+import bmesh  # pyright: ignore
 import bpy
 
 
@@ -34,7 +34,7 @@ def create_material(color, name):
     return mat
 
 
-def main(inner_points, outer_points, inner_curb_points, outer_curb_points):
+def main(track_data):
     track_collection = bpy.data.collections.new(name="TrackCollection")
     bpy.context.scene.collection.children.link(track_collection)
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
@@ -44,6 +44,6 @@ def main(inner_points, outer_points, inner_curb_points, outer_curb_points):
     track_mat = create_material(dark_gray, "Main")
     curb_mat = create_material(darker_gray, "Curb")
 
-    create_planes(inner_points, outer_points, "Main", track_mat)
-    create_planes(outer_points, outer_curb_points, "CurbOuter", curb_mat)
-    create_planes(inner_points, inner_curb_points, "CurbInner", curb_mat)
+    create_planes(track_data.inner_points, track_data.outer_points, "Main", track_mat)
+    create_planes(track_data.outer_points, track_data.outer_curb_points, "CurbOuter", curb_mat)
+    create_planes(track_data.inner_points, track_data.inner_curb_points, "CurbInner", curb_mat)

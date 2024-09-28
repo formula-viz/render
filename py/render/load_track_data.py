@@ -3,12 +3,12 @@ import os
 import numpy as np
 import pandas as pd
 from scipy.interpolate import splev, splprep
-from utils.project_structure import TrackData
+from utils.project_structure import TrackDataPS
 
 
 # in the earlier bash script, we clone the repository locally
 def load_raw_data(year: int, track: str, use_latest_year: bool = True):
-    track_data_dir = TrackData.get_track_data_dir()
+    track_data_dir = TrackDataPS.get_track_data_dir()
     print("Track data dir: ", track_data_dir)
     # iterate through contents of track_data, finding all files containing track
     # then, we find the file with the latest year
@@ -23,13 +23,13 @@ def load_raw_data(year: int, track: str, use_latest_year: bool = True):
         latest_year = 0
         latest_file = ""
         for file in track_data_files:
-            year = TrackData.get_year_of_track_file(file)
+            year = TrackDataPS.get_year_of_track_file(file)
             if int(year) > latest_year:
                 latest_year = int(year)
                 latest_file = file
         track_data_file = latest_file
     else:
-        track_data_file = TrackData.get_track_file(str(year), track)
+        track_data_file = TrackDataPS.get_track_file(str(year), track)
 
         if track_data_file not in track_data_files:
             raise FileNotFoundError(f"Track data not found for {track} in {year}, use_latest_year is set to False")
@@ -106,13 +106,10 @@ def smooth_points(track_points: pd.DataFrame):
     def smooth_closed_loop(points, num_points=10000, smoothing=100):
         # Ensure points is a numpy array
         points = np.asarray(points)
-
         # Separate x and y coordinates
         x, y = points.T
-
         # Fit a periodic spline
         tck, _ = splprep([x, y], s=smoothing, per=True)
-
         # Generate smooth points
         u_new = np.linspace(0, 1, num_points)
         smooth_x, smooth_y = splev(u_new, tck)
@@ -244,6 +241,14 @@ def curb(cur, other, curb_width):
     return curb
 
 
+class TrackData:
+    def __init__(self, inner_points, outer_points, inner_curb_points, outer_curb_points):
+        self.inner_points = inner_points
+        self.outer_points = outer_points
+        self.inner_curb_points = inner_curb_points
+        self.outer_curb_points = outer_curb_points
+
+
 def main(year: int, track: str):
     print("Processing track data")
     use_latest_year = True  # this may cause problems if the track changes year to year
@@ -256,4 +261,4 @@ def main(year: int, track: str):
     outer_curb_points = curb(outer_points, inner_points, curb_width)
 
     print("Done processing track data")
-    return (inner_points, outer_points, inner_curb_points, outer_curb_points)
+    return TrackData(inner_points, outer_points, inner_curb_points, outer_curb_points)

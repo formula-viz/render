@@ -9,6 +9,7 @@ source "$SCRIPT_DIR/prepare_blender.sh"
 CONFIG='{
   "track": "SIN",
   "year": 2024,
+  "type": "rest-of-field",
   "render": {
     "should_render": true,
     "validate_render": false,
@@ -18,6 +19,8 @@ CONFIG='{
     "is_4k": true,
     "output": "output.mp4",
     "max_cam_distance": 70
+    "start_buffer_frames": 45,
+    "end_buffer_frames": 70,
   },
   "drivers": ["TSU", "RIC"]
 }'
