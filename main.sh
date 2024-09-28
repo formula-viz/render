@@ -1,18 +1,22 @@
 #!/bin/bash
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-source "$SCRIPT_DIR/prepare_blender.sh"
+source "$SCRIPT_DIR/scripts/prepare_blender.sh"
 
 # we want to directly invoke render from blender with args such that
 # the render doesn't actually happen, we can see the complete blender scene
 
+HEADLESS=false
 CONFIG='{
   "track": "SIN",
   "year": 2024,
-  "type": "head-to-head",
+  "type": "rest-of-field",
+  "pipeline": {
+    "isolate_module": "render",
+    "preview_mode": true,
+    "quick_validate_mode": false
+  },
   "render": {
-    "should_render": false,
-    "validate_render": true,
     "fps": 30,
     "samples": 32,
     "adaptive_sampling": true,
@@ -25,4 +29,8 @@ CONFIG='{
   "drivers": ["TSU", "RIC"]
 }'
 
-blender --python "$PROJECT_ROOT/py/render/render.py" -- "$CONFIG"
+if [ "$HEADLESS" = true ]; then
+    blender -b --python "$PROJECT_ROOT/py/main.py" -- "$CONFIG"
+else
+    blender --python "$PROJECT_ROOT/py/main.py" -- "$CONFIG"
+fi

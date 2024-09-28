@@ -1,6 +1,10 @@
 #!/bin/bash
 
-export PROJECT_ROOT=$(dirname "$(cd "$(dirname "$0")" && pwd)")
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+export PROJECT_ROOT=$(dirname "$SCRIPT_DIR")
+
+echo "Project Root: $PROJECT_ROOT"
+
 export VENV_PATH="$PROJECT_ROOT/pyvenv"
 
 # blender system python refers to the site packages location
@@ -15,7 +19,7 @@ add_to_pythonpath() {
     local dir="$1"
     if [[ "$(basename "$dir")" != "__pycache__" ]]; then
         PYTHONPATH="$dir:$PYTHONPATH"
-        for subdir in "$dir"/*/ ; do
+        for subdir in "$dir"/* ; do
             if [ -d "$subdir" ]; then
                 add_to_pythonpath "$subdir"
             fi

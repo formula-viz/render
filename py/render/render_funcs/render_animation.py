@@ -1,5 +1,6 @@
-import bpy
 import os
+
+import bpy
 from utils.project_structure import get_frames_dir
 
 
@@ -22,14 +23,14 @@ def configure_gpu(config):
 
 # render settings will be sent in as a dict from yaml
 def main(config, num_frames):
-    if not config["render"]["should_render"]:
-        print("Set to not render, skipping rendering...")
+    if config["pipeline"]["preview_mode"]:
+        print("Set to preview mode, skipping rendering...")
         return
 
     print(f"Starting Rendering of {num_frames}")
     configure_gpu(config)
 
-    if config["render"]["validate_render"]:
+    if config["pipeline"]["quick_validate_mode"]:
         bpy.context.scene.frame_end = 100
     else:
         bpy.context.scene.frame_end = num_frames
