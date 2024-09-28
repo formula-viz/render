@@ -1,3 +1,4 @@
 {
-  "extraPaths": ["./py"]
+  "extraPaths": ["./py"],
+  "reportAttributeAccessIssue": "none",
 }
