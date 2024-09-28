@@ -75,14 +75,3 @@ class HeadToHeadRenderer(AbstractRenderer):
             self.config["render"]["start_buffer_frames"],
             self.config["render"]["end_buffer_frames"],
         )
-
-
-if __name__ == "__main__":
-    print("Enter render.py")
-    config = json.loads(sys.argv[-1])
-    video_type = config["type"]
-
-    if video_type == "head-to-head":
-        print("Creating HeadToHeadRenderer...")
-        renderer = HeadToHeadRenderer(config)
-        renderer.render()

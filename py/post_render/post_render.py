@@ -94,13 +94,3 @@ class HeadToHeadPostRenderer(AbstractPostRenderer):
             bpy.ops.render.render(animation=True)
             print("Exiting post_render.py")
             bpy.ops.wm.quit_blender()
-
-
-if __name__ == "__main__":
-    print("Enter post_render.py")
-    config = json.loads(sys.argv[-1])
-    video_type = config["type"]
-
-    if video_type == "head-to-head":
-        post_renderer = HeadToHeadPostRenderer(config)
-        post_renderer.post_render()
