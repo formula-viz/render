@@ -80,12 +80,12 @@ class HeadToHeadPostRenderer(AbstractPostRenderer):
 
         bpy.context.scene.render.image_settings.file_format = "FFMPEG"
         bpy.context.scene.render.ffmpeg.format = "MPEG4"
-        bpy.context.scene.render.filepath = f"output/{config['render']['output']}"
+        bpy.context.scene.render.filepath = f"output/{self.config['render']['output']}"
 
         bpy.context.scene.render.resolution_x = 3840
         bpy.context.scene.render.resolution_y = 2160
 
-        bpy.context.scene.render.fps = config["render"]["fps"]
+        bpy.context.scene.render.fps = self.config["render"]["fps"]
         bpy.context.scene.frame_end = self.num_frames
 
         if self.config["pipeline"]["preview_mode"]:
