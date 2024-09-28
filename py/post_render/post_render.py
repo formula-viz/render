@@ -48,6 +48,10 @@ def main(inp):
         print(f"No frames, assuming this is a run for testing, setting num_frames to {num_frames}")
 
     add_music(num_frames)
+    bpy.context.scene.render.ffmpeg.audio_codec = 'AAC'
+    bpy.context.scene.render.ffmpeg.audio_bitrate = 192  # Set bitrate to 192 kbps
+    bpy.context.scene.render.ffmpeg.audio_channels = 'STEREO'
+
     set_background(num_frames)
     add_drivers.main(config["drivers"], num_frames, config["render"]["is_4k"], config["track"], str(config["year"]))
 
