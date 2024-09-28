@@ -2,7 +2,6 @@ import math
 
 import bpy
 import mathutils
-import numpy as np
 import PIL.Image as Image
 from utils.colors import get_driver_colors, hex_to_normal_rgb
 from utils.project_structure import Resources

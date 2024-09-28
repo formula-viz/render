@@ -2,9 +2,8 @@ import json
 import sys
 from abc import ABC, abstractmethod
 
-import add_drivers
 import bpy
-import load_sequence
+from post_render_funcs import add_drivers, load_sequence
 from utils.project_structure import Resources
 
 
@@ -69,7 +68,11 @@ class HeadToHeadPostRenderer(AbstractPostRenderer):
 
     def add_visuals(self):
         add_drivers.main(
-            config["drivers"], self.num_frames, config["render"]["is_4k"], config["track"], str(config["year"])
+            self.config["drivers"],
+            self.num_frames,
+            self.config["render"]["is_4k"],
+            self.config["track"],
+            str(self.config["year"]),
         )
 
     def trigger_render(self):
@@ -85,12 +88,12 @@ class HeadToHeadPostRenderer(AbstractPostRenderer):
         bpy.context.scene.render.fps = config["render"]["fps"]
         bpy.context.scene.frame_end = self.num_frames
 
-        if self.config["render"]["should_render"]:
+        if self.config["pipeline"]["preview_mode"]:
+            print("In preview mode, skipping rendering...")
+        else:
             bpy.ops.render.render(animation=True)
             print("Exiting post_render.py")
             bpy.ops.wm.quit_blender()
-        else:
-            print("should_render is set to false, skipping rendering...")
 
 
 if __name__ == "__main__":
