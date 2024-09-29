@@ -12,7 +12,7 @@ CONFIG='{
   "year": 2024,
   "type": "rest-of-field",
   "pipeline": {
-    "isolate_module": "render",
+    "isolate_module": "post_render",
     "preview_mode": true,
     "quick_validate_mode": false
   },
@@ -26,7 +26,7 @@ CONFIG='{
     "start_buffer_frames": 45,
     "end_buffer_frames": 70
   },
-  "drivers": ["TSU", "RIC"]
+  "drivers": ["NOR", "VER"]
 }'
 
 if [ "$HEADLESS" = true ]; then

@@ -1,13 +1,17 @@
 import json
 import sys
 
-from py.post_render.post_render import HeadToHeadPostRenderer
-from py.render.render import HeadToHeadRenderer
+from py.post_render.post_render import HeadToHeadPostRenderer, RestOfFieldPostRenderer
+from py.render.render import HeadToHeadRenderer, RestOfFieldRenderer
 
 
 def initialize(config):
-    renderer = HeadToHeadRenderer(config)
-    post_renderer = HeadToHeadPostRenderer(config)
+    if config["type"] == "head-to-head":
+        renderer = HeadToHeadRenderer(config)
+        post_renderer = HeadToHeadPostRenderer(config)
+    else:
+        renderer = RestOfFieldRenderer(config)
+        post_renderer = RestOfFieldPostRenderer(config)
 
     return renderer, post_renderer
 

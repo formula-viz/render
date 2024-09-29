@@ -495,7 +495,9 @@ def optimize_smoothness_concurrent(track_edges: pd.DataFrame, fps: int, driver_t
 # because this will be necessary to ensure that we have the correct smoothness so the movement
 # looks natural but also so that we are within track limits
 def main(config, track_data):
-    is_done, driver_dfs, start_finish_line_idx = already_done(str(config["year"]), config["track"], str(config["render"]["fps"]))
+    is_done, driver_dfs, start_finish_line_idx = already_done(
+        str(config["year"]), config["track"], str(config["render"]["fps"])
+    )
     if is_done:
         print("Already fetched this car data, don't need to load...")
         return driver_dfs, start_finish_line_idx

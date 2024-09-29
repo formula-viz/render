@@ -1,8 +1,10 @@
+import numpy as np
 from colormath.color_conversions import convert_color
 from colormath.color_diff import delta_e_cie2000
 from colormath.color_objects import LabColor, sRGBColor
 from fastf1 import plotting
-import numpy
+
+GOLD_RGB = (255, 215, 0)
 
 
 def hex_to_blender_rgb(hex_color: str) -> tuple:
@@ -18,7 +20,20 @@ def hex_to_normal_rgb(hex_color: str) -> tuple:
     return tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
 
 
-def get_driver_colors(*drivers):
+def rgb_to_hex(rgb_color: tuple) -> str:
+    # Convert an RGB tuple to a hex color.
+    return f"#{''.join(f'{int(x):02x}' for x in rgb_color)}"
+
+
+# 19 gray scale colors and one gold color, the gold must be at index 0
+def get_rest_of_field_colors():
+    gray_scale = [(x, x, x) for x in np.linspace(70, 255, 19, dtype=float)]
+    gray_scale.insert(0, GOLD_RGB)
+
+    return [rgb_to_hex(x) for x in gray_scale]
+
+
+def get_head_to_head_colors(*drivers):
     def hex_to_rgb(hex_color):
         return tuple(int(hex_color[i : i + 2], 16) for i in (1, 3, 5))
 
@@ -37,7 +52,7 @@ def get_driver_colors(*drivers):
         def patch_asscalar(a):
             return a.item()
 
-        setattr(numpy, "asscalar", patch_asscalar)
+        setattr(np, "asscalar", patch_asscalar)
         delta_e = delta_e_cie2000(lab1, lab2)
 
         return delta_e

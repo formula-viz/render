@@ -1,9 +1,8 @@
-import json
-import sys
 from abc import ABC, abstractmethod
 
 import bpy
 from post_render_funcs import add_drivers, load_sequence
+from utils.colors import GOLD_RGB, get_head_to_head_colors, rgb_to_hex
 from utils.project_structure import Resources
 
 
@@ -13,40 +12,12 @@ class AbstractPostRenderer(ABC):
 
     @abstractmethod
     def load_sequence(self):
-        pass
-
-    @abstractmethod
-    def add_music(self):
-        pass
-
-    @abstractmethod
-    def set_background(self):
-        pass
-
-    @abstractmethod
-    def add_visuals(self):
-        pass
-
-    @abstractmethod
-    def trigger_render(self):
-        pass
-
-    def post_render(self):
-        self.load_sequence()
-        self.add_music()
-        self.set_background()
-        self.add_visuals()
-        self.trigger_render()
-
-
-# I am going to set such that this will always be rendered in 4k
-class HeadToHeadPostRenderer(AbstractPostRenderer):
-    def load_sequence(self):
         self.num_frames = load_sequence.main()
         if self.num_frames == 0:
             self.num_frames = 100
             print(f"No frames, assuming this is a run for testing, setting num_frames to {self.num_frames}")
 
+    @abstractmethod
     def add_music(self):
         bpy.context.scene.render.ffmpeg.audio_codec = "AAC"
         bpy.context.scene.render.ffmpeg.audio_bitrate = 192  # Set bitrate to 192 kbps
@@ -57,6 +28,7 @@ class HeadToHeadPostRenderer(AbstractPostRenderer):
         )
         audio_strip.frame_final_duration = self.num_frames
 
+    @abstractmethod
     def set_background(self):
         image_strip = bpy.context.scene.sequence_editor.sequences.new_image(
             name="BackgroundImage", filepath=Resources.get_background_image_path(), channel=1, frame_start=1
@@ -66,15 +38,11 @@ class HeadToHeadPostRenderer(AbstractPostRenderer):
         image_strip.transform.scale_x = 0.64
         image_strip.transform.scale_y = 0.55
 
+    @abstractmethod
     def add_visuals(self):
-        add_drivers.main(
-            self.config["drivers"],
-            self.num_frames,
-            self.config["render"]["is_4k"],
-            self.config["track"],
-            str(self.config["year"]),
-        )
+        pass
 
+    @abstractmethod
     def trigger_render(self):
         bpy.context.scene.render.use_sequencer = True
 
@@ -94,3 +62,81 @@ class HeadToHeadPostRenderer(AbstractPostRenderer):
             bpy.ops.render.render(animation=True)
             print("Exiting post_render.py")
             bpy.ops.wm.quit_blender()
+
+    def post_render(self):
+        self.load_sequence()
+        self.add_music()
+        self.set_background()
+        self.add_visuals()
+        self.trigger_render()
+
+
+# I am going to set such that this will always be rendered in 4k
+class HeadToHeadPostRenderer(AbstractPostRenderer):
+    def load_sequence(self):
+        super().load_sequence()
+
+    def add_music(self):
+        super().add_music()
+
+    def set_background(self):
+        super().set_background()
+
+    def add_visuals(self):
+        driver_times = add_drivers.load_times_dict(self.config["year"], self.config["track"])
+        driver_colors = get_head_to_head_colors(*self.config["drivers"])
+
+        num_strips = 3
+        main_start = 5
+
+        add_drivers.DriverGraphic(
+            self.config["drivers"][0],
+            driver_colors[0],
+            self.num_frames,
+            driver_times[self.config["drivers"][0]],
+            self.config["render"]["is_4k"],
+            main_start,
+            True,
+        )
+
+        add_drivers.DriverGraphic(
+            self.config["drivers"][1],
+            driver_colors[1],
+            self.num_frames,
+            driver_times[self.config["drivers"][1]],
+            self.config["render"]["is_4k"],
+            main_start + num_strips,
+            False,
+        )
+
+    def trigger_render(self):
+        super().trigger_render()
+
+
+class RestOfFieldPostRenderer(AbstractPostRenderer):
+    def load_sequence(self):
+        return super().load_sequence()
+
+    def add_music(self):
+        return super().add_music()
+
+    def set_background(self):
+        return super().set_background()
+
+    def add_visuals(self):
+        driver_times = add_drivers.load_times_dict(self.config["year"], self.config["track"])
+        gold_hex = rgb_to_hex(GOLD_RGB)
+
+        main_start = 5
+        add_drivers.DriverGraphic(
+            self.config["drivers"][0],
+            gold_hex,
+            self.num_frames,
+            driver_times[self.config["drivers"][0]],
+            self.config["render"]["is_4k"],
+            main_start,
+            True,
+        )
+
+    def trigger_render(self):
+        return super().trigger_render()

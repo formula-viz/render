@@ -1,11 +1,12 @@
-import json
-import sys
 from abc import ABC, abstractmethod
 
 import bpy
+import fastf1 as ff1
+import numpy as np
 from render_funcs import (add_camera, add_driver_objects, add_indicators,
                           add_sun, add_track, load_driver_data,
                           load_track_data, render_animation)
+from utils.colors import get_rest_of_field_colors
 
 
 class AbstractRenderer(ABC):
@@ -14,7 +15,10 @@ class AbstractRenderer(ABC):
 
     @abstractmethod
     def setup_track(self):
-        pass
+        bpy.data.collections.remove(bpy.data.collections["Collection"], do_unlink=True)  # default collection
+        add_sun.main()
+        self.track_data = load_track_data.main(self.config["year"], self.config["track"])
+        add_track.main(self.track_data)
 
     @abstractmethod
     def add_drivers(self):
@@ -57,10 +61,7 @@ class AbstractRenderer(ABC):
 
 class HeadToHeadRenderer(AbstractRenderer):
     def setup_track(self):
-        bpy.data.collections.remove(bpy.data.collections["Collection"], do_unlink=True)  # default collection
-        add_sun.main()
-        self.track_data = load_track_data.main(self.config["year"], self.config["track"])
-        add_track.main(self.track_data)
+        super().setup_track()
 
     def add_drivers(self):
         self.driver_dfs, self.start_finish_line_idx = load_driver_data.main(self.config, self.track_data)
@@ -68,6 +69,32 @@ class HeadToHeadRenderer(AbstractRenderer):
 
     def add_camera(self):
         focused_driver = self.config["drivers"][0]  # in head to head, focus on the first driver
+        add_camera.main(
+            self.driver_dfs[focused_driver],
+            self.driver_objs[focused_driver],
+            self.config["render"]["max_cam_distance"],
+            self.config["render"]["start_buffer_frames"],
+            self.config["render"]["end_buffer_frames"],
+        )
+
+
+class RestOfFieldRenderer(AbstractRenderer):
+    def setup_track(self):
+        super().setup_track()
+
+    def add_drivers(self):
+        self.driver_dfs, self.start_finish_line_idx = load_driver_data.main(self.config, self.track_data)
+        colors = get_rest_of_field_colors()
+
+        # for now, gold driver is just the first driver listed in drivers
+        focused_driver = self.config["drivers"][0]
+        drivers = [driver for driver in self.driver_dfs.keys() if driver != focused_driver]
+        drivers.insert(0, focused_driver)
+
+        self.driver_objs = add_driver_objects.main(self.driver_dfs, drivers, colors)
+
+    def add_camera(self):
+        focused_driver = self.config["drivers"][0]
         add_camera.main(
             self.driver_dfs[focused_driver],
             self.driver_objs[focused_driver],

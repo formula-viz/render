@@ -1,7 +1,7 @@
 import json
 
 import bpy
-from utils.colors import get_driver_colors, hex_to_blender_rgb
+from utils.colors import hex_to_blender_rgb
 from utils.project_structure import DriverDataPS, Resources
 
 
@@ -60,7 +60,7 @@ class DriverGraphic:
             color_strip.transform.offset_x = 1615
             color_strip.transform.offset_y = -900
 
-            time_strip.location[0] = 0.08
+            time_strip.location[0] = 0.92
             time_strip.location[1] = 0.05
 
             # we just overwrite the above values if is_left
@@ -68,7 +68,7 @@ class DriverGraphic:
                 image_strip.use_flip_x = True
                 color_strip.use_flip_x = True
 
-                time_strip.location[0] = 0.92
+                time_strip.location[0] = 0.08
         else:
             image_strip.transform.offset_x = 800
             image_strip.transform.offset_y = -328
@@ -130,25 +130,3 @@ def load_times_dict(year: str, track: str):
         retrieved_driver_times = json.load(file)
 
     return retrieved_driver_times
-
-
-def main(drivers, num_frames: int, is_4k: bool, track: str, year: str):
-    driver_times = load_times_dict(year, track)
-
-    driver_colors = get_driver_colors(*drivers)
-
-    # for now, we just assume that there will be 2 drivers
-    num_strips = 3
-    main_start = 5
-
-    DriverGraphic(drivers[0], driver_colors[0], num_frames, driver_times[drivers[0]], is_4k, main_start, True)
-
-    DriverGraphic(
-        drivers[1],
-        driver_colors[1],
-        num_frames,
-        driver_times[drivers[1]],
-        is_4k,
-        main_start + num_strips,
-        False,
-    )

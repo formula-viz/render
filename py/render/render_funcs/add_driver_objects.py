@@ -3,7 +3,7 @@ import math
 import bpy
 import mathutils
 import PIL.Image as Image
-from utils.colors import get_driver_colors, hex_to_normal_rgb
+from utils.colors import hex_to_normal_rgb
 from utils.project_structure import Resources
 
 
@@ -169,18 +169,8 @@ def create_driver(driver, hex_color, df):
     return driver_obj
 
 
-# def main(driver_dfs, drivers, render_type):
-#     # first driver in a specific color, every other driver in grayscale
-#     if render_type == "rest-of-field":
-#         hex_scale = [(x, x, x) for x in np.linspace(70, 255, 19, dtype=float)]
-#
-
-
-
-def main(driver_dfs, drivers, render_type):
+def main(driver_dfs, drivers, driver_colors):
     driver_objs = {}
-    driver_colors = get_driver_colors(*[driver_abbrev for driver_abbrev in drivers])
-
     for i, driver_abbrev in enumerate(drivers):
         driver_objs[driver_abbrev] = create_driver(driver_abbrev, driver_colors[i], driver_dfs[driver_abbrev])
 
