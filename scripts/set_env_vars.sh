@@ -3,8 +3,6 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 export PROJECT_ROOT=$(dirname "$SCRIPT_DIR")
 
-echo "Project Root: $PROJECT_ROOT"
-
 export VENV_PATH="$PROJECT_ROOT/pyvenv"
 
 # blender system python refers to the site packages location
