@@ -68,10 +68,10 @@ class HeadToHeadRenderer(AbstractRenderer):
         self.driver_objs = add_driver_objects.main(self.driver_dfs, self.config["drivers"], "head-to-head")
 
     def add_camera(self):
-        focused_driver = self.config["drivers"][0]  # in head to head, focus on the first driver
+        self.focused_driver = self.config["drivers"][0]  # in head to head, focus on the first driver
         add_camera.main(
-            self.driver_dfs[focused_driver],
-            self.driver_objs[focused_driver],
+            self.driver_dfs[self.focused_driver],
+            self.driver_objs[self.focused_driver],
             self.config["render"]["max_cam_distance"],
             self.config["render"]["start_buffer_frames"],
             self.config["render"]["end_buffer_frames"],
@@ -94,10 +94,10 @@ class RestOfFieldRenderer(AbstractRenderer):
         self.driver_objs = add_driver_objects.main(self.driver_dfs, drivers, colors)
 
     def add_camera(self):
-        focused_driver = self.config["drivers"][0]
+        self.focused_driver = self.config["drivers"][0]
         add_camera.main(
-            self.driver_dfs[focused_driver],
-            self.driver_objs[focused_driver],
+            self.driver_dfs[self.focused_driver],
+            self.driver_objs[self.focused_driver],
             self.config["render"]["max_cam_distance"],
             self.config["render"]["start_buffer_frames"],
             self.config["render"]["end_buffer_frames"],
