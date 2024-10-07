@@ -1,5 +1,6 @@
 import bmesh  # pyright: ignore
 import bpy
+from utils.colors import get_curb_color, get_main_track_color
 
 
 def create_planes(inner_points, outer_points, name, material=None):
@@ -30,7 +31,6 @@ def create_material(color, name):
     mat.use_nodes = True
     bsdf = mat.node_tree.nodes["Principled BSDF"]
     bsdf.inputs["Base Color"].default_value = (*color, 1)
-
     return mat
 
 
@@ -39,10 +39,8 @@ def main(track_data):
     bpy.context.scene.collection.children.link(track_collection)
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
 
-    dark_gray = (0.05, 0.05, 0.05)
-    darker_gray = (0.03, 0.03, 0.03)
-    track_mat = create_material(dark_gray, "Main")
-    curb_mat = create_material(darker_gray, "Curb")
+    track_mat = create_material(get_main_track_color(), "Main")
+    curb_mat = create_material(get_curb_color(), "Curb")
 
     create_planes(track_data.inner_points, track_data.outer_points, "Main", track_mat)
     create_planes(track_data.outer_points, track_data.outer_curb_points, "CurbOuter", curb_mat)

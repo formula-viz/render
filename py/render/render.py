@@ -1,12 +1,10 @@
 from abc import ABC, abstractmethod
 
 import bpy
-import fastf1 as ff1
-import numpy as np
 from render_funcs import (add_camera, add_driver_objects, add_indicators,
                           add_sun, add_track, load_driver_data,
                           load_track_data, render_animation)
-from utils.colors import get_rest_of_field_colors
+from utils.colors import get_rest_of_field_colors, get_head_to_head_colors
 
 
 class AbstractRenderer(ABC):
@@ -65,7 +63,9 @@ class HeadToHeadRenderer(AbstractRenderer):
 
     def add_drivers(self):
         self.driver_dfs, self.start_finish_line_idx = load_driver_data.main(self.config, self.track_data)
-        self.driver_objs = add_driver_objects.main(self.driver_dfs, self.config["drivers"], "head-to-head")
+        colors = get_head_to_head_colors(*self.config["drivers"])
+
+        self.driver_objs = add_driver_objects.main(self.driver_dfs, self.config["drivers"], colors)
 
     def add_camera(self):
         self.focused_driver = self.config["drivers"][0]  # in head to head, focus on the first driver

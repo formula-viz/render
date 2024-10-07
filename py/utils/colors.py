@@ -5,13 +5,25 @@ from colormath.color_objects import LabColor, sRGBColor
 from fastf1 import plotting
 
 GOLD_RGB = (255, 215, 0)
+MAIN_TRACK_COLOR = "#2d2e2e"
+CURB_COLOR = "#0f0f0f"
 
 
 def hex_to_blender_rgb(hex_color: str) -> tuple:
     # Convert a hex color to a Blender RGB tuple.
     # In blender, the RGB values are between 0 and 1.
     hex_color = hex_color.lstrip("#")
-    return tuple(int(hex_color[i : i + 2], 16) / 255 for i in (0, 2, 4))
+    tup = tuple(int(hex_color[i : i + 2], 16) / 255.0 for i in (0, 2, 4))
+
+    def srgb_to_linearrgb(c):
+        if c < 0:
+            return 0
+        elif c < 0.04045:
+            return c / 12.92
+        else:
+            return ((c + 0.055) / 1.055) ** 2.4
+
+    return tuple(srgb_to_linearrgb(x) for x in tup)
 
 
 def hex_to_normal_rgb(hex_color: str) -> tuple:
@@ -34,16 +46,13 @@ def get_rest_of_field_colors():
 
 
 def get_head_to_head_colors(*drivers):
-    def hex_to_rgb(hex_color):
-        return tuple(int(hex_color[i : i + 2], 16) for i in (1, 3, 5))
-
     def rgb_to_lab(rgb):
         srgb = sRGBColor(*rgb, is_upscaled=True)
         return convert_color(srgb, LabColor)
 
     def color_difference(hex1, hex2):
-        rgb1 = hex_to_rgb(hex1)
-        rgb2 = hex_to_rgb(hex2)
+        rgb1 = hex_to_normal_rgb(hex1)
+        rgb2 = hex_to_normal_rgb(hex2)
 
         lab1 = rgb_to_lab(rgb1)
         lab2 = rgb_to_lab(rgb2)
@@ -77,3 +86,14 @@ def get_head_to_head_colors(*drivers):
                 print("Ran out of base colors, investigate this.")
 
     return colors
+
+
+def get_curb_color():
+    return hex_to_blender_rgb(CURB_COLOR)
+
+
+def get_main_track_color():
+    return hex_to_blender_rgb(MAIN_TRACK_COLOR)
+
+def get_start_finish_line_color():
+    return hex_to_blender_rgb(CURB_COLOR)
