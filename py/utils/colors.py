@@ -7,23 +7,14 @@ from fastf1 import plotting
 GOLD_RGB = (255, 215, 0)
 MAIN_TRACK_COLOR = "#2d2e2e"
 CURB_COLOR = "#0f0f0f"
+SCENE_BG_COLOR = "#171717"
 
 
 def hex_to_blender_rgb(hex_color: str) -> tuple:
     # Convert a hex color to a Blender RGB tuple.
     # In blender, the RGB values are between 0 and 1.
     hex_color = hex_color.lstrip("#")
-    tup = tuple(int(hex_color[i : i + 2], 16) / 255.0 for i in (0, 2, 4))
-
-    def srgb_to_linearrgb(c):
-        if c < 0:
-            return 0
-        elif c < 0.04045:
-            return c / 12.92
-        else:
-            return ((c + 0.055) / 1.055) ** 2.4
-
-    return tuple(srgb_to_linearrgb(x) for x in tup)
+    return tuple(int(hex_color[i : i + 2], 16) / 255.0 for i in (0, 2, 4))
 
 
 def hex_to_normal_rgb(hex_color: str) -> tuple:
@@ -88,12 +79,41 @@ def get_head_to_head_colors(*drivers):
     return colors
 
 
-def get_curb_color():
-    return hex_to_blender_rgb(CURB_COLOR)
+def blender_rgb_to_linear(tup):
+    def srgb_to_linearrgb(c):
+        if c < 0:
+            return 0
+        elif c < 0.04045:
+            return c / 12.92
+        else:
+            return ((c + 0.055) / 1.055) ** 2.4
+
+    return tuple(srgb_to_linearrgb(x) for x in tup)
 
 
-def get_main_track_color():
-    return hex_to_blender_rgb(MAIN_TRACK_COLOR)
+class CurbColor:
+    @staticmethod
+    def get_scene_rgb():
+        return blender_rgb_to_linear(hex_to_blender_rgb(CURB_COLOR))
 
-def get_start_finish_line_color():
-    return hex_to_blender_rgb(CURB_COLOR)
+
+class MainTrackColor:
+    @staticmethod
+    def get_scene_rgb():
+        return blender_rgb_to_linear(hex_to_blender_rgb(MAIN_TRACK_COLOR))
+
+
+class StartFinishLineColor:
+    @staticmethod
+    def get_scene_rgb():
+        return blender_rgb_to_linear(hex_to_blender_rgb(CURB_COLOR))
+
+
+class BackgroundColor:
+    @staticmethod
+    def get_scene_rgb():
+        return blender_rgb_to_linear(hex_to_blender_rgb(SCENE_BG_COLOR))
+
+    @staticmethod
+    def get_sequence_editor_rgb():
+        return hex_to_blender_rgb(SCENE_BG_COLOR)
