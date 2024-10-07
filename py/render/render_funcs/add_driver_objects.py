@@ -3,7 +3,7 @@ import math
 import bpy
 import mathutils
 import PIL.Image as Image
-from utils.colors import hex_to_normal_rgb
+from utils.colors import hex_to_blender_rgb, hex_to_normal_rgb
 from utils.project_structure import Resources
 
 
@@ -102,10 +102,11 @@ def create_driver_fbx(driver, hex_color):
         if "wheel" in obj.name.lower() and "steering" not in obj.name.lower():
             wheels_objs.append(obj)
 
-        for substr in ["chassis", "wings"]:
-            if substr in obj.name.lower():
-                replace_color_in_image(obj, hex_color, driver)
-            #     set_color(obj, hex_color)
+        if "chassis" in obj.name.lower():
+            replace_color_in_image(obj, hex_color, driver)
+
+        if "wings" in obj.name.lower():
+            set_color(obj, hex_to_blender_rgb(hex_color))
 
         if "steering" in obj.name.lower():
             # we want to set this invisible for now
