@@ -2,7 +2,8 @@ from abc import ABC, abstractmethod
 
 import bpy
 from post_render_funcs import add_drivers, load_sequence
-from utils.colors import GOLD_RGB, get_head_to_head_colors, rgb_to_hex
+from utils.colors import (GOLD_RGB, get_head_to_head_colors,
+                          get_scene_bg_color, rgb_to_hex)
 from utils.project_structure import Resources
 
 
@@ -30,13 +31,22 @@ class AbstractPostRenderer(ABC):
 
     @abstractmethod
     def set_background(self):
-        image_strip = bpy.context.scene.sequence_editor.sequences.new_image(
-            name="BackgroundImage", filepath=Resources.get_background_image_path(), channel=1, frame_start=1
+        color_strip = bpy.context.scene.sequence_editor.sequences.new_effect(
+            name="BackgroundColor",
+            type="COLOR",
+            channel=1,
+            frame_start=1,
+            frame_end=self.num_frames,
         )
-        image_strip.frame_final_duration = self.num_frames
+        color_strip.color = get_scene_bg_color()
 
-        image_strip.transform.scale_x = 0.64
-        image_strip.transform.scale_y = 0.55
+        # image_strip = bpy.context.scene.sequence_editor.sequences.new_image(
+        #     name="BackgroundImage", filepath=Resources.get_background_image_path(), channel=1, frame_start=1
+        # )
+        # image_strip.frame_final_duration = self.num_frames
+        #
+        # image_strip.transform.scale_x = 0.64
+        # image_strip.transform.scale_y = 0.55
 
     @abstractmethod
     def add_visuals(self):
