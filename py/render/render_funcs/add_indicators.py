@@ -1,7 +1,7 @@
 import bmesh # pyright: ignore
 import bpy
 from add_track import create_material
-from utils.colors import get_start_finish_line_color
+from utils.colors import StartFinishLineColor
 
 
 # we have gotten the index of the inner_points, outer_points defining the start/finish line
@@ -36,7 +36,7 @@ def add_start_finish_line(inner_points, outer_points, start_finish_line_idx):
     bm.free()
     mesh.update()
 
-    mat = create_material(get_start_finish_line_color(), "StartFinishLineMaterial")
+    mat = create_material(StartFinishLineColor.get_scene_rgb(), "StartFinishLineMaterial")
 
     obj.data.materials.append(mat)
 
