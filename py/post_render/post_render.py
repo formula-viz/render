@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 
 import bpy
 from post_render_funcs import add_drivers, load_sequence
-from utils.colors import (GOLD_RGB, get_head_to_head_colors,
-                          get_scene_bg_color, rgb_to_hex)
+from utils.colors import (GOLD_RGB, BackgroundColor, get_head_to_head_colors,
+                          rgb_to_hex)
 from utils.project_structure import Resources
 
 
@@ -38,7 +38,7 @@ class AbstractPostRenderer(ABC):
             frame_start=1,
             frame_end=self.num_frames,
         )
-        color_strip.color = get_scene_bg_color()
+        color_strip.color = BackgroundColor.get_scene_rgb()
 
         # image_strip = bpy.context.scene.sequence_editor.sequences.new_image(
         #     name="BackgroundImage", filepath=Resources.get_background_image_path(), channel=1, frame_start=1
