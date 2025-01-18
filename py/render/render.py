@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-import bpy
+import bpy # pyright: ignore
 from render_funcs import (add_camera, add_driver_objects, add_indicators,
                           add_sun, add_track, load_driver_data,
                           load_track_data, render_animation)
