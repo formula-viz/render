@@ -87,7 +87,7 @@ def load_from_fastf1(year: int, track: str):
     driver_times: dict[str, str] = {}
     driver_tels: dict[str, Telemetry] = {}
     for driver in driver_abbrevs:
-        q1, q2, q3 = laps.pick_driver(driver).split_qualifying_sessions()
+        q1, q2, q3 = laps.pick_drivers(driver).split_qualifying_sessions()
         # we want to get the fastest lap for the highest qualifying session which the driver reached
 
         if q3 is not None:
@@ -162,12 +162,8 @@ def process_grouped_driver_tels(driver_tels: dict[str, Telemetry], inner_points,
 
                 return (x, y)
 
-            driver_tel["X"].iloc[0], driver_tel["Y"].iloc[0] = get_closest_point_on_line(
-                point_a, point_b, original_start
-            )
-            driver_tel["X"].iloc[-1], driver_tel["Y"].iloc[-1] = get_closest_point_on_line(
-                point_a, point_b, original_end
-            )
+            driver_tel.loc[0, ['X', 'Y']] = get_closest_point_on_line(point_a, point_b, original_start)
+            driver_tel.loc[driver_tel.index[-1], ['X', 'Y']] = get_closest_point_on_line(point_a, point_b, original_end)
 
     start_end_point = get_average_start_end()
     line_idx, (point_a, point_b) = get_line(inner_points, outer_points, start_end_point)
@@ -508,7 +504,7 @@ def main(config, track_data):
 
     driver_dfs = {}
     for driver, tel in driver_tels.items():
-        df = get_driver_df(tel, 3, track_data["fps"])
+        df = get_driver_df(tel, 3, config["render"]["fps"])
         df = add_start_buffer(df, config["render"]["start_buffer_frames"])
         df = add_end_buffer(df, config["render"]["end_buffer_frames"])
         driver_dfs[driver] = df
@@ -518,7 +514,7 @@ def main(config, track_data):
         df = add_wheel_rots(df)
         driver_dfs[driver] = df
 
-    save(str(config["year"]), config["track"], str(config["fps"]), driver_dfs, start_finish_line_idx)
+    save(str(config["year"]), config["track"], str(config["render"]["fps"]), driver_dfs, start_finish_line_idx)
 
     print(f"Done processing car data")
     return driver_dfs, start_finish_line_idx
