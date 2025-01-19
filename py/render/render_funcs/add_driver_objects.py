@@ -1,10 +1,11 @@
 import math
 
-import bpy
+import bpy # pyright: ignore
 import mathutils
 import PIL.Image as Image
 from utils.colors import hex_to_blender_rgb, hex_to_normal_rgb
 from utils.project_structure import Resources
+from utils.logger import log_info, log_warn
 
 
 def set_color(obj, rgb_color: tuple[float, float, float]):
@@ -33,7 +34,7 @@ def set_color(obj, rgb_color: tuple[float, float, float]):
 def replace_color_in_image(blender_obj, hex_color, driver_abbrev):
     material = blender_obj.material_slots[0].material
     if not material.node_tree.nodes:
-        print(f"Material {material.name} has no nodes.")
+        log_warn(f"Material {material.name} has no nodes.")
         return
 
     image_node = None
@@ -73,41 +74,73 @@ def replace_color_in_image(blender_obj, hex_color, driver_abbrev):
     image_node.image = new_image
 
 
-def create_driver_fbx(driver, hex_color):
-    driver_collection = bpy.data.collections.new(name=driver.title() + "Collection")
-    bpy.context.scene.collection.children.link(driver_collection)
+def load_base_car_fbx():
+    """Load the car FBX once and return an empty object which is the parent of the individual objs"""
+    # Create a temporary collection to store the base objects
+    base_collection = bpy.data.collections.new(name="BaseCarCollection")
+    bpy.context.scene.collection.children.link(base_collection)
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
 
+    # Import the FBX into this collection
     bpy.ops.import_scene.fbx(filepath=Resources.get_car_fbx_path())
     bpy.ops.file.find_missing_files(directory=Resources.get_car_textures_dir())
 
-    for obj in bpy.context.selected_objects:
-        obj.name = f"{driver.title()}_{obj.name}"
-
     bpy.ops.object.empty_add(type="PLAIN_AXES")
     empty_obj = bpy.context.object
-    empty_obj.name = "MasterEmpty" + driver.title()
+    empty_obj.name = "MasterEmpty"
     # make this empty_obj invisible
     empty_obj.hide_viewport = True
 
-    wheels_objs = []
-    for obj in driver_collection.objects:
+    for obj in base_collection.objects:
         if obj != empty_obj:
             obj.parent = empty_obj
 
         # move them forward, because the data from fastf1 likely represents the front of the car
         # this way, when we have the car passing the line, it is the tip of the nose passing
-        obj.location[1] += 3.3
+        # obj.location[1] += 3.3
+
+    return empty_obj, base_collection
+
+
+def create_driver_fbx(driver, hex_color, empty_obj):
+    """Create a new driver instance by duplicating base objects"""
+    driver_collection = bpy.data.collections.new(name=driver.title() + "Collection")
+    bpy.context.scene.collection.children.link(driver_collection)
+    bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
+
+    new_empty = empty_obj.copy()
+    new_empty.name = "MasterEmpty" + driver.title()
+    driver_collection.objects.link(new_empty)
+
+    wheels_objs = []
+    for child in empty_obj.children_recursive:
+        # the cameras get added to the empty for some reason, just remove them
+        if child.type == "CAMERA":
+            continue
+
+        obj = child.copy()
+        if child.data:
+            obj.data = child.data.copy()
+            # Deep copy materials
+            if isinstance(obj.data, bpy.types.Mesh) and obj.data.materials:
+                for i, mat in enumerate(obj.data.materials):
+                    if mat:
+                        new_mat = mat.copy()
+                        obj.data.materials[i] = new_mat
+
+        obj.name = f"{driver.title()}_{child.name}"
+        driver_collection.objects.link(obj)
+
+        obj.parent = new_empty
+        # Maintain original transformation
+        obj.matrix_local = child.matrix_local.copy()
 
         if "wheel" in obj.name.lower() and "steering" not in obj.name.lower():
             wheels_objs.append(obj)
-
         if "chassis" in obj.name.lower():
             replace_color_in_image(obj, hex_color, driver)
-
         if "wings" in obj.name.lower():
             set_color(obj, hex_to_blender_rgb(hex_color))
-
         if "steering" in obj.name.lower():
             # we want to set this invisible for now
             obj.hide_viewport = True
@@ -118,12 +151,15 @@ def create_driver_fbx(driver, hex_color):
     camera.name = driver.title() + "_Camera"
     camera.location = (0, 3.8, 1.25)  # Position the camera 5 units above the empty object
     camera.data.dof.focus_distance = 15
-
     camera.parent = empty_obj
-
     camera.rotation_euler = (math.radians(82), 0, math.radians(180))  # Rotate 90 degrees around Z-axis
 
-    return empty_obj, wheels_objs
+    for col in camera.users_collection:
+        col.objects.unlink(camera)
+    # Link only to driver collection
+    driver_collection.objects.link(camera)
+
+    return new_empty, wheels_objs
 
 
 # Time,X,Y,Z,RotW,RotX,RotY,RotZ
@@ -163,16 +199,17 @@ def add_keyframes(driver_obj, wheels_objs, df):
         driver_obj.keyframe_insert(data_path="rotation_euler", frame=idx)
 
 
-def create_driver(driver, hex_color, df):
-    driver_obj, wheels_objs = create_driver_fbx(driver, hex_color)
-    add_keyframes(driver_obj, wheels_objs, df)
-
-    return driver_obj
-
-
 def main(driver_dfs, drivers, driver_colors):
+    empty_obj, base_collection = load_base_car_fbx()
+
     driver_objs = {}
     for i, driver_abbrev in enumerate(drivers):
-        driver_objs[driver_abbrev] = create_driver(driver_abbrev, driver_colors[i], driver_dfs[driver_abbrev])
+        log_info(f"Adding driver {i+1}/{len(drivers)}: {driver_abbrev} with color: {driver_colors[i]}")
+        driver_obj, wheels_objs = create_driver_fbx(driver_abbrev, driver_colors[i], empty_obj)
+        add_keyframes(driver_obj, wheels_objs, driver_dfs[driver_abbrev])
+
+        driver_objs[driver_abbrev] = driver_obj
+
+    bpy.data.collections.remove(base_collection, do_unlink=True)
 
     return driver_objs
