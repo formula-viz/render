@@ -84,7 +84,7 @@ def add_keyframes(camera_obj, cam_df, driver_df, start_buffer_frames, end_buffer
 # df for cam is the df used to create the keyframes for the driver obj passed
 # we will create the camera path using these driver points and then point the
 # camera towards the driver object
-def main(df_for_cam, driver_obj, max_distance, start_buffer_frames, end_buffer_frames):
+def main(df_for_cam, driver_obj, max_distance, start_buffer_frames, end_buffer_frames, is_mobile):
     camera_collection = bpy.data.collections.new(name="CameraCollection")
     bpy.context.scene.collection.children.link(camera_collection)
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]

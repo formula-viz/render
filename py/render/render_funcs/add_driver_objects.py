@@ -204,6 +204,8 @@ def main(driver_dfs, drivers, driver_colors):
 
     driver_objs = {}
     for i, driver_abbrev in enumerate(drivers):
+        if i >= 5:
+            continue
         log_info(f"Adding driver {i+1}/{len(drivers)}: {driver_abbrev} with color: {driver_colors[i]}")
         driver_obj, wheels_objs = create_driver_fbx(driver_abbrev, driver_colors[i], empty_obj)
         add_keyframes(driver_obj, wheels_objs, driver_dfs[driver_abbrev])

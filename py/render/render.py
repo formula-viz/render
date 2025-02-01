@@ -5,6 +5,7 @@ from render_funcs import (add_camera, add_driver_objects, add_indicators,
                           add_sun, add_track, load_driver_data,
                           load_track_data, render_animation)
 from utils.colors import get_rest_of_field_colors, get_head_to_head_colors
+from utils.logger import log_info
 
 
 class AbstractRenderer(ABC):
@@ -28,17 +29,15 @@ class AbstractRenderer(ABC):
 
     # this should be the same for all jobs
     def trigger_render(self):
-        if self.config["pipeline"]["preview_mode"]:
-            bpy.context.scene.frame_end = (
-                min([len(self.driver_dfs[driver_abbrev]) for driver_abbrev in self.config["drivers"]]) - 1
-            )
-            bpy.context.scene.render.fps = self.config["render"]["fps"]
-            print("should_render is set to false, skipping rendering...")
-        else:
-            print("Starting Rendering...")
-            render_animation.main(self.config, len(self.driver_dfs[self.focused_driver]))
-            print("Exiting render.py")
-            bpy.ops.wm.quit_blender()
+        # if self.config["pipeline"]["preview_mode"]:
+        #     bpy.context.scene.frame_end = (
+        #         min([len(self.driver_dfs[driver_abbrev]) for driver_abbrev in self.config["drivers"]]) - 1
+        #     )
+        #     bpy.context.scene.render.fps = self.config["render"]["fps"]
+        #     print("should_render is set to false, skipping rendering...")
+        # else:
+        log_info("Starting Rendering...")
+        render_animation.main(self.config, len(self.driver_dfs[self.focused_driver]))
 
     # this has to be a separate function because the car data must be loaded before in order to get an
     # accurate estimation of the location of the start finish line
@@ -75,6 +74,7 @@ class HeadToHeadRenderer(AbstractRenderer):
             self.config["render"]["max_cam_distance"],
             self.config["render"]["start_buffer_frames"],
             self.config["render"]["end_buffer_frames"],
+            self.config["render"]["is_mobile"]
         )
 
 
@@ -101,4 +101,5 @@ class RestOfFieldRenderer(AbstractRenderer):
             self.config["render"]["max_cam_distance"],
             self.config["render"]["start_buffer_frames"],
             self.config["render"]["end_buffer_frames"],
+            self.config["render"]["is_mobile"]
         )
