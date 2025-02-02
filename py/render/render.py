@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import bpy # pyright: ignore
 from render_funcs import (add_camera, add_driver_objects, add_indicators,
-                          add_sun, add_track, load_driver_data,
+                          add_sun, add_track, add_status_track, load_driver_data,
                           load_track_data, render_animation)
 from utils.colors import get_rest_of_field_colors, get_head_to_head_colors
 from utils.logger import log_info
@@ -27,15 +27,11 @@ class AbstractRenderer(ABC):
     def add_camera(self):
         pass
 
+    def configure_widgets(self):
+        add_status_track.main(self.track_data, self.camera_obj, self.start_finish_line_idx, self.driver_dfs[self.focused_driver])
+
     # this should be the same for all jobs
     def trigger_render(self):
-        # if self.config["pipeline"]["preview_mode"]:
-        #     bpy.context.scene.frame_end = (
-        #         min([len(self.driver_dfs[driver_abbrev]) for driver_abbrev in self.config["drivers"]]) - 1
-        #     )
-        #     bpy.context.scene.render.fps = self.config["render"]["fps"]
-        #     print("should_render is set to false, skipping rendering...")
-        # else:
         log_info("Starting Rendering...")
         render_animation.main(self.config, len(self.driver_dfs[self.focused_driver]))
 
@@ -53,6 +49,7 @@ class AbstractRenderer(ABC):
         self.add_drivers()
         self.add_indicators()
         self.add_camera()
+        self.configure_widgets()
         self.trigger_render()
 
 
@@ -68,7 +65,7 @@ class HeadToHeadRenderer(AbstractRenderer):
 
     def add_camera(self):
         self.focused_driver = self.config["drivers"][0]  # in head to head, focus on the first driver
-        add_camera.main(
+        self.camera_obj = add_camera.main(
             self.driver_dfs[self.focused_driver],
             self.driver_objs[self.focused_driver],
             self.config["render"]["max_cam_distance"],
@@ -95,7 +92,7 @@ class RestOfFieldRenderer(AbstractRenderer):
 
     def add_camera(self):
         self.focused_driver = self.config["drivers"][0]
-        add_camera.main(
+        self.camera_obj = add_camera.main(
             self.driver_dfs[self.focused_driver],
             self.driver_objs[self.focused_driver],
             self.config["render"]["max_cam_distance"],

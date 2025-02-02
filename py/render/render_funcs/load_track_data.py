@@ -4,12 +4,13 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import splev, splprep
 from utils.project_structure import TrackDataPS
+from utils.logger import log_info
 
 
 # in the earlier bash script, we clone the repository locally
 def load_raw_data(year: int, track: str, use_latest_year: bool = True):
     track_data_dir = TrackDataPS.get_track_data_dir()
-    print("Track data dir: ", track_data_dir)
+    log_info(f"Track data dir: {track_data_dir}")
     # iterate through contents of track_data, finding all files containing track
     # then, we find the file with the latest year
     # if use_latest_year is false, we use the year given
@@ -250,7 +251,7 @@ class TrackData:
 
 
 def main(year: int, track: str):
-    print("Processing track data")
+    log_info("Processing track data")
     use_latest_year = True  # this may cause problems if the track changes year to year
     track_edges = load_raw_data(year, track, use_latest_year)
     track_edges = smooth_points(track_edges)
@@ -260,5 +261,5 @@ def main(year: int, track: str):
     inner_curb_points = curb(inner_points, outer_points, curb_width)
     outer_curb_points = curb(outer_points, inner_points, curb_width)
 
-    print("Done processing track data")
+    log_info("Done processing track data")
     return TrackData(inner_points, outer_points, inner_curb_points, outer_curb_points)

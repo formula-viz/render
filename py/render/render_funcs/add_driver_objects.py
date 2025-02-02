@@ -1,7 +1,7 @@
 import math
 
 import bpy # pyright: ignore
-import mathutils
+import mathutils # pyright: ignore
 import PIL.Image as Image
 from utils.colors import hex_to_blender_rgb, hex_to_normal_rgb
 from utils.project_structure import Resources
@@ -204,7 +204,7 @@ def main(driver_dfs, drivers, driver_colors):
 
     driver_objs = {}
     for i, driver_abbrev in enumerate(drivers):
-        if i >= 5:
+        if i >= 3:
             continue
         log_info(f"Adding driver {i+1}/{len(drivers)}: {driver_abbrev} with color: {driver_colors[i]}")
         driver_obj, wheels_objs = create_driver_fbx(driver_abbrev, driver_colors[i], empty_obj)

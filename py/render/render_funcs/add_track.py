@@ -2,7 +2,6 @@ import bmesh  # pyright: ignore
 import bpy
 from utils.colors import CurbColor, MainTrackColor
 
-
 def create_planes(inner_points, outer_points, name, material=None):
     mesh = bpy.data.meshes.new(name + "TrackMesh")
     obj = bpy.data.objects.new(name + "Track", mesh)
@@ -24,6 +23,8 @@ def create_planes(inner_points, outer_points, name, material=None):
 
     if material:
         obj.data.materials.append(material)
+
+    return obj
 
 
 def create_material(color, name):

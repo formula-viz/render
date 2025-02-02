@@ -99,3 +99,4 @@ def main(df_for_cam, driver_obj, max_distance, start_buffer_frames, end_buffer_f
     add_keyframes(camera_obj, cam_df, df_for_cam, start_buffer_frames, end_buffer_frames)
 
     bpy.context.scene.camera = camera_obj
+    return camera_obj
