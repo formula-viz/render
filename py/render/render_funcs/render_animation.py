@@ -49,6 +49,8 @@ def main(config, num_frames):
         bpy.context.scene.cycles.tile_x = 1920
         bpy.context.scene.cycles.tile_y = 1080
 
+    bpy.context.scene.render.fps = config["render"]["fps"]
+
     if config["pipeline"]["quick_validate_mode"]:
         bpy.context.scene.frame_end = 100
     else:
@@ -61,7 +63,6 @@ def main(config, num_frames):
     log_info(f"Starting Rendering of {num_frames}")
     configure_gpu(config)
 
-    bpy.context.scene.render.fps = config["render"]["fps"]
     bpy.context.scene.cycles.samples = config["render"]["samples"]
     bpy.context.scene.cycles.use_denoising = False
 

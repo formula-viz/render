@@ -11,6 +11,7 @@ import requests
 from fastf1.core import Laps, Telemetry
 from scipy.interpolate import UnivariateSpline
 from utils.project_structure import DriverDataPS
+from utils.logger import log_info, log_warn
 
 
 def load_driver_headshots(driver_abbrevs, headshot_urls):
@@ -30,10 +31,10 @@ def load_driver_headshots(driver_abbrevs, headshot_urls):
                     image_file.write(response.content)
                     downloaded_count += 1
             except requests.exceptions.RequestException as e:
-                print(f"Failed to download image for driver {driver}: {e}")
+                log_warn(f"Failed to download image for driver {driver}: {e}")
 
     if downloaded_count > 0:
-        print(f"Downloaded {downloaded_count} driver headshots")
+        log_info(f"Downloaded {downloaded_count} driver headshots")
 
 
 def save_driver_times(driver_times: dict[str, str], year: str, track: str):
@@ -63,7 +64,7 @@ def load_from_fastf1(year: int, track: str):
         try:
             tel: Telemetry = q.pick_not_deleted().pick_fastest().get_telemetry(frequency="original")
         except:
-            print(f"Couldn't get proper telemetry for {driver}")
+            log_warn(f"Couldn't get proper telemetry for {driver}")
             return
 
         tel = tel[tel["Source"].isin(["pos", "interpolation"])]
@@ -430,7 +431,7 @@ def optimize_smoothness(track_edges: pd.DataFrame, fps: int, driver_tels: dict[s
     found_max_smoothness = False
     while not found_max_smoothness:
         if s_divisor > max_s_divisor:
-            print("Using max smoothness, this means something is probably wrong...")
+            log_info("Using max smoothness, this means something is probably wrong...")
             for driver, tel in driver_tels.items():
                 dfs[driver] = get_driver_df(tel, s_divisor, fps)
 
@@ -461,7 +462,7 @@ def optimize_smoothness_concurrent(track_edges: pd.DataFrame, fps: int, driver_t
     found_optimal = False
 
     while not found_optimal:
-        print("Checking s_divisor: ", s_divisor)
+        log_info(f"Checking s_divisor: {s_divisor}")
         found_optimal = True
 
         with ThreadPoolExecutor() as executor:
@@ -481,7 +482,7 @@ def optimize_smoothness_concurrent(track_edges: pd.DataFrame, fps: int, driver_t
             s_divisor += 1
 
         if s_divisor > max_s_divisor:
-            print("Using max smoothness, this means something is probably wrong...")
+            log_warn("Using max smoothness, this means something is probably wrong...")
             break
 
     return driver_dfs
@@ -495,9 +496,9 @@ def main(config, track_data):
         str(config["year"]), config["track"], str(config["render"]["fps"])
     )
     if is_done:
-        print("Already fetched this car data, don't need to load...")
+        log_info("Already fetched this car data, don't need to load...")
         return driver_dfs, start_finish_line_idx
-    print("Fetching and processing car data")
+    log_info("Fetching and processing car data")
 
     driver_tels = load_from_fastf1(config["year"], config["track"])
     start_finish_line_idx = process_grouped_driver_tels(driver_tels, track_data.inner_points, track_data.outer_points)
@@ -516,5 +517,5 @@ def main(config, track_data):
 
     save(str(config["year"]), config["track"], str(config["render"]["fps"]), driver_dfs, start_finish_line_idx)
 
-    print(f"Done processing car data")
+    log_info(f"Done processing car data")
     return driver_dfs, start_finish_line_idx
