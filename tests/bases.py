@@ -7,7 +7,6 @@ from py.render.render_funcs import load_track_data, load_driver_data
 
 class SetupAlpha(unittest.TestCase):
     def setUp(self):
-        self.original_level = logging.root.level
         logging.disable(logging.CRITICAL)
 
         config_path = os.path.join(os.path.dirname(__file__), 'alpha_config.json')
