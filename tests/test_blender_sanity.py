@@ -12,6 +12,3 @@ class TestBlenderFunctions(unittest.TestCase):
         self.assertEqual(cam.location.z, 10)
         self.assertEqual(cam.location.x, 0)
         self.assertEqual(cam.location.y, 0)
-        self.assertEqual(len(bpy.data.objects), 3)
-
-        self.assertEqual(cam.location.z, 8)

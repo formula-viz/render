@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import bpy # pyright: ignore
 from render_funcs import (add_camera, add_driver_objects, add_indicators,
                           add_sun, add_track, add_status_track, load_driver_data,
-                          load_track_data, render_animation, get_car_rankings)
+                          load_track_data, render_animation, car_rankings)
 from utils.colors import get_rest_of_field_colors, get_head_to_head_colors
 from utils.logger import log_info
 
@@ -50,7 +50,7 @@ class AbstractRenderer(ABC):
         self.add_indicators()
         self.add_camera()
         self.configure_widgets()
-        get_car_rankings.main(self.track_data, self.start_finish_line_idx, self.driver_dfs, self.config)
+        car_rankings.main(self.track_data, self.start_finish_line_idx, self.driver_dfs, self.config)
         self.trigger_render()
 
 
