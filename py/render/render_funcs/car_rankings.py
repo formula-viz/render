@@ -1,6 +1,8 @@
 import numpy as np
+from numpy._typing import NDArray
 
-def point_to_line_distance(point, line_start, line_end):
+
+def point_to_line_distance(point: NDArray[np.float64], line_start: NDArray[np.float64], line_end: NDArray[np.float64]):
     point = np.array(point)
     line_start = np.array(line_start)
     line_end = np.array(line_end)
@@ -21,23 +23,6 @@ def point_to_line_distance(point, line_start, line_end):
 
     projection = line_start + line_vec * projection_length
     return np.linalg.norm(point - projection)
-
-
-def rank_closeness(track_data, track_idx, driver_idx, driver_dfs):
-    inner_point = track_data.inner_points[track_idx]
-    outer_point = track_data.outer_points[track_idx]
-
-    driver_rank = {}
-
-    # for each driver, calculate the distance to the line created by the inner and outer points
-    for driver, df in driver_dfs.items():
-        point = np.array([df["X"][driver_idx], df["Y"][driver_idx], df["Z"][driver_idx]])
-        distance = point_to_line_distance(point, inner_point, outer_point)
-        driver_rank[driver] = distance
-
-    # sort the drivers by distance
-    sorted_drivers = sorted(driver_rank.items(), key=lambda x: x[1])
-    return sorted_drivers
 
 
 # the previous_reference_idx is the line from which the previous
@@ -62,26 +47,84 @@ def find_closest_track_idx(inner_points, outer_points, previous_reference_idx, c
         pos = next_pos(pos)
         pos_distance = point_to_line_distance(car_point, inner_points[pos], outer_points[pos])
 
-    while point_to_line_distance(car_point, inner_points[next_neg(neg)], outer_points[next_neg(neg)]) < neg_distance:
+    # only do one less for neg
+    if point_to_line_distance(car_point, inner_points[next_neg(neg)], outer_points[next_neg(neg)]) < neg_distance:
         neg = next_neg(neg)
         neg_distance = point_to_line_distance(car_point, inner_points[neg], outer_points[neg])
 
     return pos if pos_distance < neg_distance else neg
 
-# based on the track data, start finish line idx which references
-# an index of the points in track_data and the driver_dfs which
-# indicates the positions of the cars, we should be able to rank the
-# positions of the cars at each frame or index of track_data by
-# calculating distance to t        self.original_level = logging.root.levelhe line created by each vertex of track_data
+
+# find the point which is furthest from the previous line which was used
+# to calculate the ranking. This will allow us to find the next reference line
+def find_most_distant_closest_point(
+    inner_points: list[NDArray[np.float64]],
+    outer_points: list[NDArray[np.float64]],
+    previous_reference_idx: int,
+    car_points: list[NDArray[np.float64]],
+):
+    closest_idxs = [
+        find_closest_track_idx(inner_points, outer_points, previous_reference_idx, car_point)
+        for car_point in car_points
+    ]
+
+    cur_distance = 0
+    cur_farthest_point_idx = 0
+
+    mid_point_of_reference_line = (inner_points[previous_reference_idx] + outer_points[previous_reference_idx]) / 2
+
+    for idx in closest_idxs:
+        distance = point_to_line_distance(mid_point_of_reference_line, inner_points[idx], outer_points[idx])
+        if distance > cur_distance:
+            cur_distance = distance
+            cur_farthest_point_idx = idx
+
+    # now, we have the farthest point idx, we want to check if the car is actually
+    # the car might not actually be infront of this point, we should be able to just add 1 to the idx
+    # track points are close enough together that this should not cause errors
+    return (cur_farthest_point_idx + 1) % len(inner_points)
+
+
+# the frame here is implicit. All of the car points will be different cars at the same frame
+def ranking_at_frame(
+    inner_points: list[NDArray[np.float64]],
+    outer_points: list[NDArray[np.float64]],
+    previous_reference_idx: int,
+    car_points: list[NDArray[np.float64]],
+) -> tuple[list[tuple[int, float]], int]:
+    new_reference_idx = find_most_distant_closest_point(inner_points, outer_points, previous_reference_idx, car_points)
+    # for each driver, we calculate their distance to the new reference line
+
+    drivers: list[tuple[int, float]] = []
+    for driver_idx in range(len(car_points)):
+        distance = float(
+            point_to_line_distance(
+                car_points[driver_idx], inner_points[new_reference_idx], outer_points[new_reference_idx]
+            )
+        )
+        drivers.append((driver_idx, distance))
+
+    return (sorted(drivers, key=lambda x: x[1]), new_reference_idx)
+
+
 def main(track_data, start_finish_line_idx, driver_dfs, config):
     start_buffer_frames = config["render"]["start_buffer_frames"]
     end_buffer_frames = config["render"]["end_buffer_frames"]
 
-    print(len(driver_dfs["NOR"]["X"]) - end_buffer_frames - start_buffer_frames)
-    print(len(track_data.inner_points))
+    inner_points = [np.array(p) for p in track_data.inner_points]
+    outer_points = [np.array(p) for p in track_data.outer_points]
 
-    track_idx = start_finish_line_idx
+    indices = {}
+    driver_data = []
+    for i, (driver, df) in enumerate(driver_dfs.items()):
+        car_points = [np.array([df["X"][i], df["Y"][i], df["Z"][i]]) for i in range(len(df["X"]))]
+        driver_data.append(car_points)
+        indices[i] = driver
+
+    reference_idx = start_finish_line_idx
     for i in range(start_buffer_frames, len(driver_dfs["NOR"]["X"]) - end_buffer_frames):
-        sorted_drivers = rank_closeness(track_data, track_idx%len(track_data.inner_points), i, driver_dfs)
-        track_idx -= 1
-        print(f"Frame {i} winner: {sorted_drivers[0][0]}, distance: {sorted_drivers[0][1]}")
+        current_frame_positions = [driver_points[i] for driver_points in driver_data]
+
+        rankings, reference_idx = ranking_at_frame(inner_points, outer_points, reference_idx, current_frame_positions)
+        winner = rankings[0][0]
+        print(f"Frame {i} winner: {indices[winner]}, distance: {rankings[0][1]}")
