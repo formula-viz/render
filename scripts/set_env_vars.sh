@@ -3,10 +3,10 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 export PROJECT_ROOT=$(dirname "$SCRIPT_DIR")
 
-export VENV_PATH="$PROJECT_ROOT/pyvenv"
-
-# blender system python refers to the site packages location
-export BLENDER_SYSTEM_PYTHON="$VENV_PATH/lib/python3.*/site-packages"
+# Set specific Python version path
+export VENV_SITE_PACKAGES="$VENV_PATH/lib/python3.12/site-packages"
+# Initialize PYTHONPATH if not set
+PYTHONPATH=${PYTHONPATH:-}
 
 export REQUIREMENTS_PATH="$PROJECT_ROOT/requirements.txt"
 
@@ -25,6 +25,8 @@ add_to_pythonpath() {
     fi
 }
 
+# Add paths in order (virtualenv first, then project paths)
+PYTHONPATH="$VENV_SITE_PACKAGES:$PYTHONPATH"
 PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH"
 # Recursively add all subdirectories under 'py' to PYTHONPATH
 add_to_pythonpath "$PROJECT_ROOT/py"
