@@ -6,6 +6,7 @@ from py.render.render_funcs.car_rankings import (
     find_closest_track_idx,
     find_most_distant_closest_point,
     ranking_at_frame,
+    main
 )
 from tests.bases import SetupAlpha
 
@@ -98,6 +99,22 @@ class TestFindMostDistantClosestPoint(SetupAlpha):
         # closest is 3 but we add 1, swinging back to the beginning
         self.assertEqual(closest_idx, 0)
 
+    def test_way_behind(self):
+        # create several points and some cars. 2 of the 3
+        # cars will be 1 unit infront of the last point.
+        # the other car will be far behind
+        inner_points = [np.array(p) for p in [(0, 0, 0), (1, 0, 0), (2, 0, 0), (3, 0, 0), (4, 0, 0), (5, 0, 0)]]
+        outer_points = [np.array(p) for p in [(0, 1, 0), (1, 1, 0), (2, 1, 0), (3, 1, 0), (4, 1, 0), (5, 1, 0)]]
+
+        car_points = [np.array(p) for p in [(4, 0.5, 0), (4, 0.5, 0), (0, 0.5, 0)]]
+
+        closest_idx = find_most_distant_closest_point(inner_points, outer_points, 3, car_points)
+        # the next point should be 4 but we add 1, so we end up at index 5
+        # a bug was occuring where it would take the car in last place because they were furthest
+        # from the previous line, but we want the furthest ahead not furthest
+        self.assertEqual(closest_idx, 5)
+
+
 
 class TestRankingAtFrame(SetupAlpha):
     def test_3_cars(self):
@@ -116,3 +133,48 @@ class TestRankingAtFrame(SetupAlpha):
         rank = ranking_at_frame(inner_points, outer_points, 1, car_points)
         rank_indices = [driver_idx for driver_idx, _ in rank[0]]
         self.assertEqual(rank_indices, [1, 0, 2])
+
+class TestCarRankingsMain(SetupAlpha):
+    def test_positions(self):
+        track_data = self.track_data
+        driver_dfs = self.driver_dfs
+        start_finish_line_idx = self.start_finish_line_idx
+        config = self.config
+
+        rankings = main(track_data, start_finish_line_idx, driver_dfs, config)
+
+        start_buffer_frames = config["render"]["start_buffer_frames"]
+        # rankings returns starting at the actual start of the race not video
+
+        def get_first(abs_frame):
+            return rankings[abs_frame - start_buffer_frames][0][0]
+
+        def get_second(abs_frame):
+            return rankings[abs_frame - start_buffer_frames][1][0]
+
+        def get_last(abs_frame):
+            return rankings[abs_frame - start_buffer_frames][-1][0]
+
+        self.assertEqual(get_first(84), "NOR")
+        self.assertEqual(get_first(104), "NOR")
+        self.assertEqual(get_first(212), "MAG")
+        self.assertEqual(get_first(394), "ALO")
+
+        self.assertEqual(get_first(411), "ALO")
+        self.assertEqual(get_second(411), "HUL")
+
+        self.assertEqual(get_last(687), "ZHO")
+        self.assertEqual(get_first(687), "ALO")
+
+        self.assertEqual(get_last(967), "GAS")
+
+        self.assertEqual(get_first(1055), "COL")
+
+        self.assertEqual(get_first(1175), "ALO")
+        self.assertEqual(get_last(1175), "GAS")
+
+        self.assertEqual(get_first(1530), "VER")
+        self.assertEqual(get_last(1530), "ZHO")
+
+        for i in range(2100, len(rankings)):
+            self.assertEqual(get_first(i), "NOR")
