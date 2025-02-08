@@ -68,20 +68,14 @@ def find_most_distant_closest_point(
         for car_point in car_points
     ]
 
-    cur_distance = 0
     cur_farthest_point_idx = 0
-
-    mid_point_of_reference_line = (inner_points[previous_reference_idx] + outer_points[previous_reference_idx]) / 2
-
     for idx in closest_idxs:
-        distance = point_to_line_distance(mid_point_of_reference_line, inner_points[idx], outer_points[idx])
-        if distance > cur_distance:
-            cur_distance = distance
+        if idx > cur_farthest_point_idx:
             cur_farthest_point_idx = idx
 
     # now, we have the farthest point idx, we want to check if the car is actually
     # the car might not actually be infront of this point, we should be able to just add 1 to the idx
-    # track points are close enough together that this should not cause errors
+    # track points are close enough together that this should not cause bugs
     return (cur_farthest_point_idx + 1) % len(inner_points)
 
 
@@ -121,10 +115,14 @@ def main(track_data, start_finish_line_idx, driver_dfs, config):
         driver_data.append(car_points)
         indices[i] = driver
 
+    final_rank = []
+
     reference_idx = start_finish_line_idx
     for i in range(start_buffer_frames, len(driver_dfs["NOR"]["X"]) - end_buffer_frames):
         current_frame_positions = [driver_points[i] for driver_points in driver_data]
 
         rankings, reference_idx = ranking_at_frame(inner_points, outer_points, reference_idx, current_frame_positions)
-        winner = rankings[0][0]
-        print(f"Frame {i} winner: {indices[winner]}, distance: {rankings[0][1]}")
+
+        final_rank.append([(indices[rank[0]], rank[1]) for rank in rankings])
+
+    return final_rank
