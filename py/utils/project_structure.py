@@ -1,6 +1,5 @@
 import os
 
-RESOURCES_DIR = os.environ.get("RESOURCES_DIR")
 CAR_DATA_DIR = os.environ.get("CAR_DATA_DIR")
 DRIVER_TIMES_DIR = os.environ.get("DRIVER_TIMES_DIR")
 DRIVER_IMAGES_DIR = os.environ.get("DRIVER_IMAGES_DIR")
@@ -26,8 +25,7 @@ class DriverDataPS:
         return os.path.join(DRIVER_TIMES_DIR, f"{year}_{track}.json")
 
     @staticmethod
-    def get_driver_image_path(driver_abbrev: str) -> str:
-        return os.path.join(DRIVER_IMAGES_DIR, f"{driver_abbrev}.png")
+    def get_driver_image_path(driver_abbrev: str) -> str: return os.path.join(DRIVER_IMAGES_DIR, f"{driver_abbrev}.png")
 
 
 TRACK_DATA_DIR = os.environ.get("TRACK_DATA_DIR")
@@ -54,6 +52,7 @@ MAIN_FONT = os.environ.get("MAIN_FONT")
 CAR_FBX_PATH = os.environ.get("CAR_FBX_PATH")
 CAR_PAINTS_DIR = os.environ.get("CAR_PAINTS_DIR")
 CAR_TEXTURES_DIR = os.environ.get("CAR_TEXTURES_DIR")
+CROWN_GLB_PATH = os.environ.get("CROWN_GLB_PATH")
 
 
 class Resources:
@@ -84,3 +83,8 @@ class Resources:
     @staticmethod
     def get_new_texture_image_path(driver_abbrev: str, blender_obj_name: str) -> str:
         return os.path.join(CAR_PAINTS_DIR, f"{driver_abbrev}_{blender_obj_name}.png")
+
+    @staticmethod
+    def get_crown_path():
+        print(CROWN_GLB_PATH)
+        return CROWN_GLB_PATH
