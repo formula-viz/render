@@ -49,6 +49,7 @@ class TrackDataPS:
 BACKGROUND_MUSIC_PATH = os.environ.get("BACKGROUND_MUSIC_PATH")
 BACKGROUND_IMAGE_PATH = os.environ.get("BACKGROUND_IMAGE_PATH")
 MAIN_FONT = os.environ.get("MAIN_FONT")
+BOLD_FONT = os.environ.get("BOLD_FONT")
 CAR_FBX_PATH = os.environ.get("CAR_FBX_PATH")
 CAR_PAINTS_DIR = os.environ.get("CAR_PAINTS_DIR")
 CAR_TEXTURES_DIR = os.environ.get("CAR_TEXTURES_DIR")
@@ -67,6 +68,10 @@ class Resources:
     @staticmethod
     def get_main_font():
         return MAIN_FONT
+
+    @staticmethod
+    def get_bold_font():
+        return BOLD_FONT
 
     @staticmethod
     def get_car_fbx_path():

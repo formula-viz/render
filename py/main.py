@@ -19,8 +19,6 @@ def initialize(config):
 
 
 def trigger(config, renderer, post_renderer):
-    import_crown()
-
     isolate_module = config["pipeline"]["isolate_module"]
     if type(isolate_module) == bool and not isolate_module:
         renderer.render()

@@ -112,11 +112,11 @@ def load_base_car_fbx():
         # this way, when we have the car passing the line, it is the tip of the nose passing
         # obj.location[1] += 3.3
 
-    crown_obj = import_crown()
-    if crown_obj:
-        crown_obj.parent = empty_obj
-    else:
-        log_err("Couldn't import the crown object.")
+    # crown_obj = import_crown()
+    # if crown_obj:
+    #     crown_obj.parent = empty_obj
+    # else:
+    #     log_err("Couldn't import the crown object.")
 
     return empty_obj, base_collection
 
