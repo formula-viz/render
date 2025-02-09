@@ -1,12 +1,21 @@
 import math
 
-import bpy # pyright: ignore
-import mathutils # pyright: ignore
+import bpy  # pyright: ignore
+import mathutils  # pyright: ignore
 import PIL.Image as Image
 from utils.colors import hex_to_blender_rgb, hex_to_normal_rgb
 from utils.project_structure import Resources
-from utils.logger import log_info, log_warn
+from utils.logger import log_err, log_info, log_warn
 
+
+def import_crown():
+    crown_path = Resources.get_crown_path()  # You'll need to add this method to your Resources class
+    bpy.ops.import_scene.gltf(filepath=crown_path)
+    # Get the imported crown object
+    for obj in bpy.context.selected_objects:
+        if "crown" in obj.name.lower():
+            return obj
+    return None
 
 def set_color(obj, rgb_color: tuple[float, float, float]):
     # if obj has no mat at all, we need to create one
@@ -44,7 +53,9 @@ def replace_color_in_image(blender_obj, hex_color, driver_abbrev):
             break
 
     image_path = bpy.path.abspath(image_node.image.filepath)
-    new_image_path = Resources.get_new_texture_image_path(driver_abbrev, blender_obj.name)
+    new_image_path = Resources.get_new_texture_image_path(
+        driver_abbrev, blender_obj.name
+    )
 
     with Image.open(image_path) as img:
         if img.mode != "RGB":
@@ -79,7 +90,9 @@ def load_base_car_fbx():
     # Create a temporary collection to store the base objects
     base_collection = bpy.data.collections.new(name="BaseCarCollection")
     bpy.context.scene.collection.children.link(base_collection)
-    bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
+    bpy.context.view_layer.active_layer_collection = (
+        bpy.context.view_layer.layer_collection.children[-1]
+    )
 
     # Import the FBX into this collection
     bpy.ops.import_scene.fbx(filepath=Resources.get_car_fbx_path())
@@ -99,6 +112,12 @@ def load_base_car_fbx():
         # this way, when we have the car passing the line, it is the tip of the nose passing
         # obj.location[1] += 3.3
 
+    crown_obj = import_crown()
+    if crown_obj:
+        crown_obj.parent = empty_obj
+    else:
+        log_err("Couldn't import the crown object.")
+
     return empty_obj, base_collection
 
 
@@ -106,7 +125,9 @@ def create_driver_fbx(driver, hex_color, empty_obj):
     """Create a new driver instance by duplicating base objects"""
     driver_collection = bpy.data.collections.new(name=driver.title() + "Collection")
     bpy.context.scene.collection.children.link(driver_collection)
-    bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
+    bpy.context.view_layer.active_layer_collection = (
+        bpy.context.view_layer.layer_collection.children[-1]
+    )
 
     new_empty = empty_obj.copy()
     new_empty.name = "MasterEmpty" + driver.title()
@@ -149,10 +170,18 @@ def create_driver_fbx(driver, hex_color, empty_obj):
     bpy.ops.object.camera_add()
     camera = bpy.context.object
     camera.name = driver.title() + "_Camera"
-    camera.location = (0, 3.8, 1.25)  # Position the camera 5 units above the empty object
+    camera.location = (
+        0,
+        3.8,
+        1.25,
+    )  # Position the camera 5 units above the empty object
     camera.data.dof.focus_distance = 15
     camera.parent = empty_obj
-    camera.rotation_euler = (math.radians(82), 0, math.radians(180))  # Rotate 90 degrees around Z-axis
+    camera.rotation_euler = (
+        math.radians(82),
+        0,
+        math.radians(180),
+    )  # Rotate 90 degrees around Z-axis
 
     for col in camera.users_collection:
         col.objects.unlink(camera)
@@ -171,10 +200,18 @@ def add_keyframes(driver_obj, wheels_objs, df):
         # TODO: for now setting all z to 0 because cars appear to be under the track
         point = mathutils.Vector((df["X"][i], df["Y"][i], 0))
 
-        rot_eul = mathutils.Quaternion((df["RotW"][i], df["RotX"][i], df["RotY"][i], df["RotZ"][i])).to_euler()
-        harsher_rot_eul = mathutils.Quaternion(
-            (df["HarsherRotW"][i], df["HarsherRotX"][i], df["HarsherRotY"][i], df["HarsherRotZ"][i])
-        ).to_euler()
+        rot_eul = mathutils.Quaternion((
+            df["RotW"][i],
+            df["RotX"][i],
+            df["RotY"][i],
+            df["RotZ"][i],
+        )).to_euler()
+        harsher_rot_eul = mathutils.Quaternion((
+            df["HarsherRotW"][i],
+            df["HarsherRotX"][i],
+            df["HarsherRotY"][i],
+            df["HarsherRotZ"][i],
+        )).to_euler()
 
         # for the front wheels, get the differences between the z's for harsher and normal, then add the diff to the front wheel rot
         front_wheel_diff = harsher_rot_eul[2] - rot_eul[2]
@@ -204,8 +241,15 @@ def main(driver_dfs, drivers, driver_colors):
 
     driver_objs = {}
     for i, driver_abbrev in enumerate(drivers):
-        log_info(f"Adding driver {i+1}/{len(drivers)}: {driver_abbrev} with color: {driver_colors[i]}")
-        driver_obj, wheels_objs = create_driver_fbx(driver_abbrev, driver_colors[i], empty_obj)
+        if i >= 1:
+            continue
+
+        log_info(
+            f"Adding driver {i + 1}/{len(drivers)}: {driver_abbrev} with color: {driver_colors[i]}"
+        )
+        driver_obj, wheels_objs = create_driver_fbx(
+            driver_abbrev, driver_colors[i], empty_obj
+        )
         add_keyframes(driver_obj, wheels_objs, driver_dfs[driver_abbrev])
 
         driver_objs[driver_abbrev] = driver_obj

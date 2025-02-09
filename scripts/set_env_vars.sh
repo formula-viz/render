@@ -46,6 +46,8 @@ python_env_vars() {
     export CAR_PAINTS_DIR="$PROJECT_ROOT/temporary/car_paints"
     export CAR_TEXTURES_DIR="$RESOURCES_DIR/cars/formula-1-2024-generic/textures"
 
+    export CROWN_GLB_PATH="$RESOURCES_DIR/king_crown.glb"
+
     export CAR_DATA_DIR="$DATA_DIR/car_data"
     export DRIVER_TIMES_DIR="$DATA_DIR/driver_times"
     export DRIVER_IMAGES_DIR="$DATA_DIR/driver_images"
