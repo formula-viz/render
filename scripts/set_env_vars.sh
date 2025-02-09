@@ -56,6 +56,7 @@ python_env_vars() {
     export BACKGROUND_MUSIC_PATH="$RESOURCES_DIR/audio/lofi-hiphop-background.m4a"
     export BACKGROUND_IMAGE_PATH="$RESOURCES_DIR/backgrounds/background1.jpeg"
     export MAIN_FONT="$RESOURCES_DIR/fonts/Formula1-Regular.ttf"
+    export BOLD_FONT="$RESOURCES_DIR/fonts/Formula1-Bold.ttf"
 
     export FRAMES_DIR="$TEMPORARY_DIR/frames"
 
