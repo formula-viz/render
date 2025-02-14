@@ -246,8 +246,6 @@ def main(driver_dfs, drivers, driver_colors):
 
     driver_objs = {}
     for i, driver_abbrev in enumerate(drivers):
-        if i >= 3:
-            continue
         log_info(
             f"Adding driver {i + 1}/{len(drivers)}: {driver_abbrev} with color: {
                 driver_colors[i]

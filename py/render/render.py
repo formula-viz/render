@@ -13,6 +13,7 @@ from render_funcs import (
     render_animation,
     car_rankings,
     live_leaderboard,
+    race_timer,
 )
 from utils.colors import get_rest_of_field_colors, get_head_to_head_colors
 from utils.logger import log_info
@@ -48,7 +49,8 @@ class AbstractRenderer(ABC):
     # this should be the same for all jobs
     def trigger_render(self):
         log_info("Starting Rendering...")
-        render_animation.main(self.config, len(self.driver_dfs[self.focused_driver]))
+        render_animation.main(self.config, len(
+            self.driver_dfs[self.focused_driver]))
 
     # this has to be a separate function because the car data must be loaded before in order to get an
     # accurate estimation of the location of the start finish line
@@ -107,6 +109,10 @@ class HeadToHeadRenderer(AbstractRenderer):
             self.start_finish_line_idx,
             self.driver_dfs[self.focused_driver],
         )
+        race_timer.RaceTimer(
+            self.config,
+            self.camera_obj,
+        )
 
 
 class RestOfFieldRenderer(AbstractRenderer):
@@ -148,10 +154,14 @@ class RestOfFieldRenderer(AbstractRenderer):
             self.start_finish_line_idx,
             self.driver_dfs[self.focused_driver],
         )
+        race_timer.RaceTimer(
+            self.config,
+            self.camera_obj,
+        )
         live_leaderboard.LiveLeaderboard(
             self.config,
             self.drivers_in_color_order,
-            self.colors[0 : len(self.driver_dfs)],
+            self.colors[0: len(self.driver_dfs)],
             self.car_rankings,
             self.camera_obj,
         )
