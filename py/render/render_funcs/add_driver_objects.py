@@ -4,18 +4,21 @@ import bpy  # pyright: ignore
 import mathutils  # pyright: ignore
 import PIL.Image as Image
 from utils.colors import hex_to_blender_rgb, hex_to_normal_rgb
+from utils.logger import log_info, log_warn
 from utils.project_structure import Resources
-from utils.logger import log_err, log_info, log_warn
 
 
 def import_crown():
-    crown_path = Resources.get_crown_path()  # You'll need to add this method to your Resources class
+    crown_path = (
+        Resources.get_crown_path()
+    )  # You'll need to add this method to your Resources class
     bpy.ops.import_scene.gltf(filepath=crown_path)
     # Get the imported crown object
     for obj in bpy.context.selected_objects:
         if "crown" in obj.name.lower():
             return obj
     return None
+
 
 def set_color(obj, rgb_color: tuple[float, float, float]):
     # if obj has no mat at all, we need to create one
@@ -123,7 +126,8 @@ def load_base_car_fbx():
 
 def create_driver_fbx(driver, hex_color, empty_obj):
     """Create a new driver instance by duplicating base objects"""
-    driver_collection = bpy.data.collections.new(name=driver.title() + "Collection")
+    driver_collection = bpy.data.collections.new(
+        name=driver.title() + "Collection")
     bpy.context.scene.collection.children.link(driver_collection)
     bpy.context.view_layer.active_layer_collection = (
         bpy.context.view_layer.layer_collection.children[-1]
@@ -218,7 +222,8 @@ def add_keyframes(driver_obj, wheels_objs, df):
 
         wheel_rot = df["TireRot"][i]
         for wheel_obj in wheels_objs:
-            rot = wheel_obj.rotation_euler  # the other infos for y, z may change so just grab what already exists first
+            # the other infos for y, z may change so just grab what already exists first
+            rot = wheel_obj.rotation_euler
             rot[0] = wheel_rot
 
             # TODO: I need to remove the front wheel physics for now because it is janky
@@ -241,11 +246,12 @@ def main(driver_dfs, drivers, driver_colors):
 
     driver_objs = {}
     for i, driver_abbrev in enumerate(drivers):
-        if i >= 1:
+        if i >= 3:
             continue
-
         log_info(
-            f"Adding driver {i + 1}/{len(drivers)}: {driver_abbrev} with color: {driver_colors[i]}"
+            f"Adding driver {i + 1}/{len(drivers)}: {driver_abbrev} with color: {
+                driver_colors[i]
+            }"
         )
         driver_obj, wheels_objs = create_driver_fbx(
             driver_abbrev, driver_colors[i], empty_obj

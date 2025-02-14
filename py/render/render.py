@@ -7,7 +7,7 @@ from render_funcs import (
     add_indicators,
     add_sun,
     add_track,
-    add_status_track,
+    status_track,
     load_driver_data,
     load_track_data,
     render_animation,
@@ -101,7 +101,7 @@ class HeadToHeadRenderer(AbstractRenderer):
         )
 
     def configure_widgets(self):
-        add_status_track.main(
+        status_track.StatusTrack(
             self.track_data,
             self.camera_obj,
             self.start_finish_line_idx,
@@ -142,7 +142,7 @@ class RestOfFieldRenderer(AbstractRenderer):
         )
 
     def configure_widgets(self):
-        add_status_track.main(
+        status_track.StatusTrack(
             self.track_data,
             self.camera_obj,
             self.start_finish_line_idx,
