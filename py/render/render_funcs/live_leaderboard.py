@@ -67,7 +67,8 @@ class LiveLeaderboard:
                 empty_parent_obj = self.driver_objects[driver]
 
                 empty_parent_obj.location = self.position_offsets[idx + 1]
-                empty_parent_obj.keyframe_insert(data_path="location", frame=true_frame)
+                empty_parent_obj.keyframe_insert(
+                    data_path="location", frame=true_frame)
 
     def _parent_to_camera(self, camera_obj: bpy.types.Object) -> None:
         """Parent the leaderboard to the camera."""
@@ -75,7 +76,6 @@ class LiveLeaderboard:
 
         self.parent_empty.location = Vector((-0.19, 0.33, -1))
         self.parent_empty.rotation_euler = camera_obj.rotation_euler
-
 
     def _build_initial_objs(self) -> None:
         """Create initial objects for each driver in the leaderboard."""
@@ -148,7 +148,6 @@ class LiveLeaderboard:
         num_drivers = len(self.driver_abbrevs)
         offsets = {}
 
-
         for position in range(1, num_drivers + 1):
             # Calculate vertical offset (top to bottom)
             y_offset = -(position - 1) * self.spacing
@@ -160,5 +159,5 @@ class LiveLeaderboard:
     def _hex_to_rgba(hex_color: str) -> tuple[float, float, float, float]:
         """Convert hex color to RGBA values."""
         hex_color = hex_color.lstrip("#")
-        rgb = tuple(int(hex_color[i : i + 2], 16) / 255 for i in (0, 2, 4))
+        rgb = tuple(int(hex_color[i: i + 2], 16) / 255 for i in (0, 2, 4))
         return (rgb[0], rgb[1], rgb[2], 1.0)  # Add alpha channel
