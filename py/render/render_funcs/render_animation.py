@@ -56,6 +56,16 @@ def main(config, num_frames):
     else:
         bpy.context.scene.frame_end = num_frames
 
+    # disbale relationship lines
+    bpy.context.window_manager.windows.update()
+    screen = bpy.context.window.screen
+
+    for area in screen.areas:
+        if area.type == 'VIEW_3D':
+            for space in area.spaces:
+                if space.type == 'VIEW_3D':
+                    space.overlay.show_relationship_lines = False
+
     if config["pipeline"]["preview_mode"]:
         log_info("Set to preview mode, skipping rendering...")
         return
