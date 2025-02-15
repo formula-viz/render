@@ -70,7 +70,7 @@ class StatusTrack:
         """Parent the leaderboard to the camera."""
         self.parent_empty.parent = camera_obj
 
-        self.parent_empty.location = Vector((-0.13, -0.31, -1))
+        self.parent_empty.location = Vector((0.13, 0.31, -1))
         self.parent_empty.rotation_euler = camera_obj.rotation_euler
 
     # TODO: this may need to be reworked later
