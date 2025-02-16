@@ -9,8 +9,7 @@ from utils.project_structure import Resources
 
 
 def import_crown():
-    crown_path = (
-        Resources.get_crown_path()
+    crown_path = ( Resources.get_crown_path()
     )  # You'll need to add this method to your Resources class
     bpy.ops.import_scene.gltf(filepath=crown_path)
     # Get the imported crown object
@@ -241,11 +240,14 @@ def add_keyframes(driver_obj, wheels_objs, df):
         driver_obj.keyframe_insert(data_path="rotation_euler", frame=idx)
 
 
-def main(driver_dfs, drivers, driver_colors):
+def main(driver_dfs, drivers, driver_colors, is_quick_validate_mode):
     empty_obj, base_collection = load_base_car_fbx()
 
     driver_objs = {}
     for i, driver_abbrev in enumerate(drivers):
+        if is_quick_validate_mode and i >= 2:
+            continue
+
         log_info(
             f"Adding driver {i + 1}/{len(drivers)}: {driver_abbrev} with color: {
                 driver_colors[i]

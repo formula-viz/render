@@ -11,11 +11,14 @@ from utils.colors import GOLD_RGB
 
 
 class StatusTrack:
-    def __init__(self, track_data, camera_obj, start_finish_line_idx, driver_df):
+    def __init__(
+        self, track_data, camera_obj, start_finish_line_idx, driver_df, is_shorts_output
+    ):
         self.track_data = track_data
         self.camera_obj = camera_obj
         self.start_finish_line_idx = start_finish_line_idx
         self.driver_df = driver_df
+        self.is_shorts_output = is_shorts_output
 
         log_info("Initializing StatusTrack...")
 
@@ -35,9 +38,8 @@ class StatusTrack:
         new_track_data, new_driver_df = self._center(
             self.track_data, self.driver_df)
 
-        is_phone = True
         optimal_scale = self._calculate_optimal_scale(
-            new_track_data, self.camera_obj, is_phone
+            new_track_data, self.camera_obj, self.is_shorts_output
         )
 
         track_mat = create_material(MainTrackColor.get_scene_rgb(), "Main")
@@ -70,17 +72,25 @@ class StatusTrack:
         """Parent the leaderboard to the camera."""
         self.parent_empty.parent = camera_obj
 
-        self.parent_empty.location = Vector((0.13, 0.31, -1))
+        if self.is_shorts_output:
+            position = (0.13, 0.31, -1)
+        else:
+            position = (0.28, 0.15, -1)
+
+        self.parent_empty.location = Vector(position)
         self.parent_empty.rotation_euler = camera_obj.rotation_euler
 
     # TODO: this may need to be reworked later
-    def _calculate_optimal_scale(self, new_track_data, camera_obj, is_phone):
+    def _calculate_optimal_scale(self, new_track_data, camera_obj, is_shorts_output):
+        # TODO: for now setting is_shorts_output to always True
+        is_shorts_output = True
+
         # At 1 meter distance with 50mm lens
         TOTAL_WIDTH_COVERED = 0.72  # meters
         TOTAL_HEIGHT_COVERED = 0.48  # meters
 
         # Calculate usable space based on resolution aspect ratio
-        if is_phone:
+        if is_shorts_output:
             resolution_aspect = 1080 / 1920  # 0.5625 (9:16)
             usable_width = TOTAL_HEIGHT_COVERED * resolution_aspect
             usable_height = TOTAL_HEIGHT_COVERED
@@ -96,7 +106,7 @@ class StatusTrack:
         track_height = max(y_points) - min(y_points)
 
         # Calculate desired size as fraction of usable space
-        if is_phone:
+        if is_shorts_output:
             desired_width = 0.45  # 40% of width
             desired_height = 0.3  # 20% of height
         else:

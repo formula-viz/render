@@ -66,5 +66,10 @@ class RaceTimer:
         """Parent the leaderboard to the camera."""
         timer_obj.parent = camera_obj
 
-        timer_obj.location = Vector((0.06, -0.33, -1))
+        if self.config["render"]["is_shorts_output"]:
+            position = (0.06, -0.33, -1)
+        else:
+            position = (0.22, -0.18, -1)
+
+        timer_obj.location = Vector(position)
         timer_obj.rotation_euler = camera_obj.rotation_euler
