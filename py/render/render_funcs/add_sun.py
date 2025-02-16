@@ -13,7 +13,7 @@ def main():
     light_object = bpy.data.objects.new(name="Sun", object_data=light_data)
 
     # Add slight warm color to the sun (orange/golden tint)
-    light_data.color = (1, 0.975, 0.9)  # RGB values for warm sunlight
+    light_data.color = (1, 0.9875, 0.95)  # RGB values for warm sunlight
 
     bpy.context.collection.objects.link(light_object)
     light_object.location = (1000, 1000, 1000)
