@@ -4,6 +4,7 @@ CAR_DATA_DIR = os.environ.get("CAR_DATA_DIR")
 DRIVER_TIMES_DIR = os.environ.get("DRIVER_TIMES_DIR")
 DRIVER_IMAGES_DIR = os.environ.get("DRIVER_IMAGES_DIR")
 FRAMES_DIR = os.environ.get("FRAMES_DIR")
+OUTPUT_DIR = os.environ.get("OUTPUT_DIR")
 
 
 def get_frames_dir():
