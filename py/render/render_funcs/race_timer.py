@@ -37,6 +37,20 @@ class RaceTimer:
             Resources.get_main_font())
         self.timer_obj.data.size = 0.03
 
+        # Create white material
+        mat = bpy.data.materials.new(name="TimerMaterial")
+        mat.use_nodes = True
+        nodes = mat.node_tree.nodes
+        nodes["Principled BSDF"].inputs["Base Color"].default_value = (
+            1,
+            1,
+            1,
+            1,
+        )  # Pure white RGBA
+
+        # Assign material to text
+        self.timer_obj.data.materials.append(mat)
+
     def _update_timer_text(self) -> None:
         """Updates timer text based on current frame using frame handler."""
 

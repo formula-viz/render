@@ -3,6 +3,8 @@ from mathutils import Vector
 from utils.logger import log_info
 from utils.project_structure import Resources
 
+from render_funcs.driver_circle import DriverCircle
+
 
 class LiveLeaderboard:
     def __init__(
@@ -11,6 +13,7 @@ class LiveLeaderboard:
         driver_abbrevs: list[str],
         driver_colors: list[str],
         car_rankings: list[list[tuple[str, float]]],
+        is_fancy_mode: bool,
         camera_obj: bpy.types.Object,
     ):
         """
@@ -30,8 +33,14 @@ class LiveLeaderboard:
         self.driver_abbrevs = driver_abbrevs
         self.driver_colors = driver_colors
         self.car_rankings = car_rankings
-        self.spacing = 0.015  # Vertical spacing between elements
+        self.is_fancy_mode = is_fancy_mode
         self.driver_objects = {}  # Store references to driver objects
+        self.camera_obj = camera_obj
+
+        if self.is_fancy_mode:
+            self.spacing = 0.035
+        else:
+            self.spacing = 0.015  # Vertical spacing between elements
 
         # Create main collection
         self.collection = bpy.data.collections.new("LiveLeaderboard")
@@ -45,7 +54,7 @@ class LiveLeaderboard:
         self.parent_empty.hide_viewport = True
         self.parent_empty.name = "LeaderboardParent"
 
-        self._parent_to_camera(camera_obj)
+        self._parent_to_camera()
 
         # Initialize
         self.position_offsets = self._get_offsets_dict()
@@ -70,17 +79,20 @@ class LiveLeaderboard:
                 empty_parent_obj.keyframe_insert(
                     data_path="location", frame=true_frame)
 
-    def _parent_to_camera(self, camera_obj: bpy.types.Object) -> None:
+    def _parent_to_camera(self) -> None:
         """Parent the leaderboard to the camera."""
-        self.parent_empty.parent = camera_obj
+        self.parent_empty.parent = self.camera_obj
 
         if self.config["render"]["is_shorts_output"]:
             position = (-0.19, 0.33, -1)
         else:
-            position = (-0.35, 0.18, -1)
+            if self.is_fancy_mode:
+                position = (-0.33, 0.17, -1)
+            else:
+                position = (-0.35, 0.18, -1)
 
         self.parent_empty.location = Vector(position)
-        self.parent_empty.rotation_euler = camera_obj.rotation_euler
+        self.parent_empty.rotation_euler = self.camera_obj.rotation_euler
 
     def _build_initial_objs(self) -> None:
         """Create initial objects for each driver in the leaderboard."""
@@ -113,8 +125,24 @@ class LiveLeaderboard:
         empty_obj.hide_viewport = True
         empty_obj.parent = self.parent_empty
 
+        # Create driver circle if in fancy mode
+        if self.is_fancy_mode:
+            self.driver_circle = DriverCircle(
+                driver_abbrev=abbrev,
+                color=color,
+                driver_car_obj=None,  # Using empty_obj as the parent
+                camera_obj=None,
+                pre_existing_empty=empty_obj,
+            )
+            self.driver_circle.circle_face.scale = (0.015, 0.015, 0.015)
+
         # Create text object
-        bpy.ops.object.text_add(location=(0, 0, 0))
+        if self.is_fancy_mode:
+            text_loc = (0.02, -0.005, 0)
+        else:
+            text_loc = (0, 0, 0)
+
+        bpy.ops.object.text_add(location=text_loc)
         text_obj = bpy.context.active_object
         text_obj.name = f"Text_{abbrev}"
         text_obj.data.body = abbrev
