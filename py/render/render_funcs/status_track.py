@@ -1,7 +1,7 @@
 import bpy
 from mathutils import Vector
 
-from utils.colors import MainTrackColor
+from utils.colors import MainTrackColor, hex_to_blender_rgb
 
 from load_track_data import TrackData
 from add_track import create_planes, create_material
@@ -42,7 +42,7 @@ class StatusTrack:
             new_track_data, self.camera_obj, self.is_shorts_output
         )
 
-        track_mat = create_material(MainTrackColor.get_scene_rgb(), "Main")
+        track_mat = create_material(hex_to_blender_rgb("#FFFFFF"), "Main")
         status_track_obj = create_planes(
             new_track_data.inner_curb_points,
             new_track_data.outer_curb_points,
