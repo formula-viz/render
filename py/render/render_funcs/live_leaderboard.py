@@ -74,7 +74,12 @@ class LiveLeaderboard:
         """Parent the leaderboard to the camera."""
         self.parent_empty.parent = camera_obj
 
-        self.parent_empty.location = Vector((-0.19, 0.33, -1))
+        if self.config["render"]["is_shorts_output"]:
+            position = (-0.19, 0.33, -1)
+        else:
+            position = (-0.35, 0.18, -1)
+
+        self.parent_empty.location = Vector(position)
         self.parent_empty.rotation_euler = camera_obj.rotation_euler
 
     def _build_initial_objs(self) -> None:

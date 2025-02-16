@@ -19,21 +19,23 @@ def configure_gpu(config):
             d["use"] = 1
             log_info(f"Using GPU: {d['name']}")
 
-    bpy.context.scene.cycles.use_adaptive_sampling = config["render"]["adaptive_sampling"]
+    bpy.context.scene.cycles.use_adaptive_sampling = config["render"][
+        "adaptive_sampling"
+    ]
 
 
 # render settings will be sent in as a dict from yaml
 def main(config, num_frames):
     # configure the resolution before quitting in the case of
     # preview render mode to properly preview mobile/desktop viewports
-    if config["render"]["is_mobile"]:
-        log_info("Setting to mobile resolution...")
+    if config["render"]["is_shorts_output"]:
+        log_info("Setting to shorts/phone resolution...")
         bpy.context.scene.render.resolution_x = 1080
         bpy.context.scene.render.resolution_y = 1920
 
         bpy.context.scene.cycles.tile_x = 1080
         bpy.context.scene.cycles.tile_y = 1920
-    elif config["render"]["is_4k"]:
+    else:
         log_info("Setting to 4k desktop resolution...")
         bpy.context.scene.render.resolution_x = 3840
         bpy.context.scene.render.resolution_y = 2160
@@ -41,29 +43,17 @@ def main(config, num_frames):
         # it is better to use 1 tile because gpu has 12GB of memory
         bpy.context.scene.cycles.tile_x = 3840
         bpy.context.scene.cycles.tile_y = 2160
-    else:
-        log_info("Setting to 1080p desktop resolution...")
-        bpy.context.scene.render.resolution_x = 1920
-        bpy.context.scene.render.resolution_y = 1080
-
-        bpy.context.scene.cycles.tile_x = 1920
-        bpy.context.scene.cycles.tile_y = 1080
 
     bpy.context.scene.render.fps = config["render"]["fps"]
-
-    if config["pipeline"]["quick_validate_mode"]:
-        bpy.context.scene.frame_end = 100
-    else:
-        bpy.context.scene.frame_end = num_frames
+    bpy.context.scene.frame_end = num_frames
 
     # disbale relationship lines
     bpy.context.window_manager.windows.update()
     screen = bpy.context.window.screen
-
     for area in screen.areas:
-        if area.type == 'VIEW_3D':
+        if area.type == "VIEW_3D":
             for space in area.spaces:
-                if space.type == 'VIEW_3D':
+                if space.type == "VIEW_3D":
                     space.overlay.show_relationship_lines = False
 
     if config["pipeline"]["preview_mode"]:

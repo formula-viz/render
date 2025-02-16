@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-import bpy  # pyright: ignore
+import bpy
 from render_funcs import (
     add_camera,
     add_driver_objects,
@@ -50,7 +50,8 @@ class AbstractRenderer(ABC):
     # this should be the same for all jobs
     def trigger_render(self):
         log_info("Starting Rendering...")
-        render_animation.main(self.config, len(self.driver_dfs[self.focused_driver]))
+        render_animation.main(self.config, len(
+            self.driver_dfs[self.focused_driver]))
 
     # this has to be a separate function because the car data must be loaded before in order to get an
     # accurate estimation of the location of the start finish line
@@ -86,7 +87,10 @@ class HeadToHeadRenderer(AbstractRenderer):
         self.colors = get_head_to_head_colors(*self.config["drivers"])
 
         self.driver_objs = add_driver_objects.main(
-            self.driver_dfs, self.config["drivers"], self.colors
+            self.driver_dfs,
+            self.config["drivers"],
+            self.colors,
+            self.config["pipeline"]["quick_validate_mode"],
         )
 
     def add_camera(self):
@@ -99,7 +103,6 @@ class HeadToHeadRenderer(AbstractRenderer):
             self.config["render"]["max_cam_distance"],
             self.config["render"]["start_buffer_frames"],
             self.config["render"]["end_buffer_frames"],
-            self.config["render"]["is_mobile"],
         )
 
     def configure_widgets(self):
@@ -136,7 +139,10 @@ class RestOfFieldRenderer(AbstractRenderer):
         self.drivers_in_color_order.insert(0, focused_driver)
 
         self.driver_objs = add_driver_objects.main(
-            self.driver_dfs, self.drivers_in_color_order, self.colors
+            self.driver_dfs,
+            self.drivers_in_color_order,
+            self.colors,
+            self.config["pipeline"]["quick_validate_mode"],
         )
 
     def add_camera(self):
@@ -147,7 +153,6 @@ class RestOfFieldRenderer(AbstractRenderer):
             self.config["render"]["max_cam_distance"],
             self.config["render"]["start_buffer_frames"],
             self.config["render"]["end_buffer_frames"],
-            self.config["render"]["is_mobile"],
         )
 
     def configure_widgets(self):
@@ -156,6 +161,7 @@ class RestOfFieldRenderer(AbstractRenderer):
             self.camera_obj,
             self.start_finish_line_idx,
             self.driver_dfs[self.focused_driver],
+            self.config["render"]["is_shorts_output"],
         )
         race_timer.RaceTimer(
             self.config,
@@ -164,11 +170,10 @@ class RestOfFieldRenderer(AbstractRenderer):
         live_leaderboard.LiveLeaderboard(
             self.config,
             self.drivers_in_color_order,
-            self.colors[0 : len(self.driver_dfs)],
+            self.colors[0: len(self.driver_dfs)],
             self.car_rankings,
             self.camera_obj,
         )
         driver_circle.DriverCircle(
             self.focused_driver, self.driver_objs[self.focused_driver], self.camera_obj
         )
-
