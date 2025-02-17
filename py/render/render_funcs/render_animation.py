@@ -24,7 +24,7 @@ def configure_gpu(config):
     ]
 
 
-def eevee_render(config, num_frames):
+def eevee_render(config, num_frames, is_preview_mode):
     log_info("Starting Eevee viewport render...")
 
     # Set active camera as viewport camera
@@ -34,44 +34,36 @@ def eevee_render(config, num_frames):
                 if space.type == "VIEW_3D":
                     space.region_3d.view_perspective = "CAMERA"
 
-    # disable relationship lines
-    bpy.context.window_manager.windows.update()
-    screen = bpy.context.window.screen
-    for area in screen.areas:
-        if area.type == "VIEW_3D":
-            for space in area.spaces:
-                if space.type == "VIEW_3D":
-                    space.overlay.show_relationship_lines = False
-
     # High quality video encoding with focus on sharpness
     bpy.context.scene.render.image_settings.file_format = "FFMPEG"
     bpy.context.scene.render.ffmpeg.format = "MPEG4"
     bpy.context.scene.render.ffmpeg.codec = "H264"
 
-    # Increase bitrate and quality settings
-    bpy.context.scene.render.ffmpeg.constant_rate_factor = (
-        "LOSSLESS"  # Lossless quality
-    )
+    # Use constant rate factor instead of bitrate control
+    bpy.context.scene.render.ffmpeg.constant_rate_factor = "MEDIUM"
     bpy.context.scene.render.ffmpeg.ffmpeg_preset = "BEST"
+
+    # Remove bitrate constraints that might cause quality issues
+    bpy.context.scene.render.ffmpeg.video_bitrate = 0
+    bpy.context.scene.render.ffmpeg.minrate = 0
+    bpy.context.scene.render.ffmpeg.maxrate = 0
+
+    # Other quality settings
     bpy.context.scene.render.ffmpeg.gopsize = 1
+    bpy.context.scene.render.ffmpeg.use_max_b_frames = False
     bpy.context.scene.render.ffmpeg.audio_codec = "NONE"
-    bpy.context.scene.render.ffmpeg.video_bitrate = 80000  # High bitrate
-    bpy.context.scene.render.ffmpeg.minrate = 80000  # Force constant bitrate
-    bpy.context.scene.render.ffmpeg.maxrate = 80000
-    bpy.context.scene.render.ffmpeg.buffersize = 2000  # Larger buffer
-    bpy.context.scene.render.ffmpeg.use_max_b_frames = False  # Reduce blur
-    bpy.context.scene.render.image_settings.color_mode = "RGB"  # Full color
-    bpy.context.scene.render.image_settings.compression = 0  # No compression
+    bpy.context.scene.render.image_settings.color_mode = "RGB"
+    bpy.context.scene.render.image_settings.compression = 0
 
     # Configure high quality Eevee settings
     eevee = bpy.context.scene.eevee
-    eevee.taa_render_samples = 64  # Anti-aliasing samples
-    eevee.taa_samples = 64
+    eevee.taa_render_samples = 4096  # Anti-aliasing samples
+    eevee.taa_samples = 4096
     eevee.use_taa_reprojection = True
 
     eevee.use_soft_shadows = True
-    eevee.shadow_cube_size = "2048"  # Higher shadow resolution
-    eevee.shadow_cascade_size = "2048"
+    eevee.shadow_cube_size = "128"  # Higher shadow resolution
+    eevee.shadow_cascade_size = "128"
 
     eevee.use_gtao = True  # Better ambient occlusion
     eevee.gtao_quality = 1.0
@@ -87,10 +79,6 @@ def eevee_render(config, num_frames):
     eevee.bloom_radius = 6.5
     eevee.bloom_intensity = 0.05
 
-    # Set output path
-    output_path = os.path.join(OUTPUT_DIR, "viewport_render.mp4")
-    bpy.context.scene.render.filepath = output_path
-
     # Set viewport to highest quality shading
     for area in bpy.context.screen.areas:
         if area.type == "VIEW_3D":
@@ -103,14 +91,21 @@ def eevee_render(config, num_frames):
                     space.shading.use_scene_world = True
                     space.shading.render_pass = "COMBINED"
 
-    # Perform viewport render
-    log_info(f"Rendering viewport animation to {output_path}")
-    bpy.ops.render.opengl(animation=True, sequencer=False)
-    log_info("Viewport render complete")
-    bpy.ops.wm.quit_blender()
+    # Set output path
+    output_path = os.path.join(OUTPUT_DIR, "viewport_render.mp4")
+    bpy.context.scene.render.filepath = output_path
+    if not is_preview_mode:
+        # Perform viewport render
+        log_info(f"Rendering viewport animation to {output_path}")
+        bpy.ops.render.opengl(animation=True, sequencer=False)
+        log_info("Viewport render complete")
+        bpy.ops.wm.quit_blender()
 
 
-def cycles_render(config, num_frames):
+def cycles_render(config, num_frames, is_preview_mode):
+    if is_preview_mode:
+        return
+
     log_info(f"Starting Cycles Render of {num_frames}")
     configure_gpu(config)
 
@@ -153,18 +148,26 @@ def main(config, num_frames):
         # it is better to use 1 tile because gpu has 12GB of memory
         bpy.context.scene.cycles.tile_x = 3840
         bpy.context.scene.cycles.tile_y = 2160
+    bpy.context.view_layer.update()
 
     bpy.context.scene.render.fps = config["render"]["fps"]
     bpy.context.scene.frame_end = num_frames
 
-    if config["pipeline"]["preview_mode"]:
-        log_info("Set to preview mode, skipping rendering...")
-        return
+    # disable relationship lines
+    bpy.context.window_manager.windows.update()
+    screen = bpy.context.window.screen
+    for area in screen.areas:
+        if area.type == "VIEW_3D":
+            for space in area.spaces:
+                if space.type == "VIEW_3D":
+                    space.overlay.show_relationship_lines = False
+                    space.overlay.show_outline_selected = False
+                    space.overlay.show_object_origins = False
 
     if config["pipeline"]["quick_validate_mode"]:
         bpy.context.scene.frame_end = 100
 
     if True:
-        eevee_render(config, num_frames)
+        eevee_render(config, num_frames, config["pipeline"]["preview_mode"])
     else:
-        cycles_render(config, num_frames)
+        cycles_render(config, num_frames, config["pipeline"]["preview_mode"])

@@ -84,7 +84,10 @@ class LiveLeaderboard:
         self.parent_empty.parent = self.camera_obj
 
         if self.config["render"]["is_shorts_output"]:
-            position = (-0.19, 0.33, -1)
+            if self.is_fancy_mode:
+                position = (-0.17, 0.32, -1)
+            else:
+                position = (-0.19, 0.32, -1)
         else:
             if self.is_fancy_mode:
                 position = (-0.33, 0.17, -1)
