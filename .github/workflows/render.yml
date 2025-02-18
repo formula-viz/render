@@ -19,7 +19,7 @@ jobs:
        python -m pip install --upgrade pip
        python -m pip install -r requirements.txt
 
-   - name: NVIDIA GPU Setup
+   - name: Validate NVIDIA GPU Setup
      if: ${{ runner.gpu }}
      shell: bash
      run: |
@@ -30,10 +30,12 @@ jobs:
          echo "NVIDIA GPU detected and working"
        fi
    
-   - name: Install apt packages
+   - name: Install Blender 4.0.2
      run: |
-       sudo apt update
-       xargs sudo apt-get install -y < apt-packages.txt
+       wget https://download.blender.org/release/Blender4.0/blender-4.0.2-linux-x64.tar.xz
+       tar -xf blender-4.0.2-linux-x64.tar.xz
+       sudo mv blender-4.0.2-linux-x64 /opt/blender
+       sudo ln -s /opt/blender/blender /usr/local/bin/blender
    
    - name: Install Xvfb
      run: sudo apt-get install -y xvfb
