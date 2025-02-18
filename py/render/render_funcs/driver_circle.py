@@ -2,7 +2,9 @@ import bpy
 from mathutils import Vector
 import math
 
-from utils.colors import GOLD_RGB
+from typing import Optional
+
+from utils.colors import hex_to_blender_rgb
 from utils.project_structure import DriverDataPS
 from utils.logger import log_info
 
@@ -11,39 +13,50 @@ class DriverCircle:
     def __init__(
         self,
         driver_abbrev: str,
-        driver_car_obj: bpy.types.Object,
-        camera_obj: bpy.types.Object,
+        color: str,  # color will be hex
+        driver_car_obj: Optional[bpy.types.Object],
+        camera_obj: Optional[bpy.types.Object],
+        pre_existing_empty: Optional[bpy.types.Object] = None,
     ):
         self.driver_abbrev = driver_abbrev
         self.driver_car_obj = driver_car_obj
         self.camera_obj = camera_obj
+        self.color = color
 
         log_info(f"Initializing DriverCircle for {driver_abbrev}...")
 
-        bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))
-        self.parent_empty = bpy.context.active_object
-        self.parent_empty.hide_render = True
-        self.parent_empty.hide_viewport = True
-        self.parent_empty.name = f"{driver_abbrev}CircleParent"
+        if pre_existing_empty:
+            self.parent_empty = pre_existing_empty
+        else:
+            bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))
+            self.parent_empty = bpy.context.active_object
+            self.parent_empty.hide_render = True
+            self.parent_empty.hide_viewport = True
+            self.parent_empty.name = f"{driver_abbrev}CircleParent"
 
         self._setup()
 
     def _setup(self):
-        circle_face = self._create_circle_face()
+        self.circle_face = self._create_circle_face()
         outline = self._create_outline()
 
         # Parent outline to circle face
-        outline.parent = circle_face
+        outline.parent = self.circle_face
         # Parent circle to empty
-        circle_face.parent = self.parent_empty
-        # Parent empty to car
-        self._parent_to_car()
-        # Add track to camera constraint
-        self._add_camera_tracking()
+        self.circle_face.parent = self.parent_empty
+
+        # if these are not given, then assume this is in isolated mode
+        # we will handle the relative parenting later
+        if self.camera_obj and self.driver_car_obj:
+            # Parent empty to car
+            self._parent_to_car()
+            # Add track to camera constraint
+            self._add_camera_tracking()
 
     def _create_circle_face(self) -> bpy.types.Object:
         # Create circular face for the image
-        bpy.ops.mesh.primitive_circle_add(radius=1.0, vertices=32, fill_type="NGON")
+        bpy.ops.mesh.primitive_circle_add(
+            radius=1.0, vertices=32, fill_type="NGON")
         circle_obj = bpy.context.active_object
         circle_obj.name = f"{self.driver_abbrev}CircleFace"
 
@@ -51,6 +64,7 @@ class DriverCircle:
 
         # Disable shadow casting, no shadow on the car
         circle_obj.visible_shadow = False
+        circle_obj.display.show_shadows = False
 
         # Create material for the face
         face_mat = bpy.data.materials.new(
@@ -102,13 +116,19 @@ class DriverCircle:
         outline = bpy.context.active_object
         outline.name = f"{self.driver_abbrev}CircleOutline"
 
+        # Disable shadow casting, no shadow on the car
+        outline.visible_shadow = False
+        outline.display.show_shadows = False
+
         # Create material for the outline
         outline_mat = bpy.data.materials.new(
             name=f"{self.driver_abbrev}CircleOutlineMaterial"
         )
         outline_mat.use_nodes = True
         bsdf = outline_mat.node_tree.nodes["Principled BSDF"]
-        bsdf.inputs["Base Color"].default_value = (*GOLD_RGB, 1)
+
+        bsdf.inputs["Base Color"].default_value = (
+            *hex_to_blender_rgb(self.color), 1)
         bsdf.inputs["Metallic"].default_value = 0.8
         bsdf.inputs["Roughness"].default_value = 0.3
 

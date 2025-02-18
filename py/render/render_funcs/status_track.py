@@ -1,7 +1,7 @@
 import bpy
 from mathutils import Vector
 
-from utils.colors import MainTrackColor
+from utils.colors import MainTrackColor, hex_to_blender_rgb
 
 from load_track_data import TrackData
 from add_track import create_planes, create_material
@@ -42,7 +42,7 @@ class StatusTrack:
             new_track_data, self.camera_obj, self.is_shorts_output
         )
 
-        track_mat = create_material(MainTrackColor.get_scene_rgb(), "Main")
+        track_mat = create_material(hex_to_blender_rgb("#FFFFFF"), "Main")
         status_track_obj = create_planes(
             new_track_data.inner_curb_points,
             new_track_data.outer_curb_points,
@@ -192,18 +192,11 @@ class StatusTrack:
 
     def _create_indicator_dot(self):
         bpy.ops.mesh.primitive_uv_sphere_add(
-            radius=14, segments=64, ring_count=64
-        )  # Changed rings to ring_count
+            radius=17, segments=64, ring_count=64)
         dot = bpy.context.active_object
 
-        # Create a cyan material for the dot
-        dot_mat = bpy.data.materials.new(name="IndicatorDotMaterial")
-        dot_mat.use_nodes = True
-        bsdf = dot_mat.node_tree.nodes["Principled BSDF"]
-        bsdf.inputs["Base Color"].default_value = (*GOLD_RGB, 1)
-        bsdf.inputs["Emission Color"].default_value = (*GOLD_RGB, 1)
-        bsdf.inputs["Emission Strength"].default_value = 1.5
-
+        dot_mat = create_material(
+            hex_to_blender_rgb("#00FFFF"), "IndicatorDot")
         dot.data.materials.append(dot_mat)
 
         return dot

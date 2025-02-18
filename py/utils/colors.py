@@ -4,6 +4,8 @@ from colormath.color_diff import delta_e_cie2000
 from colormath.color_objects import LabColor, sRGBColor
 from fastf1 import plotting
 
+from utils.logger import log_warn
+
 GOLD_RGB = (255, 215, 0)
 MAIN_TRACK_COLOR = "#2d2e2e"
 CURB_COLOR = "#0f0f0f"
@@ -14,13 +16,13 @@ def hex_to_blender_rgb(hex_color: str) -> tuple:
     # Convert a hex color to a Blender RGB tuple.
     # In blender, the RGB values are between 0 and 1.
     hex_color = hex_color.lstrip("#")
-    return tuple(int(hex_color[i : i + 2], 16) / 255.0 for i in (0, 2, 4))
+    return tuple(int(hex_color[i: i + 2], 16) / 255.0 for i in (0, 2, 4))
 
 
 def hex_to_normal_rgb(hex_color: str) -> tuple:
     # Convert a hex color to a normal RGB tuple.
     hex_color = hex_color.lstrip("#")
-    return tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
+    return tuple(int(hex_color[i: i + 2], 16) for i in (0, 2, 4))
 
 
 def rgb_to_hex(rgb_color: tuple) -> str:
@@ -60,7 +62,9 @@ def get_head_to_head_colors(*drivers):
     base_colors = ["#FFFFFF", "#808080", "#404040"]  # white, gray, dark gray
     base_color_idx = 0
 
-    colors = [plotting.DRIVER_COLORS[plotting.DRIVER_TRANSLATE[driver]] for driver in drivers]
+    colors = [
+        plotting.DRIVER_COLORS[plotting.DRIVER_TRANSLATE[driver]] for driver in drivers
+    ]
 
     # reverse here because the first driver will be the one who won by convention, so
     # winning driver should keep their base color
@@ -69,12 +73,14 @@ def get_head_to_head_colors(*drivers):
             colors[i] = base_colors[base_color_idx % len(base_colors)]
             base_color_idx += 1
             if color_difference(colors[0], colors[i]) <= 30:
-                print(
-                    f"Colors for driver {drivers[0]} and {drivers[i]} are too similar even after setting one to white, inspect this."
+                log_warn(
+                    f"Colors for driver {drivers[0]} and {
+                        drivers[i]
+                    } are too similar even after setting one to white, inspect this."
                 )
 
             if base_color_idx >= len(base_colors):
-                print("Ran out of base colors, investigate this.")
+                log_warn("Ran out of base colors, investigate this.")
 
     return colors
 
