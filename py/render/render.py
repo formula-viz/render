@@ -69,9 +69,6 @@ class AbstractRenderer(ABC):
         self.add_drivers()
         self.add_indicators()
         self.add_camera()
-        self.car_rankings = car_rankings.main(
-            self.track_data, self.start_finish_line_idx, self.driver_dfs, self.config
-        )
         self.configure_widgets()
         self.trigger_render()
 
@@ -84,13 +81,21 @@ class HeadToHeadRenderer(AbstractRenderer):
         self.driver_dfs, self.start_finish_line_idx = load_driver_data.main(
             self.config, self.track_data
         )
-        self.colors = get_head_to_head_colors(*self.config["drivers"])
+        self.driver_dfs = {
+            driver: self.driver_dfs[driver] for driver in self.config["drivers"]
+        }
+
+        self.driver_colors = get_head_to_head_colors(*self.config["drivers"])
 
         self.driver_objs = add_driver_objects.main(
             self.driver_dfs,
             self.config["drivers"],
-            self.colors,
+            self.driver_colors,
             self.config["pipeline"]["quick_validate_mode"],
+        )
+
+        self.car_rankings = car_rankings.main(
+            self.track_data, self.start_finish_line_idx, self.driver_dfs, self.config
         )
 
     def add_camera(self):
@@ -111,13 +116,19 @@ class HeadToHeadRenderer(AbstractRenderer):
             self.camera_obj,
             self.start_finish_line_idx,
             self.driver_dfs[self.focused_driver],
+            self.config["render"]["is_shorts_output"],
+        )
+        live_leaderboard.LiveLeaderboard(
+            self.config,
+            self.config["drivers"],
+            self.driver_colors,
+            self.car_rankings,
+            True,
+            self.camera_obj,
         )
         race_timer.RaceTimer(
             self.config,
             self.camera_obj,
-        )
-        driver_circle.DriverCircle(
-            self.focused_driver, self.driver_objs[self.focused_driver], self.camera_obj
         )
 
 
@@ -129,7 +140,7 @@ class RestOfFieldRenderer(AbstractRenderer):
         self.driver_dfs, self.start_finish_line_idx = load_driver_data.main(
             self.config, self.track_data
         )
-        self.colors = get_rest_of_field_colors()
+        self.driver_colors = get_rest_of_field_colors()
 
         # for now, gold driver is just the first driver listed in drivers
         focused_driver = self.config["drivers"][0]
@@ -141,8 +152,12 @@ class RestOfFieldRenderer(AbstractRenderer):
         self.driver_objs = add_driver_objects.main(
             self.driver_dfs,
             self.drivers_in_color_order,
-            self.colors,
+            self.driver_colors,
             self.config["pipeline"]["quick_validate_mode"],
+        )
+
+        self.car_rankings = car_rankings.main(
+            self.track_data, self.start_finish_line_idx, self.driver_dfs, self.config
         )
 
     def add_camera(self):
@@ -170,10 +185,14 @@ class RestOfFieldRenderer(AbstractRenderer):
         live_leaderboard.LiveLeaderboard(
             self.config,
             self.drivers_in_color_order,
-            self.colors[0: len(self.driver_dfs)],
+            self.driver_colors[0: len(self.driver_dfs)],
             self.car_rankings,
+            False,
             self.camera_obj,
         )
         driver_circle.DriverCircle(
-            self.focused_driver, self.driver_objs[self.focused_driver], self.camera_obj
+            self.focused_driver,
+            self.driver_colors[0],
+            self.driver_objs[self.focused_driver],
+            self.camera_obj,
         )

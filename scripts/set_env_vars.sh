@@ -59,6 +59,7 @@ python_env_vars() {
     export BOLD_FONT="$RESOURCES_DIR/fonts/Formula1-Bold.ttf"
 
     export FRAMES_DIR="$TEMPORARY_DIR/frames"
+    export OUTPUT_DIR="$PROJECT_ROOT/output"
 
     export RENDER_PY="$PROJECT_ROOT/py/render/render.py"
     export POSTRENDER_PY="$PROJECT_ROOT/py/post_render/post_render.py"
