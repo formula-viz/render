@@ -1,61 +1,52 @@
 name: Blender Render
-
 on:
-  workflow_dispatch:
-
+ workflow_dispatch:
 jobs:
-  render:
-    runs-on:
-      group: gpu-runners
-      labels: render-runner
+ render:
+   runs-on:
+     group: gpu-runners
+     labels: render-runner
+   steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-python@v5
+     with:
+       python-version: '3.12'
+   
+   - name: Create and activate virtual environment
+     run: |
+       python3 -m venv venv
+       source venv/bin/activate
+       python -m pip install --upgrade pip
+       python -m pip install -r requirements.txt
 
-    steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-    
-    - name: Debug Python Setup
-      run: |
-        which python3
-        python3 --version
-        echo "PATH: $PATH"
-        echo "PYTHONPATH: $PYTHONPATH"
-
-    - name: NVIDIA GPU Setup
-      if: ${{ runner.gpu }}
-      shell: bash
-      run: |
-        if ! nvidia-smi; then
-          echo "ERROR: NVIDIA GPU is not available"
-          exit 1
-        else
-          echo "NVIDIA GPU detected and working"
-        fi
-
-    - name: Install apt packages
-      run: |
-        sudo apt update
-        xargs sudo apt-get install -y < apt-packages.txt
-
-    - name: Install Python dependencies
-      run: |
-        python3 -m pip install --upgrade pip
-        python3 -m pip install -r requirements.txt
-
-    - name: Install Xvfb
-      run: sudo apt-get install -y xvfb
-
-    - name: Run main script
-      # for now, running ./main.sh the first time just copies the config template over
-      # I'll update this to work better but for now just running twice
-      run: |
-        chmod +x ./main.sh
-        ./main.sh
-        xvfb-run -a ./main.sh
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: render-output
-        path: output/output.mp4
+   - name: NVIDIA GPU Setup
+     if: ${{ runner.gpu }}
+     shell: bash
+     run: |
+       if ! nvidia-smi; then
+         echo "ERROR: NVIDIA GPU is not available"
+         exit 1
+       else
+         echo "NVIDIA GPU detected and working"
+       fi
+   
+   - name: Install apt packages
+     run: |
+       sudo apt update
+       xargs sudo apt-get install -y < apt-packages.txt
+   
+   - name: Install Xvfb
+     run: sudo apt-get install -y xvfb
+   
+   - name: Run main script
+     run: |
+       chmod +x ./main.sh
+       source venv/bin/activate
+       ./main.sh
+       xvfb-run -a ./main.sh
+   
+   - name: Upload artifact
+     uses: actions/upload-artifact@v4
+     with:
+       name: render-output
+       path: output/output.mp4
