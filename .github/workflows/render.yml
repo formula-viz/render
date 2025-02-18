@@ -11,6 +11,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
 
     - name: NVIDIA GPU Setup
       if: ${{ runner.gpu }}
@@ -33,13 +36,16 @@ jobs:
         python3 -m pip install --upgrade pip
         python3 -m pip install -r requirements.txt
 
+    - name: Install Xvfb
+      run: sudo apt-get install -y xvfb
+
     - name: Run main script
       # for now, running ./main.sh the first time just copies the config template over
       # I'll update this to work better but for now just running twice
       run: |
         chmod +x ./main.sh
         ./main.sh
-        ./main.sh
+        xvfb-run -a ./main.sh
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
