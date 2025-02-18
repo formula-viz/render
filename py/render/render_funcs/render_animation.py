@@ -92,7 +92,7 @@ def eevee_render(config, num_frames, is_preview_mode):
                     space.shading.render_pass = "COMBINED"
 
     # Set output path
-    output_path = os.path.join(OUTPUT_DIR, "viewport_render.mp4")
+    output_path = os.path.join(OUTPUT_DIR, config["render"]["output"])
     bpy.context.scene.render.filepath = output_path
     if not is_preview_mode:
         # Perform viewport render
