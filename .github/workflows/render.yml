@@ -1,0 +1,43 @@
+name: Blender Render
+
+on:
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest-gpu
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: NVIDIA GPU Setup
+      if: ${{ runner.gpu }}
+      shell: bash
+      run: |
+        if ! nvidia-smi; then
+          echo "ERROR: NVIDIA GPU is not available"
+          exit 1
+        else
+          echo "NVIDIA GPU detected and working"
+        fi
+
+    - name: Install apt packages
+      run: |
+        sudo apt update
+        xargs sudo apt-get install -y < apt-packages.txt
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run main script
+      run: |
+        chmod +x ./main.sh
+        ./main.sh
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: render-output
+        path: output/output.mp4
