@@ -5,7 +5,9 @@ on:
 
 jobs:
   render:
-    runs-on: ubuntu-latest-gpu
+    runs-on: 
+      group: gpu-runners
+      labels: render-runner
     
     steps:
     - uses: actions/checkout@v3
