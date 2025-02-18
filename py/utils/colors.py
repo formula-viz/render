@@ -74,9 +74,7 @@ def get_head_to_head_colors(*drivers):
             base_color_idx += 1
             if color_difference(colors[0], colors[i]) <= 30:
                 log_warn(
-                    f"Colors for driver {drivers[0]} and {
-                        drivers[i]
-                    } are too similar even after setting one to white, inspect this."
+                    f"Colors for driver {drivers[0]} and {drivers[i]} are too similar even after setting one to white, inspect this."
                 )
 
             if base_color_idx >= len(base_colors):
