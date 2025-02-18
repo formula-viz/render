@@ -36,6 +36,10 @@ jobs:
        tar -xf blender-4.0.2-linux-x64.tar.xz
        sudo mv blender-4.0.2-linux-x64 /opt/blender
        sudo ln -s /opt/blender/blender /usr/local/bin/blender
+
+       # Install required shared libraries
+       sudo apt-get update
+       sudo apt-get install -y libxrender1 libxxf86vm1 libxfixes3 libxi6 libxkbcommon0 libxrandr2
    
    - name: Install Xvfb
      run: sudo apt-get install -y xvfb
