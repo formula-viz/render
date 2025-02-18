@@ -5,13 +5,13 @@ on:
 
 jobs:
   render:
-    runs-on: 
+    runs-on:
       group: gpu-runners
       labels: render-runner
-    
+
     steps:
     - uses: actions/checkout@v3
-    
+
     - name: NVIDIA GPU Setup
       if: ${{ runner.gpu }}
       shell: bash
@@ -34,8 +34,11 @@ jobs:
         python3 -m pip install -r requirements.txt
 
     - name: Run main script
+      # for now, running ./main.sh the first time just copies the config template over
+      # I'll update this to work better but for now just running twice
       run: |
         chmod +x ./main.sh
+        ./main.sh
         ./main.sh
 
     - name: Upload artifact
