@@ -57,8 +57,8 @@ def eevee_render(config, num_frames, is_preview_mode):
 
     # Configure high quality Eevee settings
     eevee = bpy.context.scene.eevee
-    eevee.taa_render_samples = 4096  # Anti-aliasing samples
-    eevee.taa_samples = 4096
+    eevee.taa_render_samples = 128  # Anti-aliasing samples
+    eevee.taa_samples = 128
     eevee.use_taa_reprojection = True
 
     eevee.use_soft_shadows = True
