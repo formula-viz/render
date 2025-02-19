@@ -12,49 +12,41 @@ jobs:
       group: gpu-runners
       labels: render-runner
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-    
-    - name: Create and Activate Python Virtual Env
-      run: |
-        python3 -m venv ${{ env.VENV_PATH }}
-        source ${{ env.VENV_PATH }}/bin/activate
-        python -m pip install --upgrade pip
-        python -m pip install -r requirements.txt
+      - uses: actions/checkout@v4
 
-    - name: Validate NVIDIA GPU Setup
-      shell: bash
-      run: |
-        if ! nvidia-smi; then
-          echo "ERROR: NVIDIA GPU is not available"
-          exit 1
-        else
-          echo "NVIDIA GPU detected and working"
-        fi
-    
-    - name: Install Blender 4.0.2
-      run: |
-        wget https://download.blender.org/release/Blender4.0/blender-4.0.2-linux-x64.tar.xz
-        tar -xf blender-4.0.2-linux-x64.tar.xz
-        sudo mv blender-4.0.2-linux-x64 /opt/blender
-        sudo ln -s /opt/blender/blender /usr/local/bin/blender
-        # Install required shared libraries
-        sudo apt-get update
-        sudo apt-get install -y libxrender1 libxxf86vm1 libxfixes3 libxi6 libxkbcommon0 libxrandr2
-    
-    - name: Install Xvfb
-      run: sudo apt-get install -y xvfb
-    
-    - name: Run main script
-      run: |
-        chmod +x ./main.sh
-        ./main.sh
-        xvfb-run -a ./main.sh
-    
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: render-output
-        path: output/output.mp4
+      - name: Validate NVIDIA GPU Setup
+        shell: bash
+        run: |
+          if ! nvidia-smi; then
+            echo "ERROR: NVIDIA GPU is not available"
+            exit 1
+          else
+            echo "NVIDIA GPU detected and working"
+          fi
+
+      - name: Install and Configure Blender 4.0.2
+        run: |
+          wget https://download.blender.org/release/Blender4.0/blender-4.0.2-linux-x64.tar.xz
+          tar -xf blender-4.0.2-linux-x64.tar.xz
+          sudo mv blender-4.0.2-linux-x64 /opt/blender
+          sudo ln -s /opt/blender/blender /usr/local/bin/blender
+          # Install required shared libraries
+          sudo apt-get update
+          sudo apt-get install -y libxrender1 libxxf86vm1 libxfixes3 libxi6 libxkbcommon0 libxrandr2
+          # Install pip dependencies to blender's python
+          /opt/blender/4.0/python/bin/python3.10 -m pip install -r requirements.txt
+
+      - name: Install Xvfb
+        run: sudo apt-get install -y xvfb
+
+      - name: Run main script
+        run: |
+          chmod +x ./main.sh
+          ./main.sh
+          xvfb-run -a ./main.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: render-output
+          path: output/output.mp4
