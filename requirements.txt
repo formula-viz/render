@@ -1,11 +1,8 @@
 fastf1
-mathutils
 numpy
 pyyaml
 pandas
 scipy
 logger
 colormath
-redis
-rq
 flask

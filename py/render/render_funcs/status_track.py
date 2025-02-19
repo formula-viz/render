@@ -1,13 +1,11 @@
 import bpy
 from mathutils import Vector
 
-from utils.colors import MainTrackColor, hex_to_blender_rgb
-
-from load_track_data import TrackData
-from add_track import create_planes, create_material
-from add_indicators import add_start_finish_line
-from utils.logger import log_info
-from utils.colors import GOLD_RGB
+from py.render.render_funcs.add_indicators import add_start_finish_line
+from py.render.render_funcs.add_track import create_material, create_planes
+from py.render.render_funcs.load_track_data import TrackData
+from py.utils.colors import hex_to_blender_rgb
+from py.utils.logger import log_info
 
 
 class StatusTrack:

@@ -1,8 +1,8 @@
 import json
 
 import bpy
-from utils.colors import hex_to_blender_rgb
-from utils.project_structure import DriverDataPS, Resources
+from py.utils.colors import hex_to_blender_rgb
+from py.utils.project_structure import DriverDataPS, Resources
 
 
 # currently configured for 2 driver videos, where the drivers are either is_left or !is_left

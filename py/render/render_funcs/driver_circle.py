@@ -4,9 +4,9 @@ import math
 
 from typing import Optional
 
-from utils.colors import hex_to_blender_rgb
-from utils.project_structure import DriverDataPS
-from utils.logger import log_info
+from py.utils.colors import hex_to_blender_rgb
+from py.utils.project_structure import DriverDataPS
+from py.utils.logger import log_info
 
 
 class DriverCircle:

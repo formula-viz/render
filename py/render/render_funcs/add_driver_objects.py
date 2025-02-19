@@ -3,14 +3,14 @@ import math
 import bpy  # pyright: ignore
 import mathutils  # pyright: ignore
 import PIL.Image as Image
-from utils.colors import hex_to_blender_rgb, hex_to_normal_rgb
-from utils.logger import log_info, log_warn
-from utils.project_structure import Resources
+from py.utils.colors import hex_to_blender_rgb, hex_to_normal_rgb
+from py.utils.logger import log_info, log_warn
+from py.utils.project_structure import Resources
 
 
 def import_crown():
-    crown_path = ( Resources.get_crown_path()
-    )  # You'll need to add this method to your Resources class
+    crown_path = (Resources.get_crown_path()
+                  )  # You'll need to add this method to your Resources class
     bpy.ops.import_scene.gltf(filepath=crown_path)
     # Get the imported crown object
     for obj in bpy.context.selected_objects:
@@ -209,15 +209,15 @@ def add_keyframes(driver_obj, wheels_objs, df):
             df["RotY"][i],
             df["RotZ"][i],
         )).to_euler()
-        harsher_rot_eul = mathutils.Quaternion((
-            df["HarsherRotW"][i],
-            df["HarsherRotX"][i],
-            df["HarsherRotY"][i],
-            df["HarsherRotZ"][i],
-        )).to_euler()
+        # harsher_rot_eul = mathutils.Quaternion((
+        #     df["HarsherRotW"][i],
+        #     df["HarsherRotX"][i],
+        #     df["HarsherRotY"][i],
+        #     df["HarsherRotZ"][i],
+        # )).to_euler()
 
         # for the front wheels, get the differences between the z's for harsher and normal, then add the diff to the front wheel rot
-        front_wheel_diff = harsher_rot_eul[2] - rot_eul[2]
+        # front_wheel_diff = harsher_rot_eul[2] - rot_eul[2]
 
         wheel_rot = df["TireRot"][i]
         for wheel_obj in wheels_objs:
@@ -249,9 +249,7 @@ def main(driver_dfs, drivers, driver_colors, is_quick_validate_mode):
             continue
 
         log_info(
-            f"Adding driver {i + 1}/{len(drivers)}: {driver_abbrev} with color: {
-                driver_colors[i]
-            }"
+            f"Adding driver {i + 1}/{len(drivers)}: {driver_abbrev} with color: {driver_colors[i]}"
         )
         driver_obj, wheels_objs = create_driver_fbx(
             driver_abbrev, driver_colors[i], empty_obj

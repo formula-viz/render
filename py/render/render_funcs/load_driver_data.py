@@ -10,8 +10,8 @@ import pandas as pd
 import requests
 from fastf1.core import Laps, Telemetry
 from scipy.interpolate import UnivariateSpline
-from utils.project_structure import DriverDataPS
-from utils.logger import log_info, log_warn
+from py.utils.project_structure import DriverDataPS
+from py.utils.logger import log_info, log_warn
 
 
 def load_driver_headshots(driver_abbrevs, headshot_urls):
@@ -65,8 +65,8 @@ def load_from_fastf1(year: int, track: str):
             tel: Telemetry = (
                 q.pick_not_deleted().pick_fastest().get_telemetry(frequency="original")
             )
-        except:
-            log_warn(f"Couldn't get proper telemetry for {driver}")
+        except Exception as e:
+            log_warn(f"Couldn't get proper telemetry for {driver}: {e}")
             return
 
         tel = tel[tel["Source"].isin(["pos", "interpolation"])]
@@ -590,5 +590,5 @@ def main(config, track_data):
         start_finish_line_idx,
     )
 
-    log_info(f"Done processing car data")
+    log_info("Done processing car data")
     return driver_dfs, start_finish_line_idx

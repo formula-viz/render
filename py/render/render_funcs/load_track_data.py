@@ -3,8 +3,8 @@ import os
 import numpy as np
 import pandas as pd
 from scipy.interpolate import splev, splprep
-from utils.project_structure import TrackDataPS
-from utils.logger import log_info
+from py.utils.project_structure import TrackDataPS
+from py.utils.logger import log_info
 
 
 # in the earlier bash script, we clone the repository locally
@@ -33,7 +33,8 @@ def load_raw_data(year: int, track: str, use_latest_year: bool = True):
         track_data_file = TrackDataPS.get_track_file(str(year), track)
 
         if track_data_file not in track_data_files:
-            raise FileNotFoundError(f"Track data not found for {track} in {year}, use_latest_year is set to False")
+            raise FileNotFoundError(
+                f"Track data not found for {track} in {year}, use_latest_year is set to False")
 
     track_data_path = os.path.join(track_data_dir, track_data_file)
     track_data = pd.read_csv(track_data_path)
@@ -141,8 +142,10 @@ def smooth_points(track_points: pd.DataFrame):
 
         perp_vec = (unit_vec[1], -unit_vec[0])
         # we go track width in each direction
-        a = (cur_point[0] - perp_vec[0] * track_width, cur_point[1] - perp_vec[1] * track_width)
-        b = (cur_point[0] + perp_vec[0] * track_width, cur_point[1] + perp_vec[1] * track_width)
+        a = (cur_point[0] - perp_vec[0] * track_width,
+             cur_point[1] - perp_vec[1] * track_width)
+        b = (cur_point[0] + perp_vec[0] * track_width,
+             cur_point[1] + perp_vec[1] * track_width)
         # how do we know which one to choose?
         # iterate through all rights points, as we are recreating the rights line, and find the shortest distance
         # between a and b, then choose the one which is further from the closest point
@@ -182,15 +185,19 @@ def smooth_points(track_points: pd.DataFrame):
 # which is otuer or inner is not given, so we just use some math to calculate which is which
 def assign_inner_outer(track_points):
     # grab inner points, the 0th index of each tuple of track_points
-    lefts = [(row["lefts_X"], row["lefts_Y"], row["lefts_Z"]) for _, row in track_points.iterrows()]
-    rights = [(row["rights_X"], row["rights_Y"], row["rights_Z"]) for _, row in track_points.iterrows()]
+    lefts = [(row["lefts_X"], row["lefts_Y"], row["lefts_Z"])
+             for _, row in track_points.iterrows()]
+    rights = [(row["rights_X"], row["rights_Y"], row["rights_Z"])
+              for _, row in track_points.iterrows()]
 
     # we want to assume the inner points as the shorter distnace, the outer points as the longer distance
     left_dist = 0
     right_dist = 0
     for i in range(len(lefts) - 1):
-        left_dist += ((lefts[i][0] - lefts[i + 1][0]) ** 2 + (lefts[i][1] - lefts[i + 1][1]) ** 2) ** 0.5
-        right_dist += ((rights[i][0] - rights[i + 1][0]) ** 2 + (rights[i][1] - rights[i + 1][1]) ** 2) ** 0.5
+        left_dist += ((lefts[i][0] - lefts[i + 1][0]) **
+                      2 + (lefts[i][1] - lefts[i + 1][1]) ** 2) ** 0.5
+        right_dist += ((rights[i][0] - rights[i + 1][0]) **
+                       2 + (rights[i][1] - rights[i + 1][1]) ** 2) ** 0.5
 
     if left_dist <= right_dist:
         outer_points = lefts
@@ -218,7 +225,8 @@ def curb(cur, other, curb_width):
         mag = (perp_vec[0] ** 2 + perp_vec[1] ** 2) ** 0.5
         unit_perp_vec = (perp_vec[0] / mag, perp_vec[1] / mag)
 
-        curb_vec = (unit_perp_vec[0] * curb_width, unit_perp_vec[1] * curb_width)
+        curb_vec = (unit_perp_vec[0] * curb_width,
+                    unit_perp_vec[1] * curb_width)
         # in order to get the correct curb point, we both subtract and add the curb_vec
         # then, we find the one which is further from the other point
 
@@ -227,8 +235,10 @@ def curb(cur, other, curb_width):
 
         other_point = other[i]
 
-        dist_a = (other_point[0] - curb_point_a[0]) ** 2 + (other_point[1] - curb_point_a[1]) ** 2
-        dist_b = (other_point[0] - curb_point_b[0]) ** 2 + (other_point[1] - curb_point_b[1]) ** 2
+        dist_a = (other_point[0] - curb_point_a[0]) ** 2 + \
+            (other_point[1] - curb_point_a[1]) ** 2
+        dist_b = (other_point[0] - curb_point_b[0]) ** 2 + \
+            (other_point[1] - curb_point_b[1]) ** 2
 
         if dist_a > dist_b:
             # we also need to add the z value of cur to the curb point

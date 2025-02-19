@@ -1,17 +1,47 @@
 import os
+from pathlib import Path
 
-CAR_DATA_DIR = os.environ.get("CAR_DATA_DIR")
-DRIVER_TIMES_DIR = os.environ.get("DRIVER_TIMES_DIR")
-DRIVER_IMAGES_DIR = os.environ.get("DRIVER_IMAGES_DIR")
-FRAMES_DIR = os.environ.get("FRAMES_DIR")
-OUTPUT_DIR = os.environ.get("OUTPUT_DIR")
+# Get project root directory
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+# Define directory structures
+TEMPORARY_DIR = PROJECT_ROOT / "temporary"
+RESOURCES_DIR = PROJECT_ROOT / "persistent/resources"
+DATA_DIR = PROJECT_ROOT / "persistent/data"
+CSV_REPO_DIR = PROJECT_ROOT / "csv_repo"
+
+# Car related paths
+CAR_FBX_PATH = str(
+    RESOURCES_DIR / "cars/formula-1-2024-generic/source/F1_TexPaintBlender_v01_20210215.fbx")
+CAR_PAINTS_DIR = str(TEMPORARY_DIR / "car_paints")
+CAR_TEXTURES_DIR = str(RESOURCES_DIR / "cars/formula-1-2024-generic/textures")
+
+# Crown path
+CROWN_GLB_PATH = str(RESOURCES_DIR / "king_crown.glb")
+
+# Data directories
+CAR_DATA_DIR = str(DATA_DIR / "car_data")
+DRIVER_TIMES_DIR = str(DATA_DIR / "driver_times")
+DRIVER_IMAGES_DIR = str(DATA_DIR / "driver_images")
+TRACK_DATA_DIR = str(CSV_REPO_DIR / "track_data")
+
+# Resource paths
+BACKGROUND_MUSIC_PATH = str(RESOURCES_DIR / "audio/lofi-hiphop-background.m4a")
+BACKGROUND_IMAGE_PATH = str(RESOURCES_DIR / "backgrounds/background1.jpeg")
+MAIN_FONT = str(RESOURCES_DIR / "fonts/Formula1-Regular.ttf")
+BOLD_FONT = str(RESOURCES_DIR / "fonts/Formula1-Bold.ttf")
+
+# Output directories
+FRAMES_DIR = str(TEMPORARY_DIR / "frames")
+OUTPUT_DIR = str(PROJECT_ROOT / "output")
+
+# Python script paths
+RENDER_PY = str(PROJECT_ROOT / "py/render/render.py")
+POSTRENDER_PY = str(PROJECT_ROOT / "py/post_render/post_render.py")
+
+# Rest of your classes remain the same, but now use the variables defined above
 
 
-def get_frames_dir():
-    return FRAMES_DIR
-
-
-# add PS to the class name to avoid conflicts
 class DriverDataPS:
     @staticmethod
     def get_car_data_dir(year: str, track: str, fps: str) -> str:
@@ -26,13 +56,10 @@ class DriverDataPS:
         return os.path.join(DRIVER_TIMES_DIR, f"{year}_{track}.json")
 
     @staticmethod
-    def get_driver_image_path(driver_abbrev: str) -> str: return os.path.join(DRIVER_IMAGES_DIR, f"{driver_abbrev}.png")
+    def get_driver_image_path(driver_abbrev: str) -> str:
+        return os.path.join(DRIVER_IMAGES_DIR, f"{driver_abbrev}.png")
 
 
-TRACK_DATA_DIR = os.environ.get("TRACK_DATA_DIR")
-
-
-# add PS to the class name to avoid conflicts with the built-in class TrackData
 class TrackDataPS:
     @staticmethod
     def get_track_data_dir() -> str:
@@ -45,16 +72,6 @@ class TrackDataPS:
     @staticmethod
     def get_track_file(year: str, track: str) -> str:
         return f"{year}_{track}.csv"
-
-
-BACKGROUND_MUSIC_PATH = os.environ.get("BACKGROUND_MUSIC_PATH")
-BACKGROUND_IMAGE_PATH = os.environ.get("BACKGROUND_IMAGE_PATH")
-MAIN_FONT = os.environ.get("MAIN_FONT")
-BOLD_FONT = os.environ.get("BOLD_FONT")
-CAR_FBX_PATH = os.environ.get("CAR_FBX_PATH")
-CAR_PAINTS_DIR = os.environ.get("CAR_PAINTS_DIR")
-CAR_TEXTURES_DIR = os.environ.get("CAR_TEXTURES_DIR")
-CROWN_GLB_PATH = os.environ.get("CROWN_GLB_PATH")
 
 
 class Resources:
@@ -92,5 +109,20 @@ class Resources:
 
     @staticmethod
     def get_crown_path():
-        print(CROWN_GLB_PATH)
         return CROWN_GLB_PATH
+
+
+def ensure_directories_exist():
+    """Create all necessary directories if they don't exist."""
+    directories = [
+        TEMPORARY_DIR,
+        CAR_PAINTS_DIR,
+        FRAMES_DIR,
+        OUTPUT_DIR
+    ]
+    for directory in directories:
+        Path(directory).mkdir(parents=True, exist_ok=True)
+
+
+# Create directories when module is imported
+ensure_directories_exist()

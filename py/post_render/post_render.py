@@ -1,10 +1,15 @@
 from abc import ABC, abstractmethod
 
 import bpy
-from post_render_funcs import add_drivers, load_sequence
-from utils.colors import (GOLD_RGB, BackgroundColor, get_head_to_head_colors,
-                          rgb_to_hex)
-from utils.project_structure import Resources
+
+from py.post_render.post_render_funcs import add_drivers, load_sequence
+from py.utils.colors import (
+    GOLD_RGB,
+    BackgroundColor,
+    get_head_to_head_colors,
+    rgb_to_hex,
+)
+from py.utils.project_structure import Resources
 
 
 class AbstractPostRenderer(ABC):
@@ -16,7 +21,10 @@ class AbstractPostRenderer(ABC):
         self.num_frames = load_sequence.main()
         if self.num_frames == 0:
             self.num_frames = 100
-            print(f"No frames, assuming this is a run for testing, setting num_frames to {self.num_frames}")
+            print(
+                "No frames, assuming this is a run for testing,"
+                f"setting num_frames to {self.num_frames}"
+            )
 
     @abstractmethod
     def add_music(self):
@@ -25,7 +33,10 @@ class AbstractPostRenderer(ABC):
         bpy.context.scene.render.ffmpeg.audio_channels = "STEREO"
 
         audio_strip = bpy.context.scene.sequence_editor.sequences.new_sound(
-            name="BackgroundMusic", filepath=Resources.get_background_music_path(), channel=3, frame_start=1
+            name="BackgroundMusic",
+            filepath=Resources.get_background_music_path(),
+            channel=3,
+            frame_start=1,
         )
         audio_strip.frame_final_duration = self.num_frames
 
@@ -41,7 +52,8 @@ class AbstractPostRenderer(ABC):
         color_strip.color = BackgroundColor.get_scene_rgb()
 
         # image_strip = bpy.context.scene.sequence_editor.sequences.new_image(
-        #     name="BackgroundImage", filepath=Resources.get_background_image_path(), channel=1, frame_start=1
+        #     name="BackgroundImage",
+        # filepath=Resources.get_background_image_path(), channel=1, frame_start=1
         # )
         # image_strip.frame_final_duration = self.num_frames
         #
@@ -93,7 +105,9 @@ class HeadToHeadPostRenderer(AbstractPostRenderer):
         super().set_background()
 
     def add_visuals(self):
-        driver_times = add_drivers.load_times_dict(self.config["year"], self.config["track"])
+        driver_times = add_drivers.load_times_dict(
+            self.config["year"], self.config["track"]
+        )
         driver_colors = get_head_to_head_colors(*self.config["drivers"])
 
         num_strips = 3
@@ -134,7 +148,9 @@ class RestOfFieldPostRenderer(AbstractPostRenderer):
         return super().set_background()
 
     def add_visuals(self):
-        driver_times = add_drivers.load_times_dict(self.config["year"], self.config["track"])
+        driver_times = add_drivers.load_times_dict(
+            self.config["year"], self.config["track"]
+        )
         gold_hex = rgb_to_hex(GOLD_RGB)
 
         main_start = 5
