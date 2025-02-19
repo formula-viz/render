@@ -118,7 +118,12 @@ def ensure_directories_exist():
         TEMPORARY_DIR,
         CAR_PAINTS_DIR,
         FRAMES_DIR,
-        OUTPUT_DIR
+        OUTPUT_DIR,
+        DATA_DIR,
+        CAR_DATA_DIR,
+        DRIVER_TIMES_DIR,
+        DRIVER_IMAGES_DIR,
+        TRACK_DATA_DIR
     ]
     for directory in directories:
         Path(directory).mkdir(parents=True, exist_ok=True)
