@@ -21,34 +21,8 @@ jobs:
           submodules: "recursive"
 
       - name: Validate NVIDIA GPU Setup
-        shell: bash
         run: |
           nvidia-smi
-          echo "NVIDIA Driver Version:"
-          nvidia-smi --query-gpu=driver_version --format=csv,noheader
-          echo "GPU Model:"
-          nvidia-smi --query-gpu=gpu_name --format=csv,noheader
-
-      - name: Setup NVIDIA OpenGL
-        run: |
-          # Install NVIDIA OpenGL libraries
-          sudo apt-get update
-          sudo apt-get install -y \
-            libgl1-nvidia-glx \
-            nvidia-utils-550 \    # Match your driver version (550)
-            libglvnd-dev
-
-          # Set NVIDIA as the OpenGL provider
-          export __GLX_VENDOR_LIBRARY_NAME=nvidia
-
-          # Verify OpenGL is using NVIDIA
-          echo "Testing OpenGL configuration:"
-          glxinfo | grep "OpenGL vendor" || echo "OpenGL vendor not found"
-          glxinfo | grep "OpenGL renderer" || echo "OpenGL renderer not found"
-
-          # Add these environment variables to your shell
-          echo "export __GLX_VENDOR_LIBRARY_NAME=nvidia" >> ~/.bashrc
-          echo "export LIBGL_ALWAYS_SOFTWARE=0" >> ~/.bashrc
 
       - name: Install Blender 4.0.2
         run: |
@@ -59,10 +33,6 @@ jobs:
           # Install required shared libraries
           sudo apt-get update
           sudo apt-get install -y libxrender1 libxxf86vm1 libxfixes3 libxi6 libxkbcommon0 libxrandr2
-
-      - name: Verify Blender GPU Support
-        run: |
-          blender -b --python-expr "import bpy; import gpu; print('OpenGL Renderer:', gpu.platform.renderer_get()); print('OpenGL Vendor:', gpu.platform.vendor_get())"
 
       - name: Install Python Dependencies
         run: |
