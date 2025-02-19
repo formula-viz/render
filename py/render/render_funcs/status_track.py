@@ -1,7 +1,7 @@
 import bpy
 from mathutils import Vector
 
-from py.render.render_funcs.add_indicators import add_start_finish_line
+from py.render.render_funcs.add_start_finish_line import add_start_finish_line
 from py.render.render_funcs.add_track import create_material, create_planes
 from py.render.render_funcs.load_track_data import TrackData
 from py.utils.colors import hex_to_blender_rgb
@@ -193,8 +193,25 @@ class StatusTrack:
             radius=17, segments=64, ring_count=64)
         dot = bpy.context.active_object
 
-        dot_mat = create_material(
-            hex_to_blender_rgb("#00FFFF"), "IndicatorDot")
+        # Create material with emission
+        dot_mat = bpy.data.materials.new(name="IndicatorDot")
+        dot_mat.use_nodes = True
+        nodes = dot_mat.node_tree.nodes
+        nodes.clear()
+
+        # Create emission node
+        node_emission = nodes.new("ShaderNodeEmission")
+        node_output = nodes.new("ShaderNodeOutputMaterial")
+
+        # Set emission color and strength
+        node_emission.inputs['Color'].default_value = (
+            *hex_to_blender_rgb("#00FFFF"), 1)
+        node_emission.inputs['Strength'].default_value = 2.0
+
+        # Link nodes
+        links = dot_mat.node_tree.links
+        links.new(node_emission.outputs[0], node_output.inputs[0])
+
         dot.data.materials.append(dot_mat)
 
         return dot

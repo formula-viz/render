@@ -4,7 +4,7 @@ import bpy
 from py.render.render_funcs import (
     add_camera,
     add_driver_objects,
-    add_indicators,
+    add_start_finish_line,
     add_sun,
     add_track,
     status_track,
@@ -57,7 +57,7 @@ class AbstractRenderer(ABC):
     # accurate estimation of the location of the start finish line
     # should be the same for all renders so it is not abstract
     def add_indicators(self):
-        add_indicators.main(
+        add_start_finish_line.main(
             self.track_data.inner_curb_points,
             self.track_data.outer_curb_points,
             self.start_finish_line_idx,
