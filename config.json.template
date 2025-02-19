@@ -6,7 +6,7 @@
   "pipeline": {
     "isolate_module": "render",
     "preview_mode": false,
-    "quick_validate_mode": false
+    "quick_validate_mode": true
   },
   "render": {
     "fps": 30,
