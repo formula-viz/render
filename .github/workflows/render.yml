@@ -39,14 +39,11 @@ jobs:
           /opt/blender/4.0/python/bin/python3.10 -m pip install --upgrade pip
           /opt/blender/4.0/python/bin/python3.10 -m pip install -r requirements.txt
 
-      - name: Install Xvfb
-        run: sudo apt-get install -y xvfb
-
       - name: Run main script
         run: |
           chmod +x ./main.sh
           ./main.sh
-          xvfb-run -a -s "-screen 0 1920x1080x24" ./main.sh
+          ./main.sh
           
       - name: Upload artifact
         uses: actions/upload-artifact@v4
