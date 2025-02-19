@@ -23,8 +23,62 @@ def configure_gpu(config):
         "adaptive_sampling"
     ]
 
-
 def eevee_render(config, num_frames, is_preview_mode):
+    log_info("Starting Eevee render...")
+    
+    # Set render engine to Eevee
+    bpy.context.scene.render.engine = 'BLENDER_EEVEE'
+    
+    # High quality video encoding with focus on sharpness
+    bpy.context.scene.render.image_settings.file_format = "FFMPEG"
+    bpy.context.scene.render.ffmpeg.format = "MPEG4"
+    bpy.context.scene.render.ffmpeg.codec = "H264"
+    # Use constant rate factor instead of bitrate control
+    bpy.context.scene.render.ffmpeg.constant_rate_factor = "MEDIUM"
+    bpy.context.scene.render.ffmpeg.ffmpeg_preset = "BEST"
+    # Remove bitrate constraints that might cause quality issues
+    bpy.context.scene.render.ffmpeg.video_bitrate = 0
+    bpy.context.scene.render.ffmpeg.minrate = 0
+    bpy.context.scene.render.ffmpeg.maxrate = 0
+    # Other quality settings
+    bpy.context.scene.render.ffmpeg.gopsize = 1
+    bpy.context.scene.render.ffmpeg.use_max_b_frames = False
+    bpy.context.scene.render.ffmpeg.audio_codec = "NONE"
+    bpy.context.scene.render.image_settings.color_mode = "RGB"
+    bpy.context.scene.render.image_settings.compression = 0
+
+    # Configure high quality Eevee settings
+    eevee = bpy.context.scene.eevee
+    eevee.taa_render_samples = config["render"]["samples"]
+    eevee.taa_samples = config["render"]["samples"]
+    eevee.use_taa_reprojection = True
+    eevee.use_soft_shadows = True
+    eevee.shadow_cube_size = "128"  # Higher shadow resolution
+    eevee.shadow_cascade_size = "128"
+    eevee.use_gtao = True  # Better ambient occlusion
+    eevee.gtao_quality = 1.0
+    eevee.use_ssr = True  # Screen space reflections
+    eevee.ssr_quality = 1.0
+    eevee.ssr_max_roughness = 1.0
+    eevee.use_ssr_halfres = False
+    eevee.use_bloom = True  # Add bloom effect
+    eevee.bloom_threshold = 1.0
+    eevee.bloom_knee = 0.5
+    eevee.bloom_radius = 6.5
+    eevee.bloom_intensity = 0.05
+
+    # Set output path
+    output_path = os.path.join(OUTPUT_DIR, config["render"]["output"])
+    bpy.context.scene.render.filepath = output_path
+
+    if not is_preview_mode:
+        # Perform proper render (not viewport)
+        log_info(f"Rendering animation to {output_path}")
+        bpy.ops.render.render(animation=True)
+        log_info("Render complete")
+        bpy.ops.wm.quit_blender()
+
+def eevee_render_viewport(config, num_frames, is_preview_mode):
     log_info("Starting Eevee viewport render...")
 
     # Set active camera as viewport camera
