@@ -75,7 +75,7 @@ class DriverCircle:
         nodes.clear()
 
         # Create nodes for image texture
-        node_principled = nodes.new("ShaderNodeBsdfPrincipled")
+        node_emission = nodes.new("ShaderNodeEmission")
         node_tex = nodes.new("ShaderNodeTexImage")
         node_output = nodes.new("ShaderNodeOutputMaterial")
 
@@ -87,12 +87,16 @@ class DriverCircle:
         image = bpy.data.images.load(image_path)
         node_tex.image = image
 
+        # Set emission strength
+        node_emission.inputs['Strength'].default_value = 1.0
+
         # Link nodes
         links = face_mat.node_tree.links
         # UV to Image Texture
         links.new(node_uvmap.outputs[0], node_tex.inputs[0])
-        links.new(node_tex.outputs[0], node_principled.inputs[0])  # Color
-        links.new(node_principled.outputs[0], node_output.inputs[0])
+        # Color to emission
+        links.new(node_tex.outputs[0], node_emission.inputs[0])
+        links.new(node_emission.outputs[0], node_output.inputs[0])
 
         # Add material to object
         circle_obj.data.materials.append(face_mat)
@@ -109,7 +113,7 @@ class DriverCircle:
         # Create torus for the outline
         bpy.ops.mesh.primitive_torus_add(
             major_radius=1.0,  # Radius of the circle
-            minor_radius=0.02,  # Thickness of the outline
+            minor_radius=0.03,  # Thickness of the outline
             major_segments=32,  # Segments of the circle
             minor_segments=8,  # Segments of the tube
         )
@@ -125,12 +129,21 @@ class DriverCircle:
             name=f"{self.driver_abbrev}CircleOutlineMaterial"
         )
         outline_mat.use_nodes = True
-        bsdf = outline_mat.node_tree.nodes["Principled BSDF"]
+        nodes = outline_mat.node_tree.nodes
+        nodes.clear()
 
-        bsdf.inputs["Base Color"].default_value = (
+        # Create emission node
+        node_emission = nodes.new("ShaderNodeEmission")
+        node_output = nodes.new("ShaderNodeOutputMaterial")
+
+        # Set emission color and strength
+        node_emission.inputs['Color'].default_value = (
             *hex_to_blender_rgb(self.color), 1)
-        bsdf.inputs["Metallic"].default_value = 0.8
-        bsdf.inputs["Roughness"].default_value = 0.3
+        node_emission.inputs['Strength'].default_value = 0.1
+
+        # Link nodes
+        links = outline_mat.node_tree.links
+        links.new(node_emission.outputs[0], node_output.inputs[0])
 
         outline.data.materials.append(outline_mat)
         return outline

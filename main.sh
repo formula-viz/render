@@ -24,7 +24,7 @@ CONFIG=$(cat "$PROJECT_ROOT/config.json")
 
 PREVIEW_MODE=$(echo "$CONFIG" | jq -r '.pipeline.preview_mode')
 if [ "$PREVIEW_MODE" = true ]; then
-    blender -b --python "$PROJECT_ROOT/py/main.py" -- "$CONFIG"
+    blender --python "$PROJECT_ROOT/py/main.py" -- "$CONFIG"
     BLENDER_EXIT_CODE=$?
 else
     blender -b --python "$PROJECT_ROOT/py/main.py" -- "$CONFIG"
