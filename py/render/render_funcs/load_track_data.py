@@ -1,10 +1,11 @@
 import os
+import sys
 
 import numpy as np
 import pandas as pd
 from scipy.interpolate import splev, splprep
 from py.utils.project_structure import TrackDataPS
-from py.utils.logger import log_info
+from py.utils.logger import log_info, log_err
 
 
 # in the earlier bash script, we clone the repository locally
@@ -14,8 +15,12 @@ def load_raw_data(year: int, track: str, use_latest_year: bool = True):
     # iterate through contents of track_data, finding all files containing track
     # then, we find the file with the latest year
     # if use_latest_year is false, we use the year given
-    track_data_files = os.listdir(track_data_dir)
-    track_data_files = [file for file in track_data_files if track in file]
+    try:
+        track_data_files = os.listdir(track_data_dir)
+        track_data_files = [file for file in track_data_files if track in file]
+    except OSError as e:
+        log_err(f"Error accessing track data directory: {e}")
+        sys.exit(1)
 
     if not track_data_files:
         raise FileNotFoundError(f"Track data not found for {track}")
