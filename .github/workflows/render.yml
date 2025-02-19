@@ -23,12 +23,28 @@ jobs:
       - name: Validate NVIDIA GPU Setup
         shell: bash
         run: |
-          if ! nvidia-smi; then
-            echo "ERROR: NVIDIA GPU is not available"
-            exit 1
-          else
-            echo "NVIDIA GPU detected and working"
-          fi
+          nvidia-smi
+          echo "NVIDIA Driver Version:"
+          nvidia-smi --query-gpu=driver_version --format=csv,noheader
+          echo "GPU Model:"
+          nvidia-smi --query-gpu=gpu_name --format=csv,noheader
+          echo "Checking OpenGL:"
+          glxinfo | grep "OpenGL"
+
+      - name: Install OpenGL dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev \
+            libegl1-mesa-dev \
+            libghc-egl-dev \
+            mesa-utils \
+            glxinfo
+
+      - name: Verify Blender GPU Support
+        run: |
+          blender -b --python-expr "import bpy; import gpu; print('OpenGL Renderer:', gpu.platform.renderer_get()); print('OpenGL Vendor:', gpu.platform.vendor_get())"
 
       - name: Install Blender 4.0.2
         run: |
