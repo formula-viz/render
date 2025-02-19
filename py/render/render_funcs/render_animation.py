@@ -62,8 +62,8 @@ def eevee_render(config, num_frames, is_preview_mode):
     eevee.use_taa_reprojection = True
 
     eevee.use_soft_shadows = True
-    eevee.shadow_cube_size = "128"  # Higher shadow resolution
-    eevee.shadow_cascade_size = "128"
+    eevee.shadow_cube_size = "4096"  # Higher shadow resolution
+    eevee.shadow_cascade_size = "4096"
 
     eevee.use_gtao = True  # Better ambient occlusion
     eevee.gtao_quality = 1.0

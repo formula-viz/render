@@ -4,11 +4,11 @@ set -e
 PROJECT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 CONFIG_FILE="$PROJECT_ROOT/config.json"
-TEMPLATE_FILE="$PROJECT_ROOT/config.json.template"
+TEMPLATE_FILE="$PROJECT_ROOT/config-template.json"
 
 if [ ! -f "$CONFIG_FILE" ]; then
     if [ ! -f "$TEMPLATE_FILE" ]; then
-        echo "Error: config.json.template not found. Cannot create config.json."
+        echo "Error: $TEMPLATE_FILE not found. Cannot create config.json."
         exit 1
     fi
 

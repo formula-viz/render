@@ -6,12 +6,11 @@
   "pipeline": {
     "isolate_module": "render",
     "preview_mode": false,
-    "quick_validate_mode": true
+    "quick_validate_mode": false
   },
   "render": {
     "fps": 30,
     "samples": 32,
-    "adaptive_sampling": true,
     "is_shorts_output": true,
     "output": "output.mp4",
     "max_cam_distance": 70,
