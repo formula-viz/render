@@ -1,8 +1,8 @@
 import os
 
 import bpy
-from utils.project_structure import OUTPUT_DIR, get_frames_dir
-from utils.logger import log_info
+from py.utils.project_structure import OUTPUT_DIR, FRAMES_DIR
+from py.utils.logger import log_info
 
 
 def configure_gpu(config):
@@ -118,10 +118,9 @@ def cycles_render(config, num_frames, is_preview_mode):
     bpy.context.scene.render.image_settings.file_format = "PNG"
     bpy.context.scene.render.image_settings.color_mode = "RGBA"
 
-    frames_dir = get_frames_dir()
-    os.system(f"rm -rf {frames_dir}")
-    os.system(f"mkdir {frames_dir}")
-    bpy.context.scene.render.filepath = f"{frames_dir}/frame_"
+    os.system(f"rm -rf {FRAMES_DIR}")
+    os.system(f"mkdir {FRAMES_DIR}")
+    bpy.context.scene.render.filepath = f"{FRAMES_DIR}/frame_"
 
     bpy.ops.render.render(animation=True)
 

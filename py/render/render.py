@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 import bpy
-from render_funcs import (
+from py.render.render_funcs import (
     add_camera,
     add_driver_objects,
     add_indicators,
@@ -16,8 +16,8 @@ from render_funcs import (
     race_timer,
     driver_circle,
 )
-from utils.colors import get_rest_of_field_colors, get_head_to_head_colors
-from utils.logger import log_info
+from py.utils.colors import get_rest_of_field_colors, get_head_to_head_colors
+from py.utils.logger import log_info
 
 
 class AbstractRenderer(ABC):

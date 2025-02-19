@@ -1,7 +1,6 @@
 #!/bin/bash
 
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-source "$SCRIPT_DIR/scripts/prepare_blender.sh"
+PROJECT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 CONFIG_FILE="$PROJECT_ROOT/config.json"
 TEMPLATE_FILE="$PROJECT_ROOT/config.json.template"
@@ -17,12 +16,14 @@ if [ ! -f "$CONFIG_FILE" ]; then
     exit 0
 fi
 
+/opt/blender/4.0/python/bin/python3.10 -m pip install -r "$PROJECT_ROOT/requirements.txt"
+export PYTHONPATH="${PROJECT_ROOT}:${PROJECT_ROOT}/py:${PYTHONPATH:-}"
+
 CONFIG=$(cat "$PROJECT_ROOT/config.json")
 
 PREVIEW_MODE=$(echo "$CONFIG" | jq -r '.pipeline.preview_mode')
 if [ "$PREVIEW_MODE" = true ]; then
     blender --python "$PROJECT_ROOT/py/main.py" -- "$CONFIG"
 else
-    # blender -b --python "$PROJECT_ROOT/py/main.py" -- "$CONFIG"
     blender --python "$PROJECT_ROOT/py/main.py" -- "$CONFIG"
 fi

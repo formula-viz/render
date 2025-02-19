@@ -3,8 +3,7 @@ from colormath.color_conversions import convert_color
 from colormath.color_diff import delta_e_cie2000
 from colormath.color_objects import LabColor, sRGBColor
 from fastf1 import plotting
-
-from utils.logger import log_warn
+from py.utils.logger import log_warn
 
 GOLD_RGB = (255, 215, 0)
 MAIN_TRACK_COLOR = "#2d2e2e"
@@ -54,7 +53,7 @@ def get_head_to_head_colors(*drivers):
         def patch_asscalar(a):
             return a.item()
 
-        setattr(np, "asscalar", patch_asscalar)
+        np.asscalar = patch_asscalar
         delta_e = delta_e_cie2000(lab1, lab2)
 
         return delta_e
@@ -74,7 +73,8 @@ def get_head_to_head_colors(*drivers):
             base_color_idx += 1
             if color_difference(colors[0], colors[i]) <= 30:
                 log_warn(
-                    f"Colors for driver {drivers[0]} and {drivers[i]} are too similar even after setting one to white, inspect this."
+                    f"Colors for drivers {drivers[0]}/{drivers[i]} too similar after "
+                    "replacement, check manually."
                 )
 
             if base_color_idx >= len(base_colors):

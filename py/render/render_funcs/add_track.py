@@ -1,6 +1,7 @@
 import bmesh  # pyright: ignore
 import bpy
-from utils.colors import CurbColor, MainTrackColor
+from py.utils.colors import CurbColor, MainTrackColor
+
 
 def create_planes(inner_points, outer_points, name, material=None):
     mesh = bpy.data.meshes.new(name + "TrackMesh")
@@ -15,8 +16,10 @@ def create_planes(inner_points, outer_points, name, material=None):
     bm.verts.ensure_lookup_table()
 
     for i in range(len(inner_points) - 1):
-        bm.faces.new([inner_verts[i], inner_verts[i + 1], outer_verts[i + 1], outer_verts[i]])
-    bm.faces.new([inner_verts[-1], inner_verts[0], outer_verts[0], outer_verts[-1]])
+        bm.faces.new([inner_verts[i], inner_verts[i + 1],
+                     outer_verts[i + 1], outer_verts[i]])
+    bm.faces.new([inner_verts[-1], inner_verts[0],
+                 outer_verts[0], outer_verts[-1]])
 
     bm.to_mesh(mesh)
     bm.free()
@@ -43,6 +46,9 @@ def main(track_data):
     track_mat = create_material(MainTrackColor.get_scene_rgb(), "Main")
     curb_mat = create_material(CurbColor.get_scene_rgb(), "Curb")
 
-    create_planes(track_data.inner_points, track_data.outer_points, "Main", track_mat)
-    create_planes(track_data.outer_points, track_data.outer_curb_points, "CurbOuter", curb_mat)
-    create_planes(track_data.inner_points, track_data.inner_curb_points, "CurbInner", curb_mat)
+    create_planes(track_data.inner_points,
+                  track_data.outer_points, "Main", track_mat)
+    create_planes(track_data.outer_points,
+                  track_data.outer_curb_points, "CurbOuter", curb_mat)
+    create_planes(track_data.inner_points,
+                  track_data.inner_curb_points, "CurbInner", curb_mat)

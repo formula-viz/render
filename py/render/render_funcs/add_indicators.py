@@ -1,7 +1,7 @@
-import bmesh # pyright: ignore
-import bpy # pyright: ignore
-from add_track import create_material
-from utils.colors import StartFinishLineColor
+import bmesh  # pyright: ignore
+import bpy  # pyright: ignore
+from py.render.render_funcs.add_track import create_material
+from py.utils.colors import StartFinishLineColor
 
 
 # we have gotten the index of the inner_points, outer_points defining the start/finish line
@@ -13,11 +13,13 @@ def add_start_finish_line(inner_points, outer_points, start_finish_line_idx, pre
 
     points = []
     for i in range(0, line_width):
-        points.append(inner_points[(start_finish_line_idx - i) % len(inner_points)])
+        points.append(
+            inner_points[(start_finish_line_idx - i) % len(inner_points)])
 
     # add the others in reverse order so that the plane is built correctly
     for i in reversed(range(0, line_width)):
-        points.append(outer_points[(start_finish_line_idx - i) % len(outer_points)])
+        points.append(
+            outer_points[(start_finish_line_idx - i) % len(outer_points)])
 
     # we want to add a tiny bit of height to the line so that it does not conflict with the main track
     for i in range(len(points)):
@@ -37,7 +39,8 @@ def add_start_finish_line(inner_points, outer_points, start_finish_line_idx, pre
     bm.free()
     mesh.update()
 
-    mat = create_material(StartFinishLineColor.get_scene_rgb(), "StartFinishLineMaterial")
+    mat = create_material(
+        StartFinishLineColor.get_scene_rgb(), "StartFinishLineMaterial")
 
     obj.data.materials.append(mat)
     return obj
@@ -45,7 +48,8 @@ def add_start_finish_line(inner_points, outer_points, start_finish_line_idx, pre
 
 # where at_start is the index of the point where the car is at the start/finish line
 def main(inner_curb_points, outer_curb_points, start_finish_line_idx):
-    indicators_collection = bpy.data.collections.new(name="IndicatorsCollection")
+    indicators_collection = bpy.data.collections.new(
+        name="IndicatorsCollection")
     bpy.context.scene.collection.children.link(indicators_collection)
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
 

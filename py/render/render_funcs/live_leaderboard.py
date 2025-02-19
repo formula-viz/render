@@ -1,9 +1,9 @@
 import bpy
 from mathutils import Vector
-from utils.logger import log_info
-from utils.project_structure import Resources
+from py.utils.logger import log_info
+from py.utils.project_structure import Resources
 
-from render_funcs.driver_circle import DriverCircle
+from py.render.render_funcs.driver_circle import DriverCircle
 
 
 class LiveLeaderboard:

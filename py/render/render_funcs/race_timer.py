@@ -1,8 +1,8 @@
 import bpy
 from mathutils import Vector
 
-from utils.logger import log_info
-from utils.project_structure import Resources
+from py.utils.logger import log_info
+from py.utils.project_structure import Resources
 
 
 class RaceTimer:
@@ -67,8 +67,7 @@ class RaceTimer:
             seconds = int(elapsed_time % 60)
             milliseconds = int((elapsed_time % 1) * 1000)
 
-            self.timer_obj.data.body = f"{minutes}:{
-                seconds:02d}.{milliseconds:03d}"
+            self.timer_obj.data.body = f"{minutes}:{seconds:02d}.{milliseconds:03d}"
 
         # Register and unregister handlers
         if update_frame not in bpy.app.handlers.frame_change_post:

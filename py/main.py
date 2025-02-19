@@ -4,8 +4,6 @@ import sys
 from py.post_render.post_render import HeadToHeadPostRenderer, RestOfFieldPostRenderer
 from py.render.render import HeadToHeadRenderer, RestOfFieldRenderer
 
-from py.render.render_funcs.add_driver_objects import import_crown
-
 
 def initialize(config):
     if config["type"] == "head-to-head":
@@ -20,7 +18,7 @@ def initialize(config):
 
 def trigger(config, renderer, post_renderer):
     isolate_module = config["pipeline"]["isolate_module"]
-    if type(isolate_module) == bool and not isolate_module:
+    if isolate_module is bool and not isolate_module:
         renderer.render()
         post_renderer.post_render()
     elif isolate_module == "render":
