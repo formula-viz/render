@@ -3,6 +3,9 @@ name: Blender Render
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   VENV_PATH: ${{ github.workspace }}/pyvenv
 
