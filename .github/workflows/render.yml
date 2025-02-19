@@ -24,7 +24,7 @@ jobs:
             echo "NVIDIA GPU detected and working"
           fi
 
-      - name: Install and Configure Blender 4.0.2
+      - name: Install Blender 4.0.2
         run: |
           wget https://download.blender.org/release/Blender4.0/blender-4.0.2-linux-x64.tar.xz
           tar -xf blender-4.0.2-linux-x64.tar.xz
@@ -33,7 +33,10 @@ jobs:
           # Install required shared libraries
           sudo apt-get update
           sudo apt-get install -y libxrender1 libxxf86vm1 libxfixes3 libxi6 libxkbcommon0 libxrandr2
-          # Install pip dependencies to blender's python
+
+      - name: Install Python Dependencies
+        run: |
+          /opt/blender/4.0/python/bin/python3.10 -m pip install --upgrade pip
           /opt/blender/4.0/python/bin/python3.10 -m pip install -r requirements.txt
 
       - name: Install Xvfb

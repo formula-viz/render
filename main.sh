@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 PROJECT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
@@ -24,6 +25,13 @@ CONFIG=$(cat "$PROJECT_ROOT/config.json")
 PREVIEW_MODE=$(echo "$CONFIG" | jq -r '.pipeline.preview_mode')
 if [ "$PREVIEW_MODE" = true ]; then
     blender --python "$PROJECT_ROOT/py/main.py" -- "$CONFIG"
+    BLENDER_EXIT_CODE=$?
 else
     blender --python "$PROJECT_ROOT/py/main.py" -- "$CONFIG"
+    BLENDER_EXIT_CODE=$?
+fi
+
+if [ "$BLENDER_EXIT_CODE" -ne 0 ]; then
+    echo "Blender exited with error code $BLENDER_EXIT_CODE"
+    exit 1
 fi
