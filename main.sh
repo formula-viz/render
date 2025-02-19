@@ -26,6 +26,7 @@ if [ -d "csv_repo" ]; then
 else
     # Directory doesn't exist, do a clone
     git clone git@github.com:formula-viz/csv_repo.git
+    echo "csv_repo has been cloned at: $(pwd)/csv_repo"
 fi
 
 /opt/blender/4.0/python/bin/python3.10 -m pip install -r "$PROJECT_ROOT/requirements.txt"
