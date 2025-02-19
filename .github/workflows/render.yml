@@ -46,8 +46,8 @@ jobs:
         run: |
           chmod +x ./main.sh
           ./main.sh
-          xvfb-run -a ./main.sh
-
+          xvfb-run -a -s "-screen 0 1920x1080x24" ./main.sh
+          
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
