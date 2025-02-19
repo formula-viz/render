@@ -28,8 +28,6 @@ jobs:
           nvidia-smi --query-gpu=driver_version --format=csv,noheader
           echo "GPU Model:"
           nvidia-smi --query-gpu=gpu_name --format=csv,noheader
-          echo "Checking OpenGL:"
-          glxinfo | grep "OpenGL"
 
       - name: Install OpenGL dependencies
         run: |
