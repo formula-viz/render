@@ -15,6 +15,7 @@ from py.render.render_funcs import (
     live_leaderboard,
     race_timer,
     driver_circle,
+    add_background_grid,
 )
 from py.utils.colors import get_rest_of_field_colors, get_head_to_head_colors
 from py.utils.logger import log_info
@@ -66,6 +67,7 @@ class AbstractRenderer(ABC):
     def render(self):
         """Main process which should be called"""
         self.setup_track()  # track_data is a dependency for later operations
+        add_background_grid.main()
         self.add_drivers()
         self.add_indicators()
         self.add_camera()
