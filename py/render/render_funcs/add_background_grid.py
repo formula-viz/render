@@ -54,7 +54,7 @@ def create_grid_material(rgb=(0.1, 0.2, 0.2, 1)):
 
     # Set grid color and emission strength
     emission.inputs['Color'].default_value = rgb
-    emission.inputs['Strength'].default_value = 1.0
+    emission.inputs['Strength'].default_value = 0.5
 
     # Link nodes
     links.new(emission.outputs[0], output.inputs[0])
