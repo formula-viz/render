@@ -11,7 +11,7 @@
   "render": {
     "engine": "eevee",
     "fps": 30,
-    "samples": 128,
+    "samples": 32,
     "is_shorts_output": true,
     "output": "output.mp4",
     "max_cam_distance": 70,
