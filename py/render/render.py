@@ -16,6 +16,7 @@ from py.render.render_funcs import (
     race_timer,
     driver_circle,
     add_background_grid,
+    add_outro
 )
 from py.utils.colors import get_rest_of_field_colors, get_head_to_head_colors
 from py.utils.logger import log_info
@@ -135,6 +136,7 @@ class HeadToHeadRenderer(AbstractRenderer):
             self.camera_obj,
             self.num_frames,
         )
+        add_outro.Outro(self.config, self.camera_obj, self.num_frames)
 
 
 class RestOfFieldRenderer(AbstractRenderer):
@@ -205,3 +207,4 @@ class RestOfFieldRenderer(AbstractRenderer):
             self.driver_objs[self.focused_driver],
             self.camera_obj,
         )
+        add_outro.Outro(self.config, self.camera_obj, self.num_frames)
