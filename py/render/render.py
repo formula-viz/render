@@ -51,8 +51,7 @@ class AbstractRenderer(ABC):
     # this should be the same for all jobs
     def trigger_render(self):
         log_info("Starting Rendering...")
-        render_animation.main(self.config, len(
-            self.driver_dfs[self.focused_driver]))
+        render_animation.main(self.config, self.num_frames)
 
     # this has to be a separate function because the car data must be loaded before in order to get an
     # accurate estimation of the location of the start finish line
@@ -100,6 +99,9 @@ class HeadToHeadRenderer(AbstractRenderer):
             self.track_data, self.start_finish_line_idx, self.driver_dfs, self.config
         )
 
+        # for head to head render, the fastest might not be first in the config, iterate and find the largest df
+        self.num_frames = max(len(df) for df in self.driver_dfs.values())
+
     def add_camera(self):
         self.focused_driver = self.config["drivers"][
             0
@@ -131,6 +133,7 @@ class HeadToHeadRenderer(AbstractRenderer):
         race_timer.RaceTimer(
             self.config,
             self.camera_obj,
+            self.num_frames,
         )
 
 
@@ -145,11 +148,11 @@ class RestOfFieldRenderer(AbstractRenderer):
         self.driver_colors = get_rest_of_field_colors()
 
         # for now, gold driver is just the first driver listed in drivers
-        focused_driver = self.config["drivers"][0]
+        self.focused_driver = self.config["drivers"][0]
         self.drivers_in_color_order = [
-            driver for driver in self.driver_dfs.keys() if driver != focused_driver
+            driver for driver in self.driver_dfs.keys() if driver != self.focused_driver
         ]
-        self.drivers_in_color_order.insert(0, focused_driver)
+        self.drivers_in_color_order.insert(0, self.focused_driver)
 
         self.driver_objs = add_driver_objects.main(
             self.driver_dfs,
@@ -161,6 +164,9 @@ class RestOfFieldRenderer(AbstractRenderer):
         self.car_rankings = car_rankings.main(
             self.track_data, self.start_finish_line_idx, self.driver_dfs, self.config
         )
+
+        # for rest of field render, some cars might be very far behind, just take len of fastest
+        self.num_frames = len(self.driver_dfs[self.focused_driver])
 
     def add_camera(self):
         self.focused_driver = self.config["drivers"][0]
@@ -183,6 +189,7 @@ class RestOfFieldRenderer(AbstractRenderer):
         race_timer.RaceTimer(
             self.config,
             self.camera_obj,
+            self.num_frames,
         )
         live_leaderboard.LiveLeaderboard(
             self.config,
