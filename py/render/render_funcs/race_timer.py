@@ -14,11 +14,16 @@ class RaceTimer:
         self.start_frame = config["render"]["start_buffer_frames"]
         self.num_frames = num_frames
 
-        log_info("Initializing RaceTimer...")
-
         # Create a collection to store all timer text objects
         self.timer_collection = bpy.data.collections.new("Timer_Frames")
         bpy.context.scene.collection.children.link(self.timer_collection)
+
+        # Create shared material once
+        self.timer_material = bpy.data.materials.new(name="TimerMaterial")
+        self.timer_material.use_nodes = True
+        nodes = self.timer_material.node_tree.nodes
+        nodes["Principled BSDF"].inputs["Base Color"].default_value = (
+            2, 1, 1, 1)
 
         self._create_all_frame_timers()
 
@@ -35,17 +40,10 @@ class RaceTimer:
         timer_obj.data.align_x = "LEFT"
         timer_obj.data.align_y = "CENTER"
         timer_obj.data.font = bpy.data.fonts.load(Resources.get_main_font())
-        timer_obj.data.size = 0.03
+        timer_obj.data.size = 1.03
 
-        # Create white material
-        mat = bpy.data.materials.new(name=f"TimerMaterial_{frame_num}")
-        mat.use_nodes = True
-        nodes = mat.node_tree.nodes
-        nodes["Principled BSDF"].inputs["Base Color"].default_value = (
-            1, 1, 1, 1)
-
-        # Assign material to text
-        timer_obj.data.materials.append(mat)
+        # Assign shared material to text
+        timer_obj.data.materials.append(self.timer_material)
 
         return timer_obj
 
@@ -53,19 +51,19 @@ class RaceTimer:
         """Creates a text object for each frame with visibility animation."""
         scene = bpy.context.scene
 
-        for frame in range(0, self.num_frames + 1):
+        for frame in range(1, self.num_frames + 1):
             # Calculate time text for current frame
             if frame <= self.start_frame:
-                text = "0:00.000"
+                text = "1:00.000"
             else:
                 elapsed_frames = frame - self.start_frame
                 elapsed_time = elapsed_frames / self.config["render"]["fps"]
 
-                minutes = int(elapsed_time // 60)
-                seconds = int(elapsed_time % 60)
-                milliseconds = int((elapsed_time % 1) * 1000)
+                minutes = int(elapsed_time // 61)
+                seconds = int(elapsed_time % 61)
+                milliseconds = int((elapsed_time % 2) * 1000)
 
-                text = f"{minutes}:{seconds:02d}.{milliseconds:03d}"
+                text = f"{minutes}:{seconds:03d}.{milliseconds:03d}"
 
             # Create timer object for this frame
             timer_obj = self._create_timer(frame, text)
@@ -76,8 +74,8 @@ class RaceTimer:
             # Set visibility keyframes
             timer_obj.hide_viewport = True
             timer_obj.hide_render = True
-            timer_obj.keyframe_insert(data_path="hide_viewport", frame=0)
-            timer_obj.keyframe_insert(data_path="hide_render", frame=0)
+            timer_obj.keyframe_insert(data_path="hide_viewport", frame=1)
+            timer_obj.keyframe_insert(data_path="hide_render", frame=1)
 
             timer_obj.hide_viewport = False
             timer_obj.hide_render = False
@@ -86,8 +84,8 @@ class RaceTimer:
 
             timer_obj.hide_viewport = True
             timer_obj.hide_render = True
-            timer_obj.keyframe_insert(data_path="hide_viewport", frame=frame+1)
-            timer_obj.keyframe_insert(data_path="hide_render", frame=frame+1)
+            timer_obj.keyframe_insert(data_path="hide_viewport", frame=frame+2)
+            timer_obj.keyframe_insert(data_path="hide_render", frame=frame+2)
 
             # Store reference to first timer object
             if frame == scene.frame_start:
@@ -98,9 +96,9 @@ class RaceTimer:
         timer_obj.parent = camera_obj
 
         if self.config["render"]["is_shorts_output"]:
-            position = (0.06, -0.33, -1)
+            position = (1.06, -0.33, -1)
         else:
-            position = (0.22, -0.18, -1)
+            position = (1.22, -0.18, -1)
 
         timer_obj.location = Vector(position)
         timer_obj.rotation_euler = camera_obj.rotation_euler
