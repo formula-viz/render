@@ -2,6 +2,11 @@ name: Blender Render
 
 on:
   workflow_dispatch:
+    inputs:
+      config:
+        description: 'JSON config (optional)'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -19,6 +24,21 @@ jobs:
         with:
           token: ${{ secrets.GH_PAT }}
           submodules: "recursive"
+
+      - name: Setup Config
+        if: inputs.config != ''
+        run: |
+          echo '${{ inputs.config }}' > config.json
+          # Validate JSON format
+          cat config.json | jq '.' || (echo "Invalid JSON config" && exit 1)
+
+      - name: Check Config and Directory
+        run: |
+          if [ -f "config.json" ]; then
+            echo "Using existing config.json"
+          else
+            echo "No config.json found, will use default settings"
+          fi
 
       - name: Validate NVIDIA GPU Setup
         run: |
@@ -42,7 +62,12 @@ jobs:
       - name: Run main script
         run: |
           chmod +x ./main.sh
-          ./main.sh
+          
+          # Check if config.json exists initially
+          if [ ! -f "config.json" ]; then
+            # if config.json does not exist, then running it the first time generate the config.json
+            ./main.sh
+          fi
           ./main.sh
           
       - name: Upload artifact
