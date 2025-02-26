@@ -1,3 +1,5 @@
+from typing import Optional, Tuple, cast
+
 import bpy
 from mathutils import Vector
 
@@ -6,6 +8,19 @@ from py.render.render_funcs.add_track import create_material, create_planes
 from py.render.render_funcs.load_track_data import TrackData
 from py.utils.colors import hex_to_blender_rgb
 from py.utils.logger import log_info
+
+# In the shorts mode, if we have a dot object, 1 meter away from the camera,
+# an x value of 0.2 will be the edge and a y value of 0.36 will be the top edge
+# This can be used to dynamically position the status track regardless of the
+# particular dimensions of that particular track
+SHORTS_MODE_RIGHT_EDGE = 0.2
+SHORTS_MODE_TOP_EDGE = 0.36
+
+# I guess they are symmetrical because of the aspect ratios, but this is not by design
+LANDSCAPE_MODE_RIGHT_EDGE = 0.36
+LANDSCAPE_MODE_TOP_EDGE = 0.2
+
+EDGE_BUFFER = 0.01
 
 
 class StatusTrack:
@@ -17,27 +32,42 @@ class StatusTrack:
         self.start_finish_line_idx = start_finish_line_idx
         self.driver_df = driver_df
         self.is_shorts_output = is_shorts_output
+        self.parent_empty: Optional[bpy.types.Object] = None
 
         log_info("Initializing StatusTrack...")
 
         # Create empty parent object for camera-relative positioning
         bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))
-        self.parent_empty = bpy.context.active_object
+        active_obj = bpy.context.active_object
+        if not active_obj or not isinstance(active_obj, bpy.types.Object):
+            raise TypeError(
+                "Failed to create parent empty: Active object is not a valid Blender Object"
+            )
+
+        # Explicitly cast to the correct type to make pyright happy
+        self.parent_empty = cast(bpy.types.Object, active_obj)
+
         # ensure the parent empty is not rendered and invisible in viewport
         self.parent_empty.hide_render = True
         self.parent_empty.hide_viewport = True
         self.parent_empty.name = "StatusTrackParent"
 
-        self._parent_to_camera(camera_obj)
+        scaled_track_width, scaled_track_height = self._setup()
+        self._parent_to_camera(camera_obj, scaled_track_width, scaled_track_height)
 
-        self._setup()
+    def _setup(self) -> Tuple[float, float]:
+        if self.parent_empty is None:
+            raise ValueError("Parent empty has not been initialized")
 
-    def _setup(self):
-        new_track_data, new_driver_df = self._center(
-            self.track_data, self.driver_df)
+        new_track_data, new_driver_df = self._center(self.track_data, self.driver_df)
 
+        track_width, track_height = self._get_track_dimensions(new_track_data)
         optimal_scale = self._calculate_optimal_scale(
-            new_track_data, self.camera_obj, self.is_shorts_output
+            track_width, track_height, self.camera_obj, self.is_shorts_output
+        )
+        scaled_track_width, scaled_track_height = (
+            track_width * optimal_scale,
+            track_height * optimal_scale,
         )
 
         track_mat = create_material(hex_to_blender_rgb("#FFFFFF"), "Main")
@@ -61,55 +91,86 @@ class StatusTrack:
         # Parent both objects to the status track, for relative movement, this also scales them accordingly
         status_start_finish_line.parent = status_track_obj
         indicator_dot.parent = status_track_obj
+
+        # We want to ensure that there is enough space, the track may be tall causing it to go over
+        # the top of the screen. We know the end width and height in meters which means we can
+        #
         # finally, parent the status track to the parent empty
         status_track_obj.parent = self.parent_empty
+        return scaled_track_width, scaled_track_height
 
     # TODO: this will need to be updated for different resolutions,
     # for now it just assumes it is in the phone mode
-    def _parent_to_camera(self, camera_obj: bpy.types.Object) -> None:
+    def _parent_to_camera(
+        self,
+        camera_obj: bpy.types.Object,
+        scaled_track_width: float,
+        scaled_track_height: float,
+    ) -> None:
         """Parent the leaderboard to the camera."""
+        if self.parent_empty is None:
+            raise ValueError("Parent empty has not been initialized")
+
         self.parent_empty.parent = camera_obj
 
+        # the track will already be centered so its highest point will be scaled_track_height / 2
+        up_y, right_x = scaled_track_height / 2, scaled_track_width / 2
+
         if self.is_shorts_output:
-            position = (0.13, 0.31, -1)
+            position = (
+                SHORTS_MODE_RIGHT_EDGE - right_x - EDGE_BUFFER,
+                SHORTS_MODE_TOP_EDGE - up_y - EDGE_BUFFER,
+                -1,
+            )
         else:
-            position = (0.28, 0.15, -1)
+            position = (
+                LANDSCAPE_MODE_RIGHT_EDGE - right_x - EDGE_BUFFER,
+                LANDSCAPE_MODE_TOP_EDGE - up_y - EDGE_BUFFER,
+                -1,
+            )
 
         self.parent_empty.location = Vector(position)
         self.parent_empty.rotation_euler = camera_obj.rotation_euler
 
-    # TODO: this may need to be reworked later
-    def _calculate_optimal_scale(self, new_track_data, camera_obj, is_shorts_output):
-        # TODO: for now setting is_shorts_output to always True
-        is_shorts_output = True
+    def _get_track_dimensions(self, track_data: TrackData) -> Tuple[float, float]:
+        """Calculate the width and height of the track."""
+        # Get track dimensions
+        x_points = [point[0] for point in track_data.outer_points]
+        y_points = [point[1] for point in track_data.outer_points]
+        track_width = max(x_points) - min(x_points)
+        track_height = max(y_points) - min(y_points)
 
+        return track_width, track_height
+
+    # TODO: this may need to be reworked later
+    def _calculate_optimal_scale(
+        self,
+        track_width: float,
+        track_height: float,
+        camera_obj: bpy.types.Object,
+        is_shorts_output: bool,
+    ) -> float:
         # At 1 meter distance with 50mm lens
-        TOTAL_WIDTH_COVERED = 0.72  # meters
-        TOTAL_HEIGHT_COVERED = 0.48  # meters
+        total_width_covered = 0.72  # meters
+        total_height_covered = 0.48  # meters
 
         # Calculate usable space based on resolution aspect ratio
         if is_shorts_output:
             resolution_aspect = 1080 / 1920  # 0.5625 (9:16)
-            usable_width = TOTAL_HEIGHT_COVERED * resolution_aspect
-            usable_height = TOTAL_HEIGHT_COVERED
+            usable_width = total_height_covered * resolution_aspect
+            usable_height = total_height_covered
         else:
             resolution_aspect = 1920 / 1080  # 1.7778 (16:9)
-            usable_height = TOTAL_WIDTH_COVERED / resolution_aspect
-            usable_width = TOTAL_WIDTH_COVERED
-
-        # Get track dimensions
-        x_points = [point[0] for point in new_track_data.outer_points]
-        y_points = [point[1] for point in new_track_data.outer_points]
-        track_width = max(x_points) - min(x_points)
-        track_height = max(y_points) - min(y_points)
+            usable_height = total_width_covered / resolution_aspect
+            usable_width = total_width_covered
 
         # Calculate desired size as fraction of usable space
         if is_shorts_output:
-            desired_width = 0.45  # 40% of width
-            desired_height = 0.3  # 20% of height
+            desired_width = 0.30
+            desired_height = 0.25
         else:
-            desired_width = 0.3  # 30% of width
-            desired_height = 0.25  # 25% of height
+            desired_width = 0.20
+            desired_height = 0.25
 
         desired_width_meters = usable_width * desired_width
         desired_height_meters = usable_height * desired_height
@@ -119,12 +180,12 @@ class StatusTrack:
 
         return min(scale_x, scale_y)
 
-    def _scale(self, optimal_scale, status_track_obj):
+    def _scale(self, optimal_scale: float, status_track_obj: bpy.types.Object) -> None:
         status_track_obj.scale.x = optimal_scale
         status_track_obj.scale.y = optimal_scale
         status_track_obj.scale.z = optimal_scale
 
-    def _center(self, new_track_data, new_driver_df):
+    def _center(self, new_track_data: TrackData, new_driver_df):
         new_inner_points = []
         new_outer_points = []
         new_inner_curb_points = []
@@ -176,27 +237,36 @@ class StatusTrack:
 
         return new_track_data, new_driver_df
 
-    def _add_indicator_dot(self, new_driver_df):
+    def _add_indicator_dot(self, new_driver_df) -> bpy.types.Object:
         dot = self._create_indicator_dot()
 
         for i in range(len(new_driver_df)):
             frame = i + 1
 
-            dot.location = (
-                new_driver_df["X"].iloc[i], new_driver_df["Y"].iloc[i], 0)
+            dot.location = (new_driver_df["X"].iloc[i], new_driver_df["Y"].iloc[i], 0)
             dot.keyframe_insert(data_path="location", frame=frame)
 
         return dot
 
-    def _create_indicator_dot(self):
-        bpy.ops.mesh.primitive_uv_sphere_add(
-            radius=17, segments=64, ring_count=64)
-        dot = bpy.context.active_object
+    def _create_indicator_dot(self) -> bpy.types.Object:
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=17, segments=64, ring_count=64)
+        active_obj = bpy.context.active_object
+        if not active_obj or not isinstance(active_obj, bpy.types.Object):
+            raise ValueError("Failed to create indicator dot")
+
+        dot = cast(bpy.types.Object, active_obj)
 
         # Create material with emission
         dot_mat = bpy.data.materials.new(name="IndicatorDot")
+        if not isinstance(dot_mat, bpy.types.Material):
+            raise ValueError("Failed to create material")
+
         dot_mat.use_nodes = True
-        nodes = dot_mat.node_tree.nodes
+        node_tree = dot_mat.node_tree
+        if not isinstance(node_tree, bpy.types.NodeTree):
+            raise ValueError("Failed to get node tree")
+
+        nodes = node_tree.nodes
         nodes.clear()
 
         # Create emission node
@@ -204,12 +274,14 @@ class StatusTrack:
         node_output = nodes.new("ShaderNodeOutputMaterial")
 
         # Set emission color and strength
-        node_emission.inputs['Color'].default_value = (
-            *hex_to_blender_rgb("#00FFFF"), 1)
-        node_emission.inputs['Strength'].default_value = 2.0
+        node_emission.inputs["Color"].default_value = (
+            *hex_to_blender_rgb("#00FFFF"),
+            1,
+        )
+        node_emission.inputs["Strength"].default_value = 2.0
 
         # Link nodes
-        links = dot_mat.node_tree.links
+        links = node_tree.links
         links.new(node_emission.outputs[0], node_output.inputs[0])
 
         dot.data.materials.append(dot_mat)
