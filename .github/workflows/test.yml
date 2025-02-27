@@ -1,0 +1,40 @@
+name: Blender Python Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    continue-on-error: true # This ensures the workflow doesn't block commits
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+
+      - name: Install Blender 4.0.2
+        run: |
+          wget https://download.blender.org/release/Blender4.0/blender-4.0.2-linux-x64.tar.xz
+          tar -xf blender-4.0.2-linux-x64.tar.xz
+          sudo mv blender-4.0.2-linux-x64 /opt/blender
+          sudo ln -s /opt/blender/blender /usr/local/bin/blender
+          # Install required shared libraries
+          sudo apt-get update
+          sudo apt-get install -y libxrender1 libxxf86vm1 libxfixes3 libxi6 libxkbcommon0 libxrandr2
+
+      - name: Install Python Dependencies
+        run: |
+          /opt/blender/4.0/python/bin/python3.10 -m pip install --upgrade pip
+          /opt/blender/4.0/python/bin/python3.10 -m pip install -r requirements.txt
+
+      - name: Run test script
+        run: |
+          chmod +x ./test.sh
+          ./test.sh

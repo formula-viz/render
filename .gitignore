@@ -26,3 +26,7 @@ __pycache__/
 
 config.json
 output/
+
+# when needed, generate a new one of these when I'm cloning locally
+youtube-api-client-secret.json
+youtube_token.json

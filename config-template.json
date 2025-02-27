@@ -1,8 +1,8 @@
 {
   "track": "SIN",
   "year": 2024,
-  "_type": "rest-of-field",
   "type": "head-to-head",
+  "drivers": ["NOR", "VER"],
   "dev_settings": {
     "ui_mode": true,
     "quick_textures_mode": false,
@@ -18,5 +18,9 @@
     "start_buffer_frames": 45,
     "end_buffer_frames": 70
   },
-  "drivers": ["NOR", "VER"]
+  "socials": {
+    "youtube": {
+      "service_account_path": "formula-viz-981f62016605.json"
+    }
+  }
 }
