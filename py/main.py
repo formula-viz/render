@@ -1,35 +1,25 @@
+"""Entrypoint for the python blender rendering application. Handles conditional triggering of different ports of the application for development and testing purposes."""
+
 import json
 import sys
+from typing import cast
 
-from py.post_render.post_render import HeadToHeadPostRenderer, RestOfFieldPostRenderer
 from py.render.render import HeadToHeadRenderer, RestOfFieldRenderer
-
-
-def initialize(config):
-    if config["type"] == "head-to-head":
-        renderer = HeadToHeadRenderer(config)
-        post_renderer = HeadToHeadPostRenderer(config)
-    else:
-        renderer = RestOfFieldRenderer(config)
-        post_renderer = RestOfFieldPostRenderer(config)
-
-    return renderer, post_renderer
-
-
-def trigger(config, renderer, post_renderer):
-    isolate_module = config["pipeline"]["isolate_module"]
-    if isolate_module is bool and not isolate_module:
-        renderer.render()
-        post_renderer.post_render()
-    elif isolate_module == "render":
-        renderer.render()
-    elif isolate_module == "post_render":
-        post_renderer.post_render()
-
+from py.utils.config import Config
+from py.utils.logger import log_info
 
 if __name__ == "__main__":
-    config = json.loads(sys.argv[-1])
+    raw_config = json.loads(sys.argv[-1])
+    config = cast(Config, raw_config)
+
     video_type = config["type"]
 
-    renderer, post_renderer = initialize(config)
-    trigger(config, renderer, post_renderer)
+    renderer = (
+        HeadToHeadRenderer(config)
+        if video_type == "head-to-head"
+        else RestOfFieldRenderer(config)
+    )
+    log_info(
+        f"Starting Render with Config: {config['track']}, {config['year']}, {config['type']}"
+    )
+    renderer.render()

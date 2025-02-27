@@ -2,7 +2,11 @@ import numpy as np
 from numpy._typing import NDArray
 
 
-def point_to_line_distance(point: NDArray[np.float64], line_start: NDArray[np.float64], line_end: NDArray[np.float64]):
+def point_to_line_distance(
+    point: NDArray[np.float64],
+    line_start: NDArray[np.float64],
+    line_end: NDArray[np.float64],
+):
     point = np.array(point)
     line_start = np.array(line_start)
     line_end = np.array(line_end)
@@ -27,8 +31,12 @@ def point_to_line_distance(point: NDArray[np.float64], line_start: NDArray[np.fl
 
 # the previous_reference_idx is the line from which the previous
 # frame's ranking was calculated
-def find_closest_track_idx(inner_points, outer_points, previous_reference_idx, car_point):
-    assert len(inner_points) == len(outer_points), "Inner and outer points must have the same length"
+def find_closest_track_idx(
+    inner_points, outer_points, previous_reference_idx, car_point
+):
+    assert len(inner_points) == len(outer_points), (
+        "Inner and outer points must have the same length"
+    )
     n = len(inner_points)
 
     def next_pos(idx):
@@ -40,17 +48,35 @@ def find_closest_track_idx(inner_points, outer_points, previous_reference_idx, c
     pos = previous_reference_idx
     neg = next_neg(previous_reference_idx)
 
-    pos_distance = point_to_line_distance(car_point, inner_points[pos], outer_points[pos])
-    neg_distance = point_to_line_distance(car_point, inner_points[neg], outer_points[neg])
+    pos_distance = point_to_line_distance(
+        car_point, inner_points[pos], outer_points[pos]
+    )
+    neg_distance = point_to_line_distance(
+        car_point, inner_points[neg], outer_points[neg]
+    )
 
-    while point_to_line_distance(car_point, inner_points[next_pos(pos)], outer_points[next_pos(pos)]) < pos_distance:
+    while (
+        point_to_line_distance(
+            car_point, inner_points[next_pos(pos)], outer_points[next_pos(pos)]
+        )
+        < pos_distance
+    ):
         pos = next_pos(pos)
-        pos_distance = point_to_line_distance(car_point, inner_points[pos], outer_points[pos])
+        pos_distance = point_to_line_distance(
+            car_point, inner_points[pos], outer_points[pos]
+        )
 
     # only do one less for neg
-    if point_to_line_distance(car_point, inner_points[next_neg(neg)], outer_points[next_neg(neg)]) < neg_distance:
+    if (
+        point_to_line_distance(
+            car_point, inner_points[next_neg(neg)], outer_points[next_neg(neg)]
+        )
+        < neg_distance
+    ):
         neg = next_neg(neg)
-        neg_distance = point_to_line_distance(car_point, inner_points[neg], outer_points[neg])
+        neg_distance = point_to_line_distance(
+            car_point, inner_points[neg], outer_points[neg]
+        )
 
     return pos if pos_distance < neg_distance else neg
 
@@ -64,14 +90,15 @@ def find_most_distant_closest_point(
     car_points: list[NDArray[np.float64]],
 ):
     closest_idxs = [
-        find_closest_track_idx(inner_points, outer_points, previous_reference_idx, car_point)
+        find_closest_track_idx(
+            inner_points, outer_points, previous_reference_idx, car_point
+        )
         for car_point in car_points
     ]
 
     cur_farthest_point_idx = 0
     for idx in closest_idxs:
-        if idx > cur_farthest_point_idx:
-            cur_farthest_point_idx = idx
+        cur_farthest_point_idx = max(cur_farthest_point_idx, idx)
 
     # now, we have the farthest point idx, we want to check if the car is actually
     # the car might not actually be infront of this point, we should be able to just add 1 to the idx
@@ -86,14 +113,18 @@ def ranking_at_frame(
     previous_reference_idx: int,
     car_points: list[NDArray[np.float64]],
 ) -> tuple[list[tuple[int, float]], int]:
-    new_reference_idx = find_most_distant_closest_point(inner_points, outer_points, previous_reference_idx, car_points)
+    new_reference_idx = find_most_distant_closest_point(
+        inner_points, outer_points, previous_reference_idx, car_points
+    )
     # for each driver, we calculate their distance to the new reference line
 
     drivers: list[tuple[int, float]] = []
     for driver_idx in range(len(car_points)):
         distance = float(
             point_to_line_distance(
-                car_points[driver_idx], inner_points[new_reference_idx], outer_points[new_reference_idx]
+                car_points[driver_idx],
+                inner_points[new_reference_idx],
+                outer_points[new_reference_idx],
             )
         )
         drivers.append((driver_idx, distance))
@@ -101,7 +132,7 @@ def ranking_at_frame(
     return (sorted(drivers, key=lambda x: x[1]), new_reference_idx)
 
 
-def main(track_data, start_finish_line_idx, driver_dfs, config):
+def main(track_data, start_finish_line_idx, driver_dfs, config, focused_driver):
     start_buffer_frames = config["render"]["start_buffer_frames"]
     end_buffer_frames = config["render"]["end_buffer_frames"]
 
@@ -111,17 +142,23 @@ def main(track_data, start_finish_line_idx, driver_dfs, config):
     indices = {}
     driver_data = []
     for i, (driver, df) in enumerate(driver_dfs.items()):
-        car_points = [np.array([df["X"][i], df["Y"][i], df["Z"][i]]) for i in range(len(df["X"]))]
+        car_points = [
+            np.array([df["X"][i], df["Y"][i], df["Z"][i]]) for i in range(len(df["X"]))
+        ]
         driver_data.append(car_points)
         indices[i] = driver
 
     final_rank = []
 
     reference_idx = start_finish_line_idx
-    for i in range(start_buffer_frames, len(driver_dfs["NOR"]["X"]) - end_buffer_frames):
+    for i in range(
+        start_buffer_frames, len(driver_dfs[focused_driver]) - end_buffer_frames
+    ):
         current_frame_positions = [driver_points[i] for driver_points in driver_data]
 
-        rankings, reference_idx = ranking_at_frame(inner_points, outer_points, reference_idx, current_frame_positions)
+        rankings, reference_idx = ranking_at_frame(
+            inner_points, outer_points, reference_idx, current_frame_positions
+        )
 
         final_rank.append([(indices[rank[0]], rank[1]) for rank in rankings])
 

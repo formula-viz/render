@@ -1,5 +1,5 @@
-import bmesh  # pyright: ignore
-import bpy  # pyright: ignore
+import bmesh
+import bpy
 from py.render.render_funcs.add_track import create_material
 from py.utils.colors import StartFinishLineColor
 

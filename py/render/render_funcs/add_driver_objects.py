@@ -1,16 +1,19 @@
 import math
+import time
 
 import bpy  # pyright: ignore
 import mathutils  # pyright: ignore
-import PIL.Image as Image
+from PIL import Image
+
 from py.utils.colors import hex_to_blender_rgb, hex_to_normal_rgb
 from py.utils.logger import log_info, log_warn
 from py.utils.project_structure import Resources
 
 
 def import_crown():
-    crown_path = (Resources.get_crown_path()
-                  )  # You'll need to add this method to your Resources class
+    crown_path = (
+        Resources.get_crown_path()
+    )  # You'll need to add this method to your Resources class
     bpy.ops.import_scene.gltf(filepath=crown_path)
     # Get the imported crown object
     for obj in bpy.context.selected_objects:
@@ -87,8 +90,8 @@ def replace_color_in_image(blender_obj, hex_color, driver_abbrev):
     image_node.image = new_image
 
 
-def load_base_car_fbx():
-    """Load the car FBX once and return an empty object which is the parent of the individual objs"""
+def load_base_car_fbx(quick_textures_mode: bool):
+    """Load the car FBX once and return an empty object which is the parent of the individual objs."""
     # Create a temporary collection to store the base objects
     base_collection = bpy.data.collections.new(name="BaseCarCollection")
     bpy.context.scene.collection.children.link(base_collection)
@@ -98,7 +101,8 @@ def load_base_car_fbx():
 
     # Import the FBX into this collection
     bpy.ops.import_scene.fbx(filepath=Resources.get_car_fbx_path())
-    bpy.ops.file.find_missing_files(directory=Resources.get_car_textures_dir())
+    if not quick_textures_mode:
+        bpy.ops.file.find_missing_files(directory=Resources.get_car_textures_dir())
 
     bpy.ops.object.empty_add(type="PLAIN_AXES")
     empty_obj = bpy.context.object
@@ -123,10 +127,9 @@ def load_base_car_fbx():
     return empty_obj, base_collection
 
 
-def create_driver_fbx(driver, hex_color, empty_obj):
-    """Create a new driver instance by duplicating base objects"""
-    driver_collection = bpy.data.collections.new(
-        name=driver.title() + "Collection")
+def create_driver_fbx(driver, hex_color, empty_obj, quick_textures_mode: bool):
+    """Create a new driver instance by duplicating base objects."""
+    driver_collection = bpy.data.collections.new(name=driver.title() + "Collection")
     bpy.context.scene.collection.children.link(driver_collection)
     bpy.context.view_layer.active_layer_collection = (
         bpy.context.view_layer.layer_collection.children[-1]
@@ -161,9 +164,9 @@ def create_driver_fbx(driver, hex_color, empty_obj):
 
         if "wheel" in obj.name.lower() and "steering" not in obj.name.lower():
             wheels_objs.append(obj)
-        if "chassis" in obj.name.lower():
+        if "chassis" in obj.name.lower() and not quick_textures_mode:
             replace_color_in_image(obj, hex_color, driver)
-        if "wings" in obj.name.lower():
+        if "wings" in obj.name.lower() and not quick_textures_mode:
             set_color(obj, hex_to_blender_rgb(hex_color))
         if "steering" in obj.name.lower():
             # we want to set this invisible for now
@@ -203,12 +206,14 @@ def add_keyframes(driver_obj, wheels_objs, df):
         # TODO: for now setting all z to 0 because cars appear to be under the track
         point = mathutils.Vector((df["X"][i], df["Y"][i], 0))
 
-        rot_eul = mathutils.Quaternion((
-            df["RotW"][i],
-            df["RotX"][i],
-            df["RotY"][i],
-            df["RotZ"][i],
-        )).to_euler()
+        rot_eul = mathutils.Quaternion(
+            (
+                df["RotW"][i],
+                df["RotX"][i],
+                df["RotY"][i],
+                df["RotZ"][i],
+            )
+        ).to_euler()
         # harsher_rot_eul = mathutils.Quaternion((
         #     df["HarsherRotW"][i],
         #     df["HarsherRotX"][i],
@@ -240,24 +245,52 @@ def add_keyframes(driver_obj, wheels_objs, df):
         driver_obj.keyframe_insert(data_path="rotation_euler", frame=idx)
 
 
-def main(driver_dfs, drivers, driver_colors, is_quick_validate_mode):
-    empty_obj, base_collection = load_base_car_fbx()
+def add_driver(
+    driver_abbrev,
+    driver_color,
+    driver_df,
+    empty_obj,
+    quick_textures_mode,
+    driver_index,
+    total_drivers,
+):
+    """Add a driver to the scene with the given properties and return the driver object."""
+    start_time = time.time()
+
+    log_info(
+        f"Adding driver {driver_index + 1}/{total_drivers}: {driver_abbrev} with color: {driver_color}"
+    )
+
+    driver_obj, wheels_objs = create_driver_fbx(
+        driver_abbrev, driver_color, empty_obj, quick_textures_mode
+    )
+    add_keyframes(driver_obj, wheels_objs, driver_df)
+
+    elapsed_time = time.time() - start_time
+    log_info(f"Added driver {driver_abbrev} in {elapsed_time:.2f} seconds")
+
+    return driver_obj
+
+
+def main(driver_dfs, drivers, driver_colors, quick_textures_mode: bool):
+    """Process all drivers and return a dictionary mapping driver abbreviations to their objects."""
+    empty_obj, base_collection = load_base_car_fbx(quick_textures_mode)
 
     driver_objs = {}
     for i, driver_abbrev in enumerate(drivers):
-        if is_quick_validate_mode and i >= 2:
+        if quick_textures_mode and i >= 2:
             continue
 
-        log_info(
-            f"Adding driver {i + 1}/{len(drivers)}: {driver_abbrev} with color: {driver_colors[i]}"
+        driver_obj = add_driver(
+            driver_abbrev,
+            driver_colors[i],
+            driver_dfs[driver_abbrev],
+            empty_obj,
+            quick_textures_mode,
+            i,
+            len(drivers),
         )
-        driver_obj, wheels_objs = create_driver_fbx(
-            driver_abbrev, driver_colors[i], empty_obj
-        )
-        add_keyframes(driver_obj, wheels_objs, driver_dfs[driver_abbrev])
-
         driver_objs[driver_abbrev] = driver_obj
 
     bpy.data.collections.remove(base_collection, do_unlink=True)
-
     return driver_objs

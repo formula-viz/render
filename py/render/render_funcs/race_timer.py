@@ -7,7 +7,7 @@ from py.utils.project_structure import Resources
 
 class RaceTimer:
     def __init__(self, config, camera_obj, num_frames):
-        """Adds a timer to the bottom right, showing the time elapsed since the start."""
+        """Add a timer to the bottom right, showing the time elapsed since the start."""
         log_info("Initializing RaceTimer...")
         self.config = config
         self.camera_obj = camera_obj
@@ -22,18 +22,17 @@ class RaceTimer:
         self.timer_material = bpy.data.materials.new(name="TimerMaterial")
         self.timer_material.use_nodes = True
         nodes = self.timer_material.node_tree.nodes
-        nodes["Principled BSDF"].inputs["Base Color"].default_value = (
-            2, 1, 1, 1)
+        nodes["Principled BSDF"].inputs["Base Color"].default_value = (2, 1, 1, 1)
 
         self._create_all_frame_timers()
 
     def _create_timer(self, frame_num, text):
-        """Creates a text object to display the race timer."""
+        """Create a text object to display the race timer."""
         # Create text object
-        timer_curve = bpy.data.curves.new(
-            name=f"Timer_{frame_num}", type="FONT")
+        timer_curve = bpy.data.curves.new(name=f"Timer_{frame_num}", type="FONT")
         timer_obj = bpy.data.objects.new(
-            name=f"Timer_{frame_num}", object_data=timer_curve)
+            name=f"Timer_{frame_num}", object_data=timer_curve
+        )
         self.timer_collection.objects.link(timer_obj)
 
         timer_obj.data.body = text
@@ -48,7 +47,7 @@ class RaceTimer:
         return timer_obj
 
     def _create_all_frame_timers(self):
-        """Creates a text object for each frame with visibility animation."""
+        """Create a text object for each frame with visibility animation."""
         scene = bpy.context.scene
 
         for frame in range(1, self.num_frames + 1):
@@ -84,8 +83,8 @@ class RaceTimer:
 
             timer_obj.hide_viewport = True
             timer_obj.hide_render = True
-            timer_obj.keyframe_insert(data_path="hide_viewport", frame=frame+2)
-            timer_obj.keyframe_insert(data_path="hide_render", frame=frame+2)
+            timer_obj.keyframe_insert(data_path="hide_viewport", frame=frame + 2)
+            timer_obj.keyframe_insert(data_path="hide_render", frame=frame + 2)
 
             # Store reference to first timer object
             if frame == scene.frame_start:

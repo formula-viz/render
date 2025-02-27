@@ -1,16 +1,26 @@
-from py.utils.colors import SCENE_BG_COLOR
+"""Set up blender's render settings based on config.
+
+Configures resolution, frame rate, and rendering settings based on the provided
+configuration, then initiates either Cycles or Eevee rendering process.
+
+Conditionally does not start the render process if in development settings ui_mode.
+"""
+
 import os
 
 import bpy
-from py.utils.project_structure import OUTPUT_DIR
+
+from py.utils.config import Config
 from py.utils.logger import log_info
+from py.utils.project_structure import OUTPUT_DIR
 
 
 def configure_output(config):
-    """Considers all output settings"""
+    """Configure ffmpeg mp4 output settings."""
     scene = bpy.context.scene
+    if not scene:
+        raise ValueError("Scene not found")
 
-    # Set output path
     output_path = os.path.join(OUTPUT_DIR, config["render"]["output"])
     scene.render.filepath = output_path
 
@@ -20,27 +30,30 @@ def configure_output(config):
     scene.render.ffmpeg.constant_rate_factor = "PERC_LOSSLESS"
 
 
-def eevee_render(config, num_frames, is_preview_mode):
-    """This incorporates all possible settings for Eevee rendering."""
-    log_info(
-        f"Starting Eevee render of {num_frames} with preview_mode={is_preview_mode}...")
+def eevee_render(config, num_frames, is_ui_mode):
+    """Incorporate all possible settings for Eevee rendering."""
+    log_info(f"Starting Eevee render of {num_frames} with preview_mode={is_ui_mode}...")
 
     scene = bpy.data.scenes["Scene"]
-    scene.render.engine = 'BLENDER_EEVEE'
+    scene.render.engine = "BLENDER_EEVEE"  # type: ignore
+
+    eevee = scene.eevee
+    if not eevee:
+        raise ValueError("Eevee settings not found")
 
     # Sampling
-    scene.eevee.taa_render_samples = config["render"]["samples"]
+    eevee.taa_render_samples = config["render"]["samples"]
     # only affects viewport
-    scene.eevee.taa_samples = config["render"]["samples"]
+    eevee.taa_samples = config["render"]["samples"]
 
     # Ambient Occlusion
     # I don't see a visual impact of ambient occlusion, I'm leaving it out
 
     # Bloom, bright pixels produce a glowing effect, mimicking real cameras
     # This adds depth to the cars, I like it.
-    scene.eevee.use_bloom = True
+    eevee.use_bloom = True  # type: ignore
     # The defaults are sensible, but I like the bloom color as cyan
-    scene.eevee.bloom_color = (0.0, 1.0, 1.0)
+    eevee.bloom_color = (0.0, 1.0, 1.0)  # type: ignore
 
     # Depth of Field
     # I don't see a visual impact of depth of field, I'm not editing the defaults
@@ -48,7 +61,7 @@ def eevee_render(config, num_frames, is_preview_mode):
     # Subsurface scattering is too technical to matter
 
     # Screen Space Reflections
-    scene.eevee.use_ssr = True
+    eevee.use_ssr = True  # type: ignore
     # this gets technical, I'm just going to enable and leave with the defaults
 
     # Motion Blur
@@ -59,10 +72,10 @@ def eevee_render(config, num_frames, is_preview_mode):
     # Not Touching Performance, Curves
 
     # Shadows, really affect the visuals. maxing this out
-    scene.eevee.shadow_cube_size = "4096"
-    scene.eevee.shadow_cascade_size = "4096"
-    scene.eevee.use_shadow_high_bitdepth = True
-    scene.eevee.use_soft_shadows = True
+    eevee.shadow_cube_size = "4096"  # type: ignore
+    eevee.shadow_cascade_size = "4096"  # type: ignore
+    eevee.use_shadow_high_bitdepth = True  # type: ignore
+    eevee.use_soft_shadows = True  # type: ignore
 
     # Not touching Indirect Lighting
 
@@ -77,71 +90,91 @@ def eevee_render(config, num_frames, is_preview_mode):
     # Not touching Grease Pencil or Freestyle
 
     # Color Management, this is very important for aesthetics
-    scene.display_settings.display_device = 'sRGB'
-    scene.view_settings.view_transform = 'AgX'
-    scene.view_settings.look = 'AgX - Base Contrast'
+    scene.display_settings.display_device = "sRGB"  # type: ignore
+    scene.view_settings.view_transform = "AgX"  # type: ignore
+    scene.view_settings.look = "AgX - Base Contrast"  # type: ignore
     scene.view_settings.gamma = 0.95
 
-    if not is_preview_mode:
+    if not is_ui_mode:
         bpy.ops.render.render(animation=True)
         log_info("Render complete")
         bpy.ops.wm.quit_blender()
 
 
-def cycles_render(config, num_frames, is_preview_mode):
-    """TODO, needs rework, got settings from GPT"""
-    bpy.context.scene.render.engine = "CYCLES"
+def cycles_render(config, num_frames, is_ui_mode):
+    """TODO, needs proper config"""
+    scene = bpy.context.scene
+    if not scene:
+        raise ValueError("Scene not found")
 
-    bpy.context.scene.cycles.samples = config["render"]["samples"]
-    bpy.context.scene.cycles.use_denoising = True
+    scene.render.engine = "CYCLES"  # type: ignore
 
-    if not is_preview_mode:
+    scene.cycles.samples = config["render"]["samples"]
+    scene.cycles.use_denoising = True
+
+    if not is_ui_mode:
         log_info(f"Starting Cycles Render of {num_frames}")
         bpy.ops.render.render(animation=True)
         log_info("Cycles render complete")
         bpy.ops.wm.quit_blender()
 
 
-# render settings will be sent in as a dict from yaml
-def main(config, num_frames):
+def main(config: Config, num_frames: int):
+    """Set up blender's render settings based on config.
+
+    Configures resolution, frame rate, and rendering settings based on the provided
+    configuration, then initiates either Cycles or Eevee rendering process.
+
+    Conditionally does not start the render process if in development settings ui_mode.
+
+    Args:
+        config: Configuration object containing rendering and development settings
+        num_frames: Total number of frames to render in the animation
+
+    """
+    scene = bpy.context.scene
+    if not scene:
+        raise ValueError("Scene not found")
+
     # configure the resolution before quitting in the case of
     # preview render mode to properly preview mobile/desktop viewports
     if config["render"]["is_shorts_output"]:
         log_info("Setting to shorts/phone resolution...")
-        bpy.context.scene.render.resolution_x = 1080
-        bpy.context.scene.render.resolution_y = 1920
+        scene.render.resolution_x = 1080
+        scene.render.resolution_y = 1920
 
-        bpy.context.scene.cycles.tile_x = 1080
-        bpy.context.scene.cycles.tile_y = 1920
+        scene.cycles.tile_x = 1080
+        scene.cycles.tile_y = 1920
     else:
         log_info("Setting to 4k desktop resolution...")
-        bpy.context.scene.render.resolution_x = 3840
-        bpy.context.scene.render.resolution_y = 2160
+        scene.render.resolution_x = 3840
+        scene.render.resolution_y = 2160
 
         # it is better to use 1 tile because gpu has 12GB+ of memory
-        bpy.context.scene.cycles.tile_x = 3840
-        bpy.context.scene.cycles.tile_y = 2160
-    bpy.context.view_layer.update()
+        scene.cycles.tile_x = 3840
+        scene.cycles.tile_y = 2160
 
-    bpy.context.scene.render.fps = config["render"]["fps"]
-    bpy.context.scene.frame_end = num_frames
+    scene.render.fps = config["render"]["fps"]
+    scene.frame_end = num_frames
 
-    # disable relationship lines
-    bpy.context.window_manager.windows.update()
-    screen = bpy.context.window.screen
+    window = bpy.context.window
+    if not window:
+        raise ValueError("Window not found")
+
+    screen = window.screen
     for area in screen.areas:
         if area.type == "VIEW_3D":
             for space in area.spaces:
                 if space.type == "VIEW_3D":
-                    space.overlay.show_relationship_lines = False
-                    space.overlay.show_outline_selected = False
-                    space.overlay.show_object_origins = False
+                    space.overlay.show_relationship_lines = False  # type: ignore
+                    space.overlay.show_outline_selected = False  # type: ignore
+                    space.overlay.show_object_origins = False  # type: ignore
 
-    if config["pipeline"]["quick_validate_mode"]:
-        bpy.context.scene.frame_end = 100
+    if config["dev_settings"]["limited_frames_mode"]:
+        scene.frame_end = 100
 
     configure_output(config)
     if config["render"]["engine"] == "cycles":
-        cycles_render(config, num_frames, config["pipeline"]["preview_mode"])
+        cycles_render(config, num_frames, config["dev_settings"]["ui_mode"])
     else:
-        eevee_render(config, num_frames, config["pipeline"]["preview_mode"])
+        eevee_render(config, num_frames, config["dev_settings"]["ui_mode"])

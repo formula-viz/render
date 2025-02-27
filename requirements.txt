@@ -6,3 +6,4 @@ scipy
 logger
 colormath
 flask
+fake-bpy-module-latest

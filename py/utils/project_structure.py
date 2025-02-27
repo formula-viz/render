@@ -12,9 +12,12 @@ CSV_REPO_DIR = PROJECT_ROOT / "csv_repo"
 
 # Car related paths
 CAR_FBX_PATH = str(
-    RESOURCES_DIR / "cars/formula-1-2024-generic/source/F1_TexPaintBlender_v01_20210215.fbx")
+    RESOURCES_DIR
+    / "cars/formula-1-2024-generic/source/F1_TexPaintBlender_v01_20210215.fbx"
+)
 CAR_PAINTS_DIR = str(TEMPORARY_DIR / "car_paints")
 CAR_TEXTURES_DIR = str(RESOURCES_DIR / "cars/formula-1-2024-generic/textures")
+FORMULA_VIZ_CAR_PATH = str(RESOURCES_DIR / "cars/formula_viz_car.blend")
 
 # Crown path
 CROWN_GLB_PATH = str(RESOURCES_DIR / "king_crown.glb")
@@ -48,71 +51,73 @@ TIKTOK_ICON_PATH = str(SOCIAL_ICONS_DIR / "tiktok.webp")
 
 
 class DriverDataPS:
-    @ staticmethod
+    @staticmethod
     def get_car_data_dir(year: str, track: str, fps: str) -> str:
         return os.path.join(CAR_DATA_DIR, f"{year}_{track}_{fps}")
 
-    @ staticmethod
+    @staticmethod
     def get_car_data_path(year: str, track: str, fps: str, driver: str) -> str:
-        return os.path.join(DriverDataPS.get_car_data_dir(year, track, fps), f"{driver}.csv")
+        return os.path.join(
+            DriverDataPS.get_car_data_dir(year, track, fps), f"{driver}.csv"
+        )
 
-    @ staticmethod
+    @staticmethod
     def get_driver_times_path(year: str, track: str) -> str:
         return os.path.join(DRIVER_TIMES_DIR, f"{year}_{track}.json")
 
-    @ staticmethod
+    @staticmethod
     def get_driver_image_path(driver_abbrev: str) -> str:
         return os.path.join(DRIVER_IMAGES_DIR, f"{driver_abbrev}.png")
 
 
 class TrackDataPS:
-    @ staticmethod
+    @staticmethod
     def get_track_data_dir() -> str:
         return TRACK_DATA_DIR
 
-    @ staticmethod
+    @staticmethod
     def get_year_of_track_file(track_file: str) -> int:
         return track_file.split("_")[1].split(".")[0]
 
-    @ staticmethod
+    @staticmethod
     def get_track_file(year: str, track: str) -> str:
         return f"{year}_{track}.csv"
 
 
 class Resources:
-    @ staticmethod
+    @staticmethod
     def get_background_image_path():
         return BACKGROUND_IMAGE_PATH
 
-    @ staticmethod
+    @staticmethod
     def get_background_music_path():
         return BACKGROUND_MUSIC_PATH
 
-    @ staticmethod
+    @staticmethod
     def get_main_font():
         return MAIN_FONT
 
-    @ staticmethod
+    @staticmethod
     def get_bold_font():
         return BOLD_FONT
 
-    @ staticmethod
+    @staticmethod
     def get_car_fbx_path():
         return CAR_FBX_PATH
 
-    @ staticmethod
+    @staticmethod
     def get_car_textures_dir():
         return CAR_TEXTURES_DIR
 
-    @ staticmethod
+    @staticmethod
     def get_car_paints_dir():
         return CAR_PAINTS_DIR
 
-    @ staticmethod
+    @staticmethod
     def get_new_texture_image_path(driver_abbrev: str, blender_obj_name: str) -> str:
         return os.path.join(CAR_PAINTS_DIR, f"{driver_abbrev}_{blender_obj_name}.png")
 
-    @ staticmethod
+    @staticmethod
     def get_crown_path():
         return CROWN_GLB_PATH
 
@@ -128,7 +133,7 @@ def ensure_directories_exist():
         CAR_DATA_DIR,
         DRIVER_TIMES_DIR,
         DRIVER_IMAGES_DIR,
-        TRACK_DATA_DIR
+        TRACK_DATA_DIR,
     ]
     for directory in directories:
         Path(directory).mkdir(parents=True, exist_ok=True)

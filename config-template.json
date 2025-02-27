@@ -3,10 +3,10 @@
   "year": 2024,
   "_type": "rest-of-field",
   "type": "head-to-head",
-  "pipeline": {
-    "isolate_module": "render",
-    "preview_mode": false,
-    "quick_validate_mode": false
+  "dev_settings": {
+    "ui_mode": true,
+    "quick_textures_mode": false,
+    "limited_frames_mode": false
   },
   "render": {
     "engine": "eevee",

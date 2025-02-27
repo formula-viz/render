@@ -1,210 +1,320 @@
+"""Handles the invocation of the various render functions based on the simulation and render types."""
+
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from typing import Any, Dict, List
 
 import bpy
+
 from py.render.render_funcs import (
+    add_background_grid,
     add_camera,
     add_driver_objects,
+    add_formula_viz_car,
+    add_outro,
     add_start_finish_line,
     add_sun,
     add_track,
-    status_track,
+    car_rankings,
+    driver_circle,
+    live_leaderboard,
     load_driver_data,
     load_track_data,
-    render_animation,
-    car_rankings,
-    live_leaderboard,
     race_timer,
-    driver_circle,
-    add_background_grid,
-    add_outro
+    render_animation,
+    status_track,
 )
-from py.utils.colors import get_rest_of_field_colors, get_head_to_head_colors
+from py.utils.colors import get_head_to_head_colors, get_rest_of_field_colors
+from py.utils.config import Config
 from py.utils.logger import log_info
 
 
+@dataclass
+class RendererState:
+    """Holds all state variables used during rendering to make data flow explicit."""
+
+    # Common state variables for all renderers
+    track_data: Any = None
+    driver_dfs: Dict[str, Any] = field(default_factory=dict)
+    driver_objs: Dict[str, Any] = field(default_factory=dict)
+    driver_colors: List[Any] = field(default_factory=list)
+    start_finish_line_idx: int = 0
+    num_frames: int = 0
+    camera_obj: Any = None
+    focused_driver: str = ""
+    car_rankings: Any = None
+
+    # RestOfFieldRenderer specific state
+    drivers_in_color_order: List[str] = field(default_factory=list)
+
+
 class AbstractRenderer(ABC):
-    def __init__(self, config):
-        self.config = config
+    """Abstract base class for all renderers.
+
+    Defines the common interface and provides shared functionality for different types
+    of F1 race visualization renderers.
+    """
+
+    def __init__(self, config: Config):
+        """Initialize renderer with configuration.
+
+        Args:
+            config: Config object containing render configuration parameters
+
+        """
+        self.config: Config = config
+        self.state = RendererState()
 
     @abstractmethod
-    def setup_track(self):
+    def add_drivers(self):
+        """Load driver data and set up driver objects.
+
+        This method must be implemented by subclasses to load and initialize
+        driver-specific data for the renderer.
+        """
+        pass
+
+    @abstractmethod
+    def add_camera(self):
+        """Set up and configure the camera for the rendering.
+
+        This method must be implemented by subclasses to create and configure
+        the camera that will be used for the visualization.
+        """
+        pass
+
+    @abstractmethod
+    def configure_widgets(self):
+        """Set up UI widgets and overlays for the rendering.
+
+        This method must be implemented by subclasses to create and configure
+        the various UI elements that will appear in the visualization.
+        """
+        pass
+
+    def setup_world(self):
+        """Initialize the 3D world with track and lighting.
+
+        Sets up the basic environment by removing default collections,
+        adding lighting, and loading/creating the track geometry.
+        """
         bpy.data.collections.remove(
             bpy.data.collections["Collection"], do_unlink=True
         )  # default collection
         add_sun.main()
-        self.track_data = load_track_data.main(
+        self.state.track_data = load_track_data.main(
             self.config["year"], self.config["track"]
         )
-        add_track.main(self.track_data)
+        add_track.main(self.state.track_data)
+        add_background_grid.main()
 
-    @abstractmethod
-    def add_drivers(self):
-        pass
-
-    @abstractmethod
-    def add_camera(self):
-        pass
-
-    @abstractmethod
-    def configure_widgets(self):
-        pass
-
-    # this should be the same for all jobs
     def trigger_render(self):
-        log_info("Starting Rendering...")
-        render_animation.main(self.config, self.num_frames)
+        """Start the rendering process.
 
-    # this has to be a separate function because the car data must be loaded before in order to get an
-    # accurate estimation of the location of the start finish line
-    # should be the same for all renders so it is not abstract
+        Initiates the rendering animation process with the configured settings.
+        """
+        log_info("Starting Rendering...")
+        render_animation.main(self.config, self.state.num_frames)
+
     def add_indicators(self):
+        """Add track indicators and markers.
+
+        Adds visual elements like the start/finish line to the track.
+        This is separate from track creation as it requires driver data to be loaded first.
+        """
         add_start_finish_line.main(
-            self.track_data.inner_curb_points,
-            self.track_data.outer_curb_points,
-            self.start_finish_line_idx,
+            self.state.track_data.inner_curb_points,
+            self.state.track_data.outer_curb_points,
+            self.state.start_finish_line_idx,
         )
 
     def render(self):
-        """Main process which should be called"""
-        self.setup_track()  # track_data is a dependency for later operations
-        add_background_grid.main()
+        """Execute the rendering process.
+
+        Main process that coordinates the setup and rendering steps in the proper sequence.
+        The order of the setup functions is significant because some create dependencies.
+        """
+        self.setup_world()
         self.add_drivers()
         self.add_indicators()
         self.add_camera()
         self.configure_widgets()
+        add_formula_viz_car.main(
+            self.state.camera_obj, self.config["render"]["is_shorts_output"]
+        )
         self.trigger_render()
 
 
 class HeadToHeadRenderer(AbstractRenderer):
-    def setup_track(self):
-        super().setup_track()
+    """Head to Head render will have a finite number of drivers, designed for 2-4."""
 
     def add_drivers(self):
-        self.driver_dfs, self.start_finish_line_idx = load_driver_data.main(
-            self.config, self.track_data
+        """Load and set up driver data for head-to-head comparison.
+
+        Creates driver objects with appropriate colors for direct comparison
+        between a small number of drivers.
+        """
+        self.state.driver_dfs, self.state.start_finish_line_idx = load_driver_data.main(
+            self.config, self.state.track_data
         )
-        self.driver_dfs = {
-            driver: self.driver_dfs[driver] for driver in self.config["drivers"]
+        self.state.driver_dfs = {
+            driver: self.state.driver_dfs[driver] for driver in self.config["drivers"]
         }
 
-        self.driver_colors = get_head_to_head_colors(*self.config["drivers"])
+        self.state.focused_driver = self.config["drivers"][
+            0
+        ]  # in head to head, focus on the first driver
 
-        self.driver_objs = add_driver_objects.main(
-            self.driver_dfs,
+        self.state.driver_colors = get_head_to_head_colors(*self.config["drivers"])
+
+        self.state.driver_objs = add_driver_objects.main(
+            self.state.driver_dfs,
             self.config["drivers"],
-            self.driver_colors,
-            self.config["pipeline"]["quick_validate_mode"],
+            self.state.driver_colors,
+            self.config["dev_settings"]["quick_textures_mode"],
         )
 
-        self.car_rankings = car_rankings.main(
-            self.track_data, self.start_finish_line_idx, self.driver_dfs, self.config
+        self.state.car_rankings = car_rankings.main(
+            self.state.track_data,
+            self.state.start_finish_line_idx,
+            self.state.driver_dfs,
+            self.config,
+            self.state.focused_driver,
         )
 
         # for head to head render, the fastest might not be first in the config, iterate and find the largest df
-        self.num_frames = max(len(df) for df in self.driver_dfs.values())
+        self.state.num_frames = max(len(df) for df in self.state.driver_dfs.values())
 
     def add_camera(self):
-        self.focused_driver = self.config["drivers"][
-            0
-        ]  # in head to head, focus on the first driver
-        self.camera_obj = add_camera.main(
-            self.driver_dfs[self.focused_driver],
-            self.driver_objs[self.focused_driver],
+        """Configure camera to focus on the first driver in the config.
+
+        Sets up camera positioning and movement to follow the focused driver.
+        """
+        self.state.camera_obj = add_camera.main(
+            self.state.driver_dfs[self.state.focused_driver],
+            self.state.driver_objs[self.state.focused_driver],
             self.config["render"]["max_cam_distance"],
             self.config["render"]["start_buffer_frames"],
             self.config["render"]["end_buffer_frames"],
         )
 
     def configure_widgets(self):
+        """Set up UI elements specific to head-to-head visualization.
+
+        Creates and configures widgets like the status track, leaderboard,
+        race timer, and outro sequence.
+        """
         status_track.StatusTrack(
-            self.track_data,
-            self.camera_obj,
-            self.start_finish_line_idx,
-            self.driver_dfs[self.focused_driver],
+            self.state.track_data,
+            self.state.camera_obj,
+            self.state.start_finish_line_idx,
+            self.state.driver_dfs[self.state.focused_driver],
             self.config["render"]["is_shorts_output"],
         )
         live_leaderboard.LiveLeaderboard(
             self.config,
             self.config["drivers"],
-            self.driver_colors,
-            self.car_rankings,
+            self.state.driver_colors,
+            self.state.car_rankings,
             True,
-            self.camera_obj,
+            self.state.camera_obj,
         )
         race_timer.RaceTimer(
             self.config,
-            self.camera_obj,
-            self.num_frames,
+            self.state.camera_obj,
+            self.state.num_frames,
         )
-        add_outro.Outro(self.config, self.camera_obj, self.num_frames)
+        add_outro.Outro(self.config, self.state.camera_obj, self.state.num_frames)
 
 
 class RestOfFieldRenderer(AbstractRenderer):
-    def setup_track(self):
-        super().setup_track()
+    """Rest of Field Render is when all the drivers are included in the sim.
+
+    The highlighted driver, first in the config list of drivers will be highlighted. The rest of the will be shades of gray / white / black.
+    """
 
     def add_drivers(self):
-        self.driver_dfs, self.start_finish_line_idx = load_driver_data.main(
-            self.config, self.track_data
+        """Load and set up driver data for the entire field.
+
+        Creates driver objects with the focused driver (first in config) highlighted
+        and all other drivers in grayscale.
+        """
+        self.state.driver_dfs, self.state.start_finish_line_idx = load_driver_data.main(
+            self.config, self.state.track_data
         )
-        self.driver_colors = get_rest_of_field_colors()
+        self.state.driver_colors = get_rest_of_field_colors()
 
         # for now, gold driver is just the first driver listed in drivers
-        self.focused_driver = self.config["drivers"][0]
-        self.drivers_in_color_order = [
-            driver for driver in self.driver_dfs.keys() if driver != self.focused_driver
+        self.state.focused_driver = self.config["drivers"][0]
+        self.state.drivers_in_color_order = [
+            driver
+            for driver in self.state.driver_dfs.keys()
+            if driver != self.state.focused_driver
         ]
-        self.drivers_in_color_order.insert(0, self.focused_driver)
+        self.state.drivers_in_color_order.insert(0, self.state.focused_driver)
 
-        self.driver_objs = add_driver_objects.main(
-            self.driver_dfs,
-            self.drivers_in_color_order,
-            self.driver_colors,
-            self.config["pipeline"]["quick_validate_mode"],
+        self.state.driver_objs = add_driver_objects.main(
+            self.state.driver_dfs,
+            self.state.drivers_in_color_order,
+            self.state.driver_colors,
+            self.config["dev_settings"]["quick_textures_mode"],
         )
 
-        self.car_rankings = car_rankings.main(
-            self.track_data, self.start_finish_line_idx, self.driver_dfs, self.config
+        self.state.car_rankings = car_rankings.main(
+            self.state.track_data,
+            self.state.start_finish_line_idx,
+            self.state.driver_dfs,
+            self.config,
+            self.state.focused_driver,
         )
 
         # for rest of field render, some cars might be very far behind, just take len of fastest
-        self.num_frames = len(self.driver_dfs[self.focused_driver])
+        self.state.num_frames = len(self.state.driver_dfs[self.state.focused_driver])
 
     def add_camera(self):
-        self.focused_driver = self.config["drivers"][0]
-        self.camera_obj = add_camera.main(
-            self.driver_dfs[self.focused_driver],
-            self.driver_objs[self.focused_driver],
+        """Configure camera to focus on the highlighted driver.
+
+        Sets up camera positioning and movement to follow the focused driver
+        (first driver in the config).
+        """
+        self.state.camera_obj = add_camera.main(
+            self.state.driver_dfs[self.state.focused_driver],
+            self.state.driver_objs[self.state.focused_driver],
             self.config["render"]["max_cam_distance"],
             self.config["render"]["start_buffer_frames"],
             self.config["render"]["end_buffer_frames"],
         )
 
     def configure_widgets(self):
+        """Set up UI elements specific to rest-of-field visualization.
+
+        Creates and configures widgets like the status track, leaderboard,
+        race timer, driver indicator circle, and outro sequence.
+        """
         status_track.StatusTrack(
-            self.track_data,
-            self.camera_obj,
-            self.start_finish_line_idx,
-            self.driver_dfs[self.focused_driver],
+            self.state.track_data,
+            self.state.camera_obj,
+            self.state.start_finish_line_idx,
+            self.state.driver_dfs[self.state.focused_driver],
             self.config["render"]["is_shorts_output"],
         )
         race_timer.RaceTimer(
             self.config,
-            self.camera_obj,
-            self.num_frames,
+            self.state.camera_obj,
+            self.state.num_frames,
         )
         live_leaderboard.LiveLeaderboard(
             self.config,
-            self.drivers_in_color_order,
-            self.driver_colors[0: len(self.driver_dfs)],
-            self.car_rankings,
+            self.state.drivers_in_color_order,
+            self.state.driver_colors[0 : len(self.state.driver_dfs)],
+            self.state.car_rankings,
             False,
-            self.camera_obj,
+            self.state.camera_obj,
         )
         driver_circle.DriverCircle(
-            self.focused_driver,
-            self.driver_colors[0],
-            self.driver_objs[self.focused_driver],
-            self.camera_obj,
+            self.state.focused_driver,
+            self.state.driver_colors[0],
+            self.state.driver_objs[self.state.focused_driver],
+            self.state.camera_obj,
         )
-        add_outro.Outro(self.config, self.camera_obj, self.num_frames)
+        add_outro.Outro(self.config, self.state.camera_obj, self.state.num_frames)

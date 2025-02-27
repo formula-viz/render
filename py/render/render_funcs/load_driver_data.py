@@ -10,8 +10,9 @@ import pandas as pd
 import requests
 from fastf1.core import Laps, Telemetry
 from scipy.interpolate import UnivariateSpline
-from py.utils.project_structure import DriverDataPS
+
 from py.utils.logger import log_info, log_warn
+from py.utils.project_structure import DriverDataPS
 
 
 def load_driver_headshots(driver_abbrevs, headshot_urls):
@@ -114,14 +115,18 @@ def process_grouped_driver_tels(
     driver_tels: dict[str, Telemetry], inner_points, outer_points
 ):
     def get_average_start_end():
-        start_points = np.array([
-            [driver_tels[k]["X"].iloc[0], driver_tels[k]["Y"].iloc[0]]
-            for k in driver_tels.keys()
-        ])
-        end_points = np.array([
-            [driver_tels[k]["X"].iloc[-1], driver_tels[k]["Y"].iloc[-1]]
-            for k in driver_tels.keys()
-        ])
+        start_points = np.array(
+            [
+                [driver_tels[k]["X"].iloc[0], driver_tels[k]["Y"].iloc[0]]
+                for k in driver_tels.keys()
+            ]
+        )
+        end_points = np.array(
+            [
+                [driver_tels[k]["X"].iloc[-1], driver_tels[k]["Y"].iloc[-1]]
+                for k in driver_tels.keys()
+            ]
+        )
         all_points = np.vstack((start_points, end_points))
         return np.mean(all_points, axis=0)
 
@@ -179,8 +184,7 @@ def process_grouped_driver_tels(
             )
 
     start_end_point = get_average_start_end()
-    line_idx, (point_a, point_b) = get_line(
-        inner_points, outer_points, start_end_point)
+    line_idx, (point_a, point_b) = get_line(inner_points, outer_points, start_end_point)
     set_as_closest_to_line(driver_tels, point_a, point_b)
 
     return line_idx
@@ -217,8 +221,7 @@ def get_driver_df(tel, s_divisor: int, frames_per_second: int):
     time_floats = tel["Time"].apply(lambda t: t.total_seconds())
     std_time_floats = time_floats / time_floats.max()
 
-    speed_spline = UnivariateSpline(
-        std_time_floats, tel["Speed"], s=len(time_floats))
+    speed_spline = UnivariateSpline(std_time_floats, tel["Speed"], s=len(time_floats))
 
     frame_count = int(time_floats.max() * frames_per_second)
 
@@ -228,8 +231,7 @@ def get_driver_df(tel, s_divisor: int, frames_per_second: int):
     # now that we have speeds, we can use this to get what % of the track is covered at each frame
     d_covered = [0.0]
 
-    sampled_speeds_m_per_s = np.array(
-        sampled_speeds) / 1000 * frames_per_second
+    sampled_speeds_m_per_s = np.array(sampled_speeds) / 1000 * frames_per_second
 
     # first lets find the total d which will be covered based on the speed
     total_d: float = 0.0
@@ -247,99 +249,130 @@ def get_driver_df(tel, s_divisor: int, frames_per_second: int):
         sampled_speeds_m_per_s, 0, sampled_speeds_m_per_s[0]
     )
 
-    return pd.DataFrame({
-        "X": final_x,
-        "Y": final_y,
-        "Z": np.zeros(len(final_x)),
-        "Speed": sampled_speeds_m_per_s,
-    })
+    return pd.DataFrame(
+        {
+            "X": final_x,
+            "Y": final_y,
+            "Z": np.zeros(len(final_x)),
+            "Speed": sampled_speeds_m_per_s,
+        }
+    )
 
 
 # driver_df has: X, Y, Z, Speed
-# get the vector between the first and the second frame, extend that vector infront of the start
-def add_start_buffer(driver_df, start_buffer_frames):
-    start_x, start_y, start_z = driver_df["X"][0], driver_df["Y"][0], driver_df["Z"][0]
-    second_x, second_y, second_z = (
-        driver_df["X"][1],
-        driver_df["Y"][1],
-        driver_df["Z"][1],
-    )
+def _generate_buffer(driver_df, num_frames, is_start=True):
+    """Generate buffer points for start and end_buffers.
 
-    x_diff, y_diff, z_diff = second_x - \
-        start_x, second_y - start_y, second_z - start_z
+    Args:
+        driver_df: DataFrame with position and speed data
+        num_frames: Number of buffer frames to add
+        is_start: If True, generate start buffer; if False, generate end buffer
 
-    start_speed = driver_df["Speed"][0]
-    new_x, new_y, new_z = [], [], []
+    Returns:
+        DataFrame with buffer points
 
-    prev = (start_x, start_y, start_z)
-    for _ in range(start_buffer_frames):
-        cur_x, cur_y, cur_z = prev[0] - \
-            x_diff, prev[1] - y_diff, prev[2] - z_diff
-        new_x.append(cur_x)
-        new_y.append(cur_y)
-        new_z.append(cur_z)
-        prev = (cur_x, cur_y, cur_z)
-
-    # reverse the lists so that the first frame is at the beginning
-    new_x = new_x[::-1]
-    new_y = new_y[::-1]
-    new_z = new_z[::-1]
-
-    new_speeds = [start_speed] * start_buffer_frames
-    before_startline_df = pd.DataFrame({
-        "X": new_x,
-        "Y": new_y,
-        "Z": new_z,
-        "Speed": new_speeds,
-    })
-
-    driver_df = pd.concat([before_startline_df, driver_df], ignore_index=True)
-
-    driver_df.reset_index(drop=True, inplace=True)
-    return driver_df
-
-
-def add_end_buffer(driver_df, end_buffer_frames):
-    # Get the last 25 points (or all points if less than 25)
+    """
+    # first or last 25 points
     num_points = min(25, len(driver_df) - 1)
-    last_points = driver_df.iloc[-num_points:]
+    ref_points = (
+        driver_df.iloc[:num_points] if is_start else driver_df.iloc[-num_points:]
+    )
 
     # Calculate average differences between consecutive points
-    x_diffs = last_points["X"].diff().mean()
-    y_diffs = last_points["Y"].diff().mean()
-    z_diffs = last_points["Z"].diff().mean()
+    x_diffs = ref_points["X"].diff().mean()
+    y_diffs = ref_points["Y"].diff().mean()
+    z_diffs = ref_points["Z"].diff().mean()
 
-    # Get the last point as starting position
-    last_x, last_y, last_z = (
-        driver_df["X"].iloc[-1],
-        driver_df["Y"].iloc[-1],
-        driver_df["Z"].iloc[-1],
-    )
-    start_speed = driver_df["Speed"].iloc[-1]
+    # Starting position and speed
+    if is_start:
+        start_pos = (
+            driver_df["X"].iloc[0],
+            driver_df["Y"].iloc[0],
+            driver_df["Z"].iloc[0],
+        )
+        start_speed = driver_df["Speed"].iloc[0]
+        # For start buffer, we go in the opposite direction
+        x_diffs, y_diffs, z_diffs = -x_diffs, -y_diffs, -z_diffs
+    else:
+        start_pos = (
+            driver_df["X"].iloc[-1],
+            driver_df["Y"].iloc[-1],
+            driver_df["Z"].iloc[-1],
+        )
+        start_speed = driver_df["Speed"].iloc[-1]
 
     # Generate new points
     new_x, new_y, new_z = [], [], []
-    prev = (last_x, last_y, last_z)
-    for _ in range(end_buffer_frames):
-        cur_x, cur_y, cur_z = prev[0] + \
-            x_diffs, prev[1] + y_diffs, prev[2] + z_diffs
+    prev = start_pos
+    for _ in range(num_frames):
+        cur_x, cur_y, cur_z = prev[0] + x_diffs, prev[1] + y_diffs, prev[2] + z_diffs
         new_x.append(cur_x)
         new_y.append(cur_y)
         new_z.append(cur_z)
         prev = (cur_x, cur_y, cur_z)
 
-    # Create and append new dataframe
-    new_speeds = [start_speed] * end_buffer_frames
-    after_endline_df = pd.DataFrame({
-        "X": new_x,
-        "Y": new_y,
-        "Z": new_z,
-        "Speed": new_speeds,
-    })
-    driver_df = pd.concat([driver_df, after_endline_df], ignore_index=True)
-    driver_df.reset_index(drop=True, inplace=True)
+    # Reverse lists for start buffer
+    if is_start:
+        new_x = new_x[::-1]
+        new_y = new_y[::-1]
+        new_z = new_z[::-1]
 
-    return driver_df
+    # Create DataFrame with buffer points
+    new_speeds = [start_speed] * num_frames
+    buffer_df = pd.DataFrame(
+        {
+            "X": new_x,
+            "Y": new_y,
+            "Z": new_z,
+            "Speed": new_speeds,
+        }
+    )
+
+    return buffer_df
+
+
+def add_start_buffer(driver_df, start_buffer_frames):
+    """Add buffer frames before the start line.
+
+    Args:
+        driver_df: DataFrame with position and speed data
+        start_buffer_frames: Number of buffer frames to add
+
+    Returns:
+        DataFrame with added start buffer
+
+    """
+    if start_buffer_frames <= 0:
+        log_warn(
+            f"Start buffer frames is {start_buffer_frames}, this may be a mistake."
+        )
+        return driver_df
+
+    before_startline_df = _generate_buffer(
+        driver_df, start_buffer_frames, is_start=True
+    )
+    driver_df = pd.concat([before_startline_df, driver_df], ignore_index=True)
+    return driver_df.reset_index(drop=True)
+
+
+def add_end_buffer(driver_df, end_buffer_frames):
+    """Add buffer frames after the finish line.
+
+    Args:
+        driver_df: DataFrame with position and speed data
+        end_buffer_frames: Number of buffer frames to add
+
+    Returns:
+        DataFrame with added end buffer
+
+    """
+    if end_buffer_frames <= 0:
+        log_warn(f"End buffer frames is {end_buffer_frames}, this may be a mistake.")
+        return driver_df
+
+    after_endline_df = _generate_buffer(driver_df, end_buffer_frames, is_start=False)
+    driver_df = pd.concat([driver_df, after_endline_df], ignore_index=True)
+    return driver_df.reset_index(drop=True)
 
 
 def add_car_rots(df):
@@ -459,10 +492,8 @@ def in_track_limits(driver_df: pd.DataFrame, track_edges: pd.DataFrame):
     for i in range(len(driver_df)):
         cur_point = (driver_df["X"][i], driver_df["Y"][i])
         for j in range(len(track_edges)):
-            track_point_inner = (
-                track_edges["inner_X"][j], track_edges["inner_Y"][j])
-            track_point_outer = (
-                track_edges["outer_X"][j], track_edges["outer_Y"][j])
+            track_point_inner = (track_edges["inner_X"][j], track_edges["inner_Y"][j])
+            track_point_outer = (track_edges["outer_X"][j], track_edges["outer_Y"][j])
 
             dist_inner = (
                 (cur_point[0] - track_point_inner[0]) ** 2
@@ -490,8 +521,7 @@ def optimize_smoothness(
     found_max_smoothness = False
     while not found_max_smoothness:
         if s_divisor > max_s_divisor:
-            log_info(
-                "Using max smoothness, this means something is probably wrong...")
+            log_info("Using max smoothness, this means something is probably wrong...")
             for driver, tel in driver_tels.items():
                 dfs[driver] = get_driver_df(tel, s_divisor, fps)
 
@@ -546,8 +576,7 @@ def optimize_smoothness_concurrent(
             s_divisor += 1
 
         if s_divisor > max_s_divisor:
-            log_warn(
-                "Using max smoothness, this means something is probably wrong...")
+            log_warn("Using max smoothness, this means something is probably wrong...")
             break
 
     return driver_dfs
@@ -572,15 +601,15 @@ def main(config, track_data):
 
     driver_dfs = {}
     for driver, tel in driver_tels.items():
-        df = get_driver_df(tel, 3, config["render"]["fps"])
-        df = add_start_buffer(df, config["render"]["start_buffer_frames"])
-        df = add_end_buffer(df, config["render"]["end_buffer_frames"])
-        driver_dfs[driver] = df
+        driver_df = get_driver_df(tel, 3, config["render"]["fps"])
+        driver_df = add_start_buffer(driver_df, config["render"]["start_buffer_frames"])
+        driver_df = add_end_buffer(driver_df, config["render"]["end_buffer_frames"])
+        driver_dfs[driver] = driver_df
 
-    for driver, df in driver_dfs.items():
-        df = add_car_rots(df)
-        df = add_wheel_rots(df)
-        driver_dfs[driver] = df
+    for driver, driver_df in driver_dfs.items():
+        driver_df = add_car_rots(driver_df)
+        driver_df = add_wheel_rots(driver_df)
+        driver_dfs[driver] = driver_df
 
     save(
         str(config["year"]),

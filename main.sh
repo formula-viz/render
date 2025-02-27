@@ -22,8 +22,8 @@ export PYTHONPATH="${PROJECT_ROOT}:${PROJECT_ROOT}/py:${PYTHONPATH:-}"
 
 CONFIG=$(cat "$PROJECT_ROOT/config.json")
 
-PREVIEW_MODE=$(echo "$CONFIG" | jq -r '.pipeline.preview_mode')
-if [ "$PREVIEW_MODE" = true ]; then
+UI_MODE=$(echo "$CONFIG" | jq -r '.dev_settings.ui_mode')
+if [ "$UI_MODE" = true ]; then
     blender --python "$PROJECT_ROOT/py/main.py" -- "$CONFIG"
     BLENDER_EXIT_CODE=$?
 else

@@ -30,3 +30,8 @@ Config Guideline:
   },
   "drivers": ["NOR", "VER"]
 }
+
+
+(for my later reference):
+
+use fake-bpy-module-latest for type hints and language server support for blender bpy and bmesh
