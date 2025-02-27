@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+from py.utils.config import Config
+
 # Get project root directory
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
@@ -40,7 +42,6 @@ OUTPUT_DIR = str(PROJECT_ROOT / "output")
 
 # Python script paths
 RENDER_PY = str(PROJECT_ROOT / "py/render/render.py")
-POSTRENDER_PY = str(PROJECT_ROOT / "py/post_render/post_render.py")
 
 # Social Media Icons
 SOCIAL_ICONS_DIR = RESOURCES_DIR / "social_icons"
@@ -48,6 +49,16 @@ YOUTUBE_ICON_PATH = str(SOCIAL_ICONS_DIR / "youtube.png")
 DISCORD_ICON_PATH = str(SOCIAL_ICONS_DIR / "discord.webp")
 INSTAGRAM_ICON_PATH = str(SOCIAL_ICONS_DIR / "instagram.png")
 TIKTOK_ICON_PATH = str(SOCIAL_ICONS_DIR / "tiktok.webp")
+
+
+class OutputsManager:
+    @staticmethod
+    def get_render_output(config: Config) -> str:
+        return os.path.join(OUTPUT_DIR, config["render"]["output"])
+
+    @staticmethod
+    def get_post_process_output(config: Config) -> str:
+        return os.path.join(OUTPUT_DIR, config["post_process"]["output"])
 
 
 class DriverDataPS:

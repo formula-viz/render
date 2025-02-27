@@ -13,10 +13,13 @@
     "fps": 30,
     "samples": 32,
     "is_shorts_output": true,
-    "output": "output.mp4",
+    "output": "render-output.mp4",
     "max_cam_distance": 70,
     "start_buffer_frames": 45,
     "end_buffer_frames": 70
+  },
+  "post_process": {
+    "output": "post-process-output.mp4"
   },
   "socials": {
     "youtube": {

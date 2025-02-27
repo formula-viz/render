@@ -1,6 +1,7 @@
 """Tests for YouTube upload functionality."""
 
 from py.socials import upload_to_yt
+from py.utils.config import Config
 from tests.bases import SetupAlpha
 from tests.run_tests import skip_external_api
 
@@ -13,8 +14,10 @@ class TestUploadToYT(SetupAlpha):
         """Tests the YouTube video upload functionality."""
         # Create a copy of the config to avoid modifying the original
         try:
-            test_config = self.config.copy()
-            test_config["socials"]["youtube"]["visibility"] = "unlisted"
+            test_config: Config = self.config.copy()
+            yt_config = test_config["socials"]["youtube"]
+            assert yt_config is not None
+            yt_config["visibility"] = "unlisted"
             response = upload_to_yt.main(test_config, "tests/sample-output.mp4")
 
             self.assertIsNotNone(response, "Upload response should not be None")

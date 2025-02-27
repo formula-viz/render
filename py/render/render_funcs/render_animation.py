@@ -6,28 +6,28 @@ configuration, then initiates either Cycles or Eevee rendering process.
 Conditionally does not start the render process if in development settings ui_mode.
 """
 
-import os
-
 import bpy
 
 from py.utils.config import Config
 from py.utils.logger import log_info
-from py.utils.project_structure import OUTPUT_DIR
+from py.utils.project_structure import OutputsManager
 
 
-def configure_output(config):
+def configure_output(config: Config) -> str:
     """Configure ffmpeg mp4 output settings."""
     scene = bpy.context.scene
     if not scene:
         raise ValueError("Scene not found")
 
-    output_path = os.path.join(OUTPUT_DIR, config["render"]["output"])
+    output_path = OutputsManager.get_render_output(config)
     scene.render.filepath = output_path
 
     scene.render.image_settings.file_format = "FFMPEG"
     scene.render.ffmpeg.format = "MPEG4"
     scene.render.ffmpeg.codec = "H264"
     scene.render.ffmpeg.constant_rate_factor = "PERC_LOSSLESS"
+
+    return output_path
 
 
 def eevee_render(config, num_frames, is_ui_mode):
@@ -98,7 +98,6 @@ def eevee_render(config, num_frames, is_ui_mode):
     if not is_ui_mode:
         bpy.ops.render.render(animation=True)
         log_info("Render complete")
-        bpy.ops.wm.quit_blender()
 
 
 def cycles_render(config, num_frames, is_ui_mode):
@@ -116,7 +115,6 @@ def cycles_render(config, num_frames, is_ui_mode):
         log_info(f"Starting Cycles Render of {num_frames}")
         bpy.ops.render.render(animation=True)
         log_info("Cycles render complete")
-        bpy.ops.wm.quit_blender()
 
 
 def setup_ui_mode_viewport(config):
@@ -190,8 +188,9 @@ def main(config: Config, num_frames: int):
     if config["dev_settings"]["ui_mode"]:
         setup_ui_mode_viewport(config)
 
-    configure_output(config)
+    output_path = configure_output(config)
     if config["render"]["engine"] == "cycles":
         cycles_render(config, num_frames, config["dev_settings"]["ui_mode"])
     else:
         eevee_render(config, num_frames, config["dev_settings"]["ui_mode"])
+    return output_path
