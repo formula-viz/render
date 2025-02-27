@@ -248,8 +248,6 @@ class TestCarRankingsMain(SetupAlpha):
         correctly at multiple key moments, checking first, second, and
         last positions at different timestamps.
         """
-        assert 2 == 3
-
         track_data = self.track_data
         driver_dfs = self.driver_dfs
         start_finish_line_idx = self.start_finish_line_idx
