@@ -124,13 +124,6 @@ def setup_ui_mode_viewport(config):
 
     Saves time by automated the setup like removing overlays, setting shader mode.
     """
-    # # removes the overlays like the default background grid, lines, origins
-    # bpy.types.View3DOverlay.show_overlays = False
-
-    # # configures shading to be similar to rendered output
-    # bpy.types.View3DShading.type = "RENDERED"
-
-    # bpy.ops.view3d.view_camera()
     window = bpy.context.window
     if not window:
         raise ValueError("Window not found")
