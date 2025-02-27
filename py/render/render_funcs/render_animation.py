@@ -119,6 +119,40 @@ def cycles_render(config, num_frames, is_ui_mode):
         bpy.ops.wm.quit_blender()
 
 
+def setup_ui_mode_viewport(config):
+    """Configure viewport for viewing in the development ui_mode.
+
+    Saves time by automated the setup like removing overlays, setting shader mode.
+    """
+    # # removes the overlays like the default background grid, lines, origins
+    # bpy.types.View3DOverlay.show_overlays = False
+
+    # # configures shading to be similar to rendered output
+    # bpy.types.View3DShading.type = "RENDERED"
+
+    # bpy.ops.view3d.view_camera()
+    window = bpy.context.window
+    if not window:
+        raise ValueError("Window not found")
+
+    screen = window.screen
+    for area in screen.areas:
+        if area.type == "VIEW_3D":
+            for space in area.spaces:
+                if space.type == "VIEW_3D":
+                    space.overlay.show_overlays = False  # type: ignore
+                    space.overlay.show_relationship_lines = False  # type: ignore
+                    space.overlay.show_outline_selected = False  # type: ignore
+                    space.overlay.show_object_origins = False  # type: ignore
+
+                    space.shading.type = "RENDERED"  # type: ignore
+
+                    space.region_3d.view_perspective = "CAMERA"  # type: ignore
+
+    # go to frame 10 to ensure everything is positioned properly
+    bpy.context.scene.frame_set(10)  # type: ignore
+
+
 def main(config: Config, num_frames: int):
     """Set up blender's render settings based on config.
 
@@ -157,21 +191,11 @@ def main(config: Config, num_frames: int):
     scene.render.fps = config["render"]["fps"]
     scene.frame_end = num_frames
 
-    window = bpy.context.window
-    if not window:
-        raise ValueError("Window not found")
-
-    screen = window.screen
-    for area in screen.areas:
-        if area.type == "VIEW_3D":
-            for space in area.spaces:
-                if space.type == "VIEW_3D":
-                    space.overlay.show_relationship_lines = False  # type: ignore
-                    space.overlay.show_outline_selected = False  # type: ignore
-                    space.overlay.show_object_origins = False  # type: ignore
-
     if config["dev_settings"]["limited_frames_mode"]:
         scene.frame_end = 100
+
+    if config["dev_settings"]["ui_mode"]:
+        setup_ui_mode_viewport(config)
 
     configure_output(config)
     if config["render"]["engine"] == "cycles":
