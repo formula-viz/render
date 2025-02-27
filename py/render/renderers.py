@@ -11,7 +11,6 @@ from py.render.render_funcs import (
     add_camera,
     add_driver_objects,
     add_formula_viz_car,
-    add_outro,
     add_start_finish_line,
     add_sun,
     add_track,
@@ -224,7 +223,7 @@ class HeadToHeadRenderer(AbstractRenderer):
             self.state.camera_obj,
             self.state.num_frames,
         )
-        add_outro.Outro(self.config, self.state.camera_obj, self.state.num_frames)
+        # add_outro.Outro(self.config, self.state.camera_obj, self.state.num_frames)
 
 
 class RestOfFieldRenderer(AbstractRenderer):
@@ -317,4 +316,4 @@ class RestOfFieldRenderer(AbstractRenderer):
             self.state.driver_objs[self.state.focused_driver],
             self.state.camera_obj,
         )
-        add_outro.Outro(self.config, self.state.camera_obj, self.state.num_frames)
+        # add_outro.Outro(self.config, self.state.camera_obj, self.state.num_frames)
