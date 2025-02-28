@@ -1,9 +1,9 @@
 import bpy
 from mathutils import Vector
-from py.utils.logger import log_info
-from py.utils.project_structure import Resources
 
 from py.render.render_funcs.driver_circle import DriverCircle
+from py.utils.logger import log_info
+from py.utils.project_structure import Resources
 
 
 class LiveLeaderboard:
@@ -16,15 +16,14 @@ class LiveLeaderboard:
         is_fancy_mode: bool,
         camera_obj: bpy.types.Object,
     ):
-        """
-        Initialize the live leaderboard.
+        """Create the live leaderboard.
 
         Args:
             driver_abbrevs: List of driver abbreviations (e.g., ['HAM', 'VER'])
             driver_colors: List of hex color codes for each driver
+
         """
         if not (len(driver_abbrevs) == len(driver_colors)):
-            print(len(driver_abbrevs), len(driver_colors))
             raise ValueError("All input lists must have the same length")
 
         log_info("Initializing LiveLeaderboard...")
@@ -76,8 +75,7 @@ class LiveLeaderboard:
                 empty_parent_obj = self.driver_objects[driver]
 
                 empty_parent_obj.location = self.position_offsets[idx + 1]
-                empty_parent_obj.keyframe_insert(
-                    data_path="location", frame=true_frame)
+                empty_parent_obj.keyframe_insert(data_path="location", frame=true_frame)
 
     def _parent_to_camera(self) -> None:
         """Parent the leaderboard to the camera."""
@@ -88,11 +86,10 @@ class LiveLeaderboard:
                 position = (-0.17, 0.32, -1)
             else:
                 position = (-0.19, 0.32, -1)
+        elif self.is_fancy_mode:
+            position = (-0.33, 0.17, -1)
         else:
-            if self.is_fancy_mode:
-                position = (-0.33, 0.17, -1)
-            else:
-                position = (-0.35, 0.18, -1)
+            position = (-0.35, 0.18, -1)
 
         self.parent_empty.location = Vector(position)
         self.parent_empty.rotation_euler = self.camera_obj.rotation_euler
@@ -110,8 +107,7 @@ class LiveLeaderboard:
             self.driver_objects[abbrev] = empty_obj
 
     def _create_element_obj(self, abbrev: str, color: str) -> bpy.types.Object:
-        """
-        Create an empty object as parent for the driver's text object.
+        """Create an empty object as parent for the driver's text object.
 
         Args:
             abbrev: Driver abbreviation
@@ -119,6 +115,7 @@ class LiveLeaderboard:
 
         Returns:
             bpy.types.Object: Empty object that parents the driver's text
+
         """
         # Create empty parent for text
         bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))
@@ -175,11 +172,11 @@ class LiveLeaderboard:
         return empty_obj
 
     def _get_offsets_dict(self) -> dict[int, Vector]:
-        """
-        Calculate position offsets for each possible position.
+        """Calculate position offsets for each possible position.
 
         Returns:
             Dict[int, Vector]: Dictionary mapping position numbers to Vector locations
+
         """
         num_drivers = len(self.driver_abbrevs)
         offsets = {}
@@ -195,5 +192,5 @@ class LiveLeaderboard:
     def _hex_to_rgba(hex_color: str) -> tuple[float, float, float, float]:
         """Convert hex color to RGBA values."""
         hex_color = hex_color.lstrip("#")
-        rgb = tuple(int(hex_color[i: i + 2], 16) / 255 for i in (0, 2, 4))
+        rgb = tuple(int(hex_color[i : i + 2], 16) / 255 for i in (0, 2, 4))
         return (rgb[0], rgb[1], rgb[2], 1.0)  # Add alpha channel

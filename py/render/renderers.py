@@ -192,7 +192,6 @@ class HeadToHeadRenderer(AbstractRenderer):
         self.state.camera_obj = add_camera.main(
             self.state.driver_dfs[self.state.focused_driver],
             self.state.driver_objs[self.state.focused_driver],
-            self.config["render"]["max_cam_distance"],
             self.config["render"]["start_buffer_frames"],
             self.config["render"]["end_buffer_frames"],
         )
@@ -279,7 +278,6 @@ class RestOfFieldRenderer(AbstractRenderer):
         self.state.camera_obj = add_camera.main(
             self.state.driver_dfs[self.state.focused_driver],
             self.state.driver_objs[self.state.focused_driver],
-            self.config["render"]["max_cam_distance"],
             self.config["render"]["start_buffer_frames"],
             self.config["render"]["end_buffer_frames"],
         )

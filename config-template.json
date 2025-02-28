@@ -14,7 +14,6 @@
     "samples": 32,
     "is_shorts_output": true,
     "output": "render-output.mp4",
-    "max_cam_distance": 70,
     "start_buffer_frames": 45,
     "end_buffer_frames": 70
   },

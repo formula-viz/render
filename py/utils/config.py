@@ -19,7 +19,6 @@ class RenderConfig(TypedDict):
     samples: int
     is_shorts_output: bool
     output: str
-    max_cam_distance: int
     start_buffer_frames: int
     end_buffer_frames: int
 
