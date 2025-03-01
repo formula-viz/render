@@ -111,7 +111,7 @@ class Resources:
 
     @staticmethod
     def get_new_texture_image_path(blender_obj_name, hex_color) -> Path:
-        return CAR_PAINTS_DIR / f"{blender_obj_name}_{hex_color}.png"
+        return CAR_PAINTS_DIR / f"{blender_obj_name.split('-')[-1]}_{hex_color}.png"
 
     @staticmethod
     def get_crown_path() -> Path:
