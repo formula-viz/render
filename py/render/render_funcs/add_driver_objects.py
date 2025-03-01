@@ -1,5 +1,6 @@
 """Create all drivers and return a dictionary mapping driver abbreviations to their objects given the driver data."""
 
+import os
 import time
 
 import bpy
@@ -14,7 +15,7 @@ from py.utils.project_structure import F1_CAR_BLEND_PATH, Resources
 
 def create_driver_obj(driver):
     """Create a driver object by loading the F1 car collection and linking it to the scene."""
-    with bpy.data.libraries.load(F1_CAR_BLEND_PATH) as (data_from, data_to):
+    with bpy.data.libraries.load(str(F1_CAR_BLEND_PATH)) as (data_from, data_to):
         data_to.collections = ["f1-car-gerulf"]
 
     driver_collection = data_to.collections[0]
@@ -106,7 +107,15 @@ def replace_color_in_image(blender_obj, hex_color, driver):
         raise ValueError(f"Material {material.name} has no image node.")
 
     image_path = bpy.path.abspath(image_node.image.filepath)
-    new_image_path = Resources.get_new_texture_image_path(driver, blender_obj.name)
+    new_image_path = str(
+        Resources.get_new_texture_image_path(blender_obj.name, hex_color)
+    )
+
+    # first check if the image already exists
+    if os.path.exists(new_image_path):
+        new_image = bpy.data.images.load(new_image_path)
+        image_node.image = new_image
+        return
 
     # Read image and convert to numpy array
     with Image.open(image_path) as img:

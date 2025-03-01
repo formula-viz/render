@@ -38,7 +38,7 @@ class RaceTimer:
         timer_obj.data.body = text
         timer_obj.data.align_x = "LEFT"
         timer_obj.data.align_y = "CENTER"
-        timer_obj.data.font = bpy.data.fonts.load(Resources.get_main_font())
+        timer_obj.data.font = bpy.data.fonts.load(str(Resources.get_main_font()))
         timer_obj.data.size = 1.03
 
         # Assign shared material to text

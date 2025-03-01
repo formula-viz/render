@@ -19,7 +19,7 @@ def configure_output(config: Config) -> str:
     if not scene:
         raise ValueError("Scene not found")
 
-    output_path = OutputsManager.get_render_output(config)
+    output_path = str(OutputsManager.get_render_output(config))
     scene.render.filepath = output_path
 
     scene.render.image_settings.file_format = "FFMPEG"

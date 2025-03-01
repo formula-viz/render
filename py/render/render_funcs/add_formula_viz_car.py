@@ -12,7 +12,7 @@ from py.utils.project_structure import (
 
 def import_car_collections():
     """Import car collections from the external blend file."""
-    with bpy.data.libraries.load(FORMULA_VIZ_CAR_PATH) as (data_from, data_to):
+    with bpy.data.libraries.load(str(FORMULA_VIZ_CAR_PATH)) as (data_from, data_to):
         data_to.collections = ["FORMULA VIZ CAR BODY", "FORMULA VIZ CAR DETAILS"]
 
     scene = bpy.context.scene
@@ -81,7 +81,7 @@ def create_text_object():
         raise ValueError("Failed to create text object: data is not a TextCurve")
 
     text_data.body = "formula-viz"
-    text_data.font = bpy.data.fonts.load(Resources.get_main_font())
+    text_data.font = bpy.data.fonts.load(str(Resources.get_main_font()))
     text_data.size = 0.03
 
     return text_obj

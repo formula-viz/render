@@ -148,7 +148,7 @@ class LiveLeaderboard:
         text_obj.data.body = abbrev
         text_obj.parent = empty_obj
 
-        text_obj.data.font = bpy.data.fonts.load(Resources.get_bold_font())
+        text_obj.data.font = bpy.data.fonts.load(str(Resources.get_bold_font()))
         text_obj.data.size = 0.02
         text_obj.data.align_x = "LEFT"
 

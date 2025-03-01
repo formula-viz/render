@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 from py.utils.config import Config
@@ -13,83 +12,76 @@ DATA_DIR = PROJECT_ROOT / "persistent/data"
 CSV_REPO_DIR = PROJECT_ROOT / "csv_repo"
 
 # Car related paths
-CAR_FBX_PATH = str(
-    RESOURCES_DIR
-    / "cars/formula-1-2024-generic/source/F1_TexPaintBlender_v01_20210215.fbx"
-)
-F1_CAR_BLEND_PATH = str(RESOURCES_DIR / "cars/f1-car-2024.blend")
-CAR_PAINTS_DIR = str(TEMPORARY_DIR / "car_paints")
-CAR_TEXTURES_DIR = str(RESOURCES_DIR / "cars/formula-1-2024-generic/textures")
-FORMULA_VIZ_CAR_PATH = str(RESOURCES_DIR / "cars/formula_viz_car.blend")
+F1_CAR_BLEND_PATH = RESOURCES_DIR / "cars/f1-car-2024.blend"
+CAR_PAINTS_DIR = RESOURCES_DIR / "cars/alternate_textures"
+FORMULA_VIZ_CAR_PATH = RESOURCES_DIR / "cars/formula_viz_car.blend"
 
 # Crown path
-CROWN_GLB_PATH = str(RESOURCES_DIR / "king_crown.glb")
+CROWN_GLB_PATH = RESOURCES_DIR / "king_crown.glb"
 
 # Data directories
-CAR_DATA_DIR = str(DATA_DIR / "car_data")
-DRIVER_TIMES_DIR = str(DATA_DIR / "driver_times")
-DRIVER_IMAGES_DIR = str(DATA_DIR / "driver_images")
-TRACK_DATA_DIR = str(CSV_REPO_DIR / "track_data")
+CAR_DATA_DIR = DATA_DIR / "car_data"
+DRIVER_TIMES_DIR = DATA_DIR / "driver_times"
+DRIVER_IMAGES_DIR = DATA_DIR / "driver_images"
+TRACK_DATA_DIR = CSV_REPO_DIR / "track_data"
 
 # Resource paths
-BACKGROUND_MUSIC_PATH = str(RESOURCES_DIR / "audio/lofi-hiphop-background.m4a")
-BACKGROUND_IMAGE_PATH = str(RESOURCES_DIR / "backgrounds/background1.jpeg")
-MAIN_FONT = str(RESOURCES_DIR / "fonts/Formula1-Regular.ttf")
-BOLD_FONT = str(RESOURCES_DIR / "fonts/Formula1-Bold.ttf")
+BACKGROUND_MUSIC_PATH = RESOURCES_DIR / "audio/lofi-hiphop-background.m4a"
+BACKGROUND_IMAGE_PATH = RESOURCES_DIR / "backgrounds/background1.jpeg"
+MAIN_FONT = RESOURCES_DIR / "fonts/Formula1-Regular.ttf"
+BOLD_FONT = RESOURCES_DIR / "fonts/Formula1-Bold.ttf"
 
 # Output directories
-FRAMES_DIR = str(TEMPORARY_DIR / "frames")
-OUTPUT_DIR = str(PROJECT_ROOT / "output")
+FRAMES_DIR = TEMPORARY_DIR / "frames"
+OUTPUT_DIR = PROJECT_ROOT / "output"
 
 # Python script paths
-RENDER_PY = str(PROJECT_ROOT / "py/render/render.py")
+RENDER_PY = PROJECT_ROOT / "py/render/render.py"
 
 # Social Media Icons
 SOCIAL_ICONS_DIR = RESOURCES_DIR / "social_icons"
-YOUTUBE_ICON_PATH = str(SOCIAL_ICONS_DIR / "youtube.png")
-DISCORD_ICON_PATH = str(SOCIAL_ICONS_DIR / "discord.webp")
-INSTAGRAM_ICON_PATH = str(SOCIAL_ICONS_DIR / "instagram.png")
-TIKTOK_ICON_PATH = str(SOCIAL_ICONS_DIR / "tiktok.webp")
+YOUTUBE_ICON_PATH = SOCIAL_ICONS_DIR / "youtube.png"
+DISCORD_ICON_PATH = SOCIAL_ICONS_DIR / "discord.webp"
+INSTAGRAM_ICON_PATH = SOCIAL_ICONS_DIR / "instagram.png"
+TIKTOK_ICON_PATH = SOCIAL_ICONS_DIR / "tiktok.webp"
 
 
 class OutputsManager:
     @staticmethod
-    def get_render_output(config: Config) -> str:
-        return os.path.join(OUTPUT_DIR, config["render"]["output"])
+    def get_render_output(config: Config) -> Path:
+        return OUTPUT_DIR / config["render"]["output"]
 
     @staticmethod
-    def get_post_process_output(config: Config) -> str:
-        return os.path.join(OUTPUT_DIR, config["post_process"]["output"])
+    def get_post_process_output(config: Config) -> Path:
+        return OUTPUT_DIR / config["post_process"]["output"]
 
 
 class DriverDataPS:
     @staticmethod
-    def get_car_data_dir(year: str, track: str, fps: str) -> str:
-        return os.path.join(CAR_DATA_DIR, f"{year}_{track}_{fps}")
+    def get_car_data_dir(year: str, track: str, fps: str) -> Path:
+        return CAR_DATA_DIR / f"{year}_{track}_{fps}"
 
     @staticmethod
-    def get_car_data_path(year: str, track: str, fps: str, driver: str) -> str:
-        return os.path.join(
-            DriverDataPS.get_car_data_dir(year, track, fps), f"{driver}.csv"
-        )
+    def get_car_data_path(year: str, track: str, fps: str, driver: str) -> Path:
+        return DriverDataPS.get_car_data_dir(year, track, fps) / f"{driver}.csv"
 
     @staticmethod
-    def get_driver_times_path(year: str, track: str) -> str:
-        return os.path.join(DRIVER_TIMES_DIR, f"{year}_{track}.json")
+    def get_driver_times_path(year: str, track: str) -> Path:
+        return DRIVER_TIMES_DIR / f"{year}_{track}.json"
 
     @staticmethod
-    def get_driver_image_path(driver_abbrev: str) -> str:
-        return os.path.join(DRIVER_IMAGES_DIR, f"{driver_abbrev}.png")
+    def get_driver_image_path(driver_abbrev: str) -> Path:
+        return DRIVER_IMAGES_DIR / f"{driver_abbrev}.png"
 
 
 class TrackDataPS:
     @staticmethod
-    def get_track_data_dir() -> str:
+    def get_track_data_dir() -> Path:
         return TRACK_DATA_DIR
 
     @staticmethod
     def get_year_of_track_file(track_file: str) -> int:
-        return track_file.split("_")[1].split(".")[0]
+        return int(track_file.split("_")[1].split(".")[0])
 
     @staticmethod
     def get_track_file(year: str, track: str) -> str:
@@ -98,39 +90,31 @@ class TrackDataPS:
 
 class Resources:
     @staticmethod
-    def get_background_image_path():
+    def get_background_image_path() -> Path:
         return BACKGROUND_IMAGE_PATH
 
     @staticmethod
-    def get_background_music_path():
+    def get_background_music_path() -> Path:
         return BACKGROUND_MUSIC_PATH
 
     @staticmethod
-    def get_main_font():
+    def get_main_font() -> Path:
         return MAIN_FONT
 
     @staticmethod
-    def get_bold_font():
+    def get_bold_font() -> Path:
         return BOLD_FONT
 
     @staticmethod
-    def get_car_fbx_path():
-        return CAR_FBX_PATH
-
-    @staticmethod
-    def get_car_textures_dir():
-        return CAR_TEXTURES_DIR
-
-    @staticmethod
-    def get_car_paints_dir():
+    def get_car_paints_dir() -> Path:
         return CAR_PAINTS_DIR
 
     @staticmethod
-    def get_new_texture_image_path(driver_abbrev: str, blender_obj_name: str) -> str:
-        return os.path.join(CAR_PAINTS_DIR, f"{driver_abbrev}_{blender_obj_name}.png")
+    def get_new_texture_image_path(blender_obj_name, hex_color) -> Path:
+        return CAR_PAINTS_DIR / f"{blender_obj_name}_{hex_color}.png"
 
     @staticmethod
-    def get_crown_path():
+    def get_crown_path() -> Path:
         return CROWN_GLB_PATH
 
 

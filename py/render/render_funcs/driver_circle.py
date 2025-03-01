@@ -1,12 +1,12 @@
-import bpy
-from mathutils import Vector
 import math
-
 from typing import Optional
 
+import bpy
+from mathutils import Vector
+
 from py.utils.colors import hex_to_blender_rgb
-from py.utils.project_structure import DriverDataPS
 from py.utils.logger import log_info
+from py.utils.project_structure import DriverDataPS
 
 
 class DriverCircle:
@@ -55,8 +55,7 @@ class DriverCircle:
 
     def _create_circle_face(self) -> bpy.types.Object:
         # Create circular face for the image
-        bpy.ops.mesh.primitive_circle_add(
-            radius=1.0, vertices=32, fill_type="NGON")
+        bpy.ops.mesh.primitive_circle_add(radius=1.0, vertices=32, fill_type="NGON")
         circle_obj = bpy.context.active_object
         circle_obj.name = f"{self.driver_abbrev}CircleFace"
 
@@ -84,11 +83,11 @@ class DriverCircle:
 
         # Load and assign the image
         image_path = DriverDataPS.get_driver_image_path(self.driver_abbrev)
-        image = bpy.data.images.load(image_path)
+        image = bpy.data.images.load(str(image_path))
         node_tex.image = image
 
         # Set emission strength
-        node_emission.inputs['Strength'].default_value = 1.0
+        node_emission.inputs["Strength"].default_value = 1.0
 
         # Link nodes
         links = face_mat.node_tree.links
@@ -137,9 +136,11 @@ class DriverCircle:
         node_output = nodes.new("ShaderNodeOutputMaterial")
 
         # Set emission color and strength
-        node_emission.inputs['Color'].default_value = (
-            *hex_to_blender_rgb(self.color), 1)
-        node_emission.inputs['Strength'].default_value = 0.1
+        node_emission.inputs["Color"].default_value = (
+            *hex_to_blender_rgb(self.color),
+            1,
+        )
+        node_emission.inputs["Strength"].default_value = 0.1
 
         # Link nodes
         links = outline_mat.node_tree.links

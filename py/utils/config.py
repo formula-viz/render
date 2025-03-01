@@ -67,6 +67,12 @@ class SocialsConfig(TypedDict):
     facebook: Optional[FacebookConfig]
 
 
+class PostProcessConfig(TypedDict):
+    """Handles post-processing configuration for the output."""
+
+    output: str
+
+
 class Config(TypedDict):
     """Handles general configuration and holds the specific configuration classes.
 
@@ -83,4 +89,5 @@ class Config(TypedDict):
     dev_settings: DevelopmentConfig
     render: RenderConfig
     socials: SocialsConfig
+    post_process: PostProcessConfig
     drivers: List[str]

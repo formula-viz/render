@@ -1,9 +1,16 @@
-import bpy
-from mathutils import Vector
 import math
 
+import bpy
+from mathutils import Vector
+
 from py.utils.logger import log_info
-from py.utils.project_structure import INSTAGRAM_ICON_PATH, DISCORD_ICON_PATH, YOUTUBE_ICON_PATH, TIKTOK_ICON_PATH, Resources
+from py.utils.project_structure import (
+    DISCORD_ICON_PATH,
+    INSTAGRAM_ICON_PATH,
+    TIKTOK_ICON_PATH,
+    YOUTUBE_ICON_PATH,
+    Resources,
+)
 
 
 class Outro:
@@ -36,10 +43,16 @@ class Outro:
         material.use_nodes = True
         nodes = material.node_tree.nodes
         nodes["Principled BSDF"].inputs["Base Color"].default_value = (
-            0.95, 0.95, 0.95, 1)
+            0.95,
+            0.95,
+            0.95,
+            1,
+        )
         return material
 
-    def _create_social_element(self, offset: Vector, image_path: str, title: str, platform: str):
+    def _create_social_element(
+        self, offset: Vector, image_path: str, title: str, platform: str
+    ):
         """Creates a social media element with platform icon and username."""
         # Enable import images as planes addon
         bpy.ops.preferences.addon_enable(module="io_import_images_as_planes")
@@ -50,12 +63,12 @@ class Outro:
         icon_plane.name = f"Icon_{platform}"
         # set rotation in degrees
         icon_plane.rotation_euler = Vector(
-            (math.radians(180), math.radians(180), math.radians(180)))
+            (math.radians(180), math.radians(180), math.radians(180))
+        )
 
         # Create text for username/handle
         text_curve = bpy.data.curves.new(name=f"Text_{platform}", type="FONT")
-        text_obj = bpy.data.objects.new(
-            name=f"Text_{platform}", object_data=text_curve)
+        text_obj = bpy.data.objects.new(name=f"Text_{platform}", object_data=text_curve)
         self.outro_collection.objects.link(text_obj)
 
         text_obj.data.body = title
@@ -96,18 +109,18 @@ class Outro:
         # Create semi-transparent black material
         bg_mat = bpy.data.materials.new(name="Outro_Background_Material")
         bg_mat.use_nodes = True
-        bg_mat.blend_method = 'BLEND'  # Enable transparency
+        bg_mat.blend_method = "BLEND"  # Enable transparency
         nodes = bg_mat.node_tree.nodes
         links = bg_mat.node_tree.links
         nodes.clear()
 
         # Set up principled shader with transparency
-        principled = nodes.new('ShaderNodeBsdfPrincipled')
-        output = nodes.new('ShaderNodeOutputMaterial')
+        principled = nodes.new("ShaderNodeBsdfPrincipled")
+        output = nodes.new("ShaderNodeOutputMaterial")
 
         # Set to black with transparency
-        principled.inputs['Base Color'].default_value = (0, 0, 0, 1)
-        principled.inputs['Alpha'].default_value = 0.3
+        principled.inputs["Base Color"].default_value = (0, 0, 0, 1)
+        principled.inputs["Alpha"].default_value = 0.3
 
         links.new(principled.outputs[0], output.inputs[0])
 
@@ -149,19 +162,23 @@ class Outro:
         self._create_bottom_text(cur_loc + Vector((2.8, -2.0, 0)))
 
         self._create_social_element(
-            cur_loc, DISCORD_ICON_PATH, "discord.gg/formula-viz", "discord")
+            cur_loc, str(DISCORD_ICON_PATH), "discord.gg/formula-viz", "discord"
+        )
 
         cur_loc += offset
         self._create_social_element(
-            cur_loc, TIKTOK_ICON_PATH, "@formula-viz", "tiktok")
+            cur_loc, str(TIKTOK_ICON_PATH), "@formula-viz", "tiktok"
+        )
 
         cur_loc += offset
         self._create_social_element(
-            cur_loc, INSTAGRAM_ICON_PATH, "@formula-viz", "instagram")
+            cur_loc, str(INSTAGRAM_ICON_PATH), "@formula-viz", "instagram"
+        )
 
         cur_loc += offset
         self._create_social_element(
-            cur_loc, YOUTUBE_ICON_PATH, "youtube.com/formula-viz", "youtube")
+            cur_loc, str(YOUTUBE_ICON_PATH), "youtube.com/formula-viz", "youtube"
+        )
 
     def _parent_to_camera(self, camera_obj: bpy.types.Object, element_obj) -> None:
         """Parent the outro element to the camera."""
@@ -181,11 +198,13 @@ class Outro:
         element_obj.keyframe_insert(data_path="location", frame=0)
 
         element_obj.keyframe_insert(
-            data_path="location", frame=self.num_frames - end_buffer)
+            data_path="location", frame=self.num_frames - end_buffer
+        )
 
         # Animate to final position
         element_obj.location = Vector(final_position)
         element_obj.keyframe_insert(
-            data_path="location", frame=self.num_frames - end_buffer + 40)
+            data_path="location", frame=self.num_frames - end_buffer + 40
+        )
 
         element_obj.rotation_euler = camera_obj.rotation_euler
