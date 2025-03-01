@@ -13,44 +13,59 @@ from py.utils.logger import log_info
 from py.utils.project_structure import F1_CAR_BLEND_PATH, Resources
 
 
-def create_driver_obj(driver):
-    """Create a driver object by loading the F1 car collection and linking it to the scene."""
-    with bpy.data.libraries.load(str(F1_CAR_BLEND_PATH)) as (data_from, data_to):
-        data_to.collections = ["f1-car-gerulf"]
-
-    driver_collection = data_to.collections[0]
-    # ensure collection is linked to the scene
-    if driver_collection.name not in bpy.context.scene.collection.children:  # pyright: ignore
-        bpy.context.scene.collection.children.link(driver_collection)  # pyright: ignore
-
-    # Set the driver collection as the active collection
-    layer_collection = bpy.context.view_layer.layer_collection  # pyright: ignore
-    for child in layer_collection.children:
-        if child.collection == driver_collection:
-            bpy.context.view_layer.active_layer_collection = child  # pyright: ignore
-            break
-
-    # Rename the collection to match the driver
-    driver_collection.name = f"{driver.title()}CarObject"  # pyright: ignore
-
+def create_base_driver_obj():
+    """Create a base F1 car object that will be used as a template for all drivers."""
     bpy.ops.object.empty_add(type="PLAIN_AXES")
     empty_obj = bpy.context.object
     if empty_obj is None:
         raise ValueError("Failed to create empty object")
 
-    empty_obj.name = f"{driver.title()}MasterEmpty"
+    empty_obj.name = "MasterEmptyCar"
     empty_obj.hide_viewport = True
     empty_obj.hide_render = True
 
-    if empty_obj.name not in driver_collection.objects:  # pyright: ignore
-        driver_collection.objects.link(empty_obj)  # pyright: ignore
+    with bpy.data.libraries.load(str(F1_CAR_BLEND_PATH)) as (data_from, data_to):
+        data_to.objects = data_from.objects
 
-    for obj in driver_collection.objects:  # pyright: ignore
-        if obj != empty_obj:
-            obj.name = f"{driver.title()}CarObject-{obj.name}"
-            obj.parent = empty_obj
+    for obj in data_to.objects:
+        obj.parent = empty_obj
 
     return empty_obj
+
+
+def create_driver_from_base(driver, base_empty_obj):
+    """Create a driver object by copying the base empty object and its children."""
+    # Create a new collection for this driver
+    driver_collection = bpy.data.collections.new(f"{driver.title()}CarObject")
+    bpy.context.scene.collection.children.link(driver_collection)
+
+    # Create a copy of the master empty
+    new_empty = base_empty_obj.copy()
+    new_empty.name = f"{driver.title()}MasterEmpty"
+    driver_collection.objects.link(new_empty)
+
+    # Copy all children objects
+    for obj in base_empty_obj.children:
+        new_obj = obj.copy()
+        new_obj.data = obj.data
+        new_obj.name = f"{driver.title()}CarObject-{obj.name}"
+        new_obj.parent = new_empty
+
+        # Only duplicate materials that need color changes
+        if obj.material_slots and (
+            "chassis" in obj.name.lower() or "wings" in obj.name.lower()
+        ):
+            new_obj.data = obj.data.copy()
+            for i, slot in enumerate(obj.material_slots):
+                if slot.material:
+                    # Create a deep copy of just the material
+                    new_material = slot.material.copy()
+                    new_material.name = f"{driver.title()}-{slot.material.name}"
+                    new_obj.material_slots[i].material = new_material
+
+        driver_collection.objects.link(new_obj)
+
+    return new_empty
 
 
 # Time,X,Y,Z,RotW,RotX,RotY,RotZ
@@ -188,6 +203,8 @@ def main(
     """Process all drivers and return a dictionary mapping driver abbreviations to their objects."""
     quick_textures_mode_max = 2
 
+    base_empty_obj = create_base_driver_obj()
+
     driver_objs = {}
     for i, (driver, color) in enumerate(zip(drivers, driver_colors)):
         if quick_textures_mode and i >= quick_textures_mode_max:
@@ -196,7 +213,7 @@ def main(
         log_info(f"Adding {i + 1}/{len(drivers)} driver: {driver} in color: {color}")
         start_time = time.time()
 
-        driver_obj = create_driver_obj(driver)
+        driver_obj = create_driver_from_base(driver, base_empty_obj)
         if not quick_textures_mode:
             set_color(driver_obj, color, driver)
         add_driver_keyframes(driver_obj, driver_dfs[driver])

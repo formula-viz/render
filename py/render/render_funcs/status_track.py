@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, cast
+from typing import Tuple, cast
 
 import bpy
 from mathutils import Vector
@@ -32,10 +32,14 @@ class StatusTrack:
         self.start_finish_line_idx = start_finish_line_idx
         self.driver_df = driver_df
         self.is_shorts_output = is_shorts_output
-        self.parent_empty: Optional[bpy.types.Object] = None
 
+        self._create_parent_empty()
         log_info("Initializing StatusTrack...")
 
+        scaled_track_width, scaled_track_height = self._setup()
+        self._parent_to_camera(camera_obj, scaled_track_width, scaled_track_height)
+
+    def _create_parent_empty(self):
         # Create empty parent object for camera-relative positioning
         bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))
         active_obj = bpy.context.active_object
@@ -51,9 +55,6 @@ class StatusTrack:
         self.parent_empty.hide_render = True
         self.parent_empty.hide_viewport = True
         self.parent_empty.name = "StatusTrackParent"
-
-        scaled_track_width, scaled_track_height = self._setup()
-        self._parent_to_camera(camera_obj, scaled_track_width, scaled_track_height)
 
     def _setup(self) -> Tuple[float, float]:
         if self.parent_empty is None:

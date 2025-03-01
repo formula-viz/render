@@ -9,7 +9,7 @@ Conditionally does not start the render process if in development settings ui_mo
 import bpy
 
 from py.utils.config import Config
-from py.utils.logger import log_info
+from py.utils.logger import log_info, log_warn
 from py.utils.project_structure import OutputsManager
 
 
@@ -100,21 +100,21 @@ def eevee_render(config, num_frames, is_ui_mode):
         log_info("Render complete")
 
 
-def cycles_render(config, num_frames, is_ui_mode):
-    """TODO, needs proper config"""
-    scene = bpy.context.scene
-    if not scene:
-        raise ValueError("Scene not found")
+# def cycles_render(config, num_frames, is_ui_mode):
+#     """TODO, needs proper config"""
+#     scene = bpy.context.scene
+#     if not scene:
+#         raise ValueError("Scene not found")
 
-    scene.render.engine = "CYCLES"  # type: ignore
+#     scene.render.engine = "CYCLES"  # type: ignore
 
-    scene.cycles.samples = config["render"]["samples"]
-    scene.cycles.use_denoising = True
+#     scene.cycles.samples = config["render"]["samples"]
+#     scene.cycles.use_denoising = True
 
-    if not is_ui_mode:
-        log_info(f"Starting Cycles Render of {num_frames}")
-        bpy.ops.render.render(animation=True)
-        log_info("Cycles render complete")
+#     if not is_ui_mode:
+#         log_info(f"Starting Cycles Render of {num_frames}")
+#         bpy.ops.render.render(animation=True)
+#         log_info("Cycles render complete")
 
 
 def setup_ui_mode_viewport(config):
@@ -190,7 +190,8 @@ def main(config: Config, num_frames: int):
 
     output_path = configure_output(config)
     if config["render"]["engine"] == "cycles":
-        cycles_render(config, num_frames, config["dev_settings"]["ui_mode"])
+        # cycles_render(config, num_frames, config["dev_settings"]["ui_mode"])
+        log_warn("Cycles rendering not configured")
     else:
         eevee_render(config, num_frames, config["dev_settings"]["ui_mode"])
     return output_path
