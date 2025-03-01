@@ -22,6 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          lfs: true
           token: ${{ secrets.GH_PAT }}
           submodules: "recursive"
 
