@@ -1,0 +1,55 @@
+"""Generate necessary metadata for creating a YouTube video."""
+
+from py.utils.config import Config
+
+
+class YoutubeText:
+    """Get contents of text fields in a YouTube video."""
+
+    @staticmethod
+    def get_title(config: Config):
+        """Get the title of the YouTube video."""
+        if config["type"] == "rest-of-field":
+            return f"{config['drivers'][0]} bests Rest of Field at {config['track'].title()} Qualifying {config['year']}"
+        else:
+            # there could be several drivers here
+            # say Norris, Verstappen, Russel, we want:
+            # Norris vs Verstappen vs Russell
+            drivers = config["drivers"]
+            drivers_str = " vs ".join(drivers)
+
+            return f"{drivers_str} at {config['track'].title()} Qualifying {config['year']}"
+
+    @staticmethod
+    def get_description(config: Config):
+        """Get the description of the YouTube video."""
+        description = """
+        Uploading every qualifying session of the F1 season.
+
+        Join the discord to give feedback and make video requests.
+        """
+        return description
+
+
+def main(config: Config):
+    """Generate necessary metadata for creating a YouTube video."""
+    yt_config = config["socials"]["youtube"]
+    if yt_config is None:
+        raise ValueError("Youtube config not found")
+
+    body = {
+        "snippet": {
+            "title": YoutubeText.get_title(config),
+            "description": YoutubeText.get_description(config),
+            # "tags": yt_config.video_tags,
+            # "categoryId": yt_config.video_category_id,
+        },
+        "status": {
+            "privacyStatus": yt_config["visibility"],
+            # "publishAt": yt_config.publish_at
+            # if hasattr(yt_config, "publish_at")
+            # else None,
+        },
+    }
+
+    return body

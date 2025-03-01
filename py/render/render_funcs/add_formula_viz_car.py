@@ -4,7 +4,10 @@ import math
 
 import bpy
 
-from py.utils.project_structure import FORMULA_VIZ_CAR_PATH, Resources
+from py.utils.project_structure import (
+    FORMULA_VIZ_CAR_PATH,
+    Resources,
+)
 
 
 def import_car_collections():
@@ -16,10 +19,15 @@ def import_car_collections():
     if scene is None:
         raise ValueError("No active scene found")
 
+    # Create a parent collection for Formula Viz Car
+    parent_collection = bpy.data.collections.new("FormulaVizCar")
+    scene.collection.children.link(parent_collection)
+
+    # Link imported collections as children to the parent collection instead
     for collection in data_to.collections:
         if collection is not None:
             if isinstance(collection, bpy.types.Collection):
-                scene.collection.children.link(collection)
+                parent_collection.children.link(collection)
 
     car_obj = bpy.data.objects.get("FORMULA VIZ CAR")
     if car_obj is None:

@@ -9,14 +9,16 @@ from py.utils.logger import log_info
 
 
 def create_grid_curves(
-    index: int = 0, size: int = 1000, spacing: float = 1.0, offset: tuple = (0, 0, 0)
+    index: int = 0,
+    size: int = 1000,
+    spacing: float = 1.0,
+    offset: tuple = (0, 0, 0),
+    collection=None,
 ):
     """Create grid using curves instead of mesh."""
-    # Create curve object
     curve_data = bpy.data.curves.new("GridCurve", type="CURVE")
     curve_data.dimensions = "3D"
 
-    # Set curve properties
     curve_data.resolution_u = 1
     curve_data.bevel_depth = 0.01  # Line thickness
 
@@ -57,7 +59,12 @@ def create_grid_curves(
 
     # Create object
     grid_obj = bpy.data.objects.new("BackgroundGrid" + str(index), curve_data)
-    bpy.context.scene.collection.objects.link(grid_obj)  # pyright: ignore
+
+    # Add to collection if specified, otherwise to scene collection
+    if collection:
+        collection.objects.link(grid_obj)
+    else:
+        bpy.context.scene.collection.objects.link(grid_obj)  # pyright: ignore
 
     return grid_obj
 
@@ -69,18 +76,14 @@ def create_grid_material(rgb=(0.1, 0.2, 0.2, 1)):
     nodes = material.node_tree.nodes  # pyright: ignore
     links = material.node_tree.links  # pyright: ignore
 
-    # Clear default nodes
     nodes.clear()
 
-    # Create emission shader
     emission = nodes.new(type="ShaderNodeEmission")
     output = nodes.new(type="ShaderNodeOutputMaterial")
 
-    # Set grid color and emission strength
     emission.inputs["Color"].default_value = rgb  # pyright: ignore
     emission.inputs["Strength"].default_value = 0.5  # pyright: ignore
 
-    # Link nodes
     links.new(emission.outputs[0], output.inputs[0])
 
     return material
@@ -90,18 +93,22 @@ def main():
     """Create a background grid."""
     log_info("Creating background grid")
 
-    # Create grid using curves
-    grid_obj1 = create_grid_curves(index=1, size=1000, spacing=3.0, offset=(0, 0, 0))
+    grid_collection = bpy.data.collections.new("BackgroundGrids")
+    bpy.context.scene.collection.children.link(grid_collection)  # pyright: ignore
+
+    grid_obj1 = create_grid_curves(
+        index=1, size=1000, spacing=3.0, offset=(0, 0, 0), collection=grid_collection
+    )
     grid_obj2 = create_grid_curves(
-        index=2, size=1000, spacing=3.0, offset=(1.0, 0.5, 0)
+        index=2,
+        size=1000,
+        spacing=3.0,
+        offset=(1.0, 0.5, 0),
+        collection=grid_collection,
     )
 
-    # Create and assign material
     grid_material1 = create_grid_material((0.1, 0.2, 0.2, 1))  # cyan
     grid_obj1.data.materials.append(grid_material1)  # pyright: ignore
 
     grid_material2 = create_grid_material((0.4, 0.4, 0.4, 1))  # gray
     grid_obj2.data.materials.append(grid_material2)  # pyright: ignore
-
-    grid_obj1.show_in_front = True
-    grid_obj2.show_in_front = True

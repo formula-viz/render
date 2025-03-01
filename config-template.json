@@ -22,7 +22,8 @@
   },
   "socials": {
     "youtube": {
-      "service_account_path": "formula-viz-981f62016605.json"
+      "service_account_path": "formula-viz-981f62016605.json",
+      "visibility": "unlisted"
     }
   }
 }

@@ -7,7 +7,7 @@ from PIL import Image
 
 from py.utils.colors import hex_to_blender_rgb, hex_to_normal_rgb
 from py.utils.logger import log_info, log_warn
-from py.utils.project_structure import Resources
+from py.utils.project_structure import F1_CAR_BLEND_PATH, Resources
 
 
 def import_crown():
@@ -91,18 +91,10 @@ def replace_color_in_image(blender_obj, hex_color, driver_abbrev):
 
 
 def load_base_car_fbx(quick_textures_mode: bool):
-    """Load the car FBX once and return an empty object which is the parent of the individual objs."""
-    # Create a temporary collection to store the base objects
-    base_collection = bpy.data.collections.new(name="BaseCarCollection")
-    bpy.context.scene.collection.children.link(base_collection)
-    bpy.context.view_layer.active_layer_collection = (
-        bpy.context.view_layer.layer_collection.children[-1]
-    )
-
-    # Import the FBX into this collection
-    bpy.ops.import_scene.fbx(filepath=Resources.get_car_fbx_path())
-    if not quick_textures_mode:
-        bpy.ops.file.find_missing_files(directory=Resources.get_car_textures_dir())
+    """Load the car BLEND file once and return an empty object which is the parent of the individual objs."""
+    with bpy.data.libraries.load(F1_CAR_BLEND_PATH) as (data_from, data_to):
+        data_to.collections = ["f1-car-gerulf"]
+    base_collection = data_to.collections[0]
 
     bpy.ops.object.empty_add(type="PLAIN_AXES")
     empty_obj = bpy.context.object

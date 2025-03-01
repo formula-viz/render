@@ -9,6 +9,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
+from py.socials import youtube_metadata
 from py.utils.config import Config, YouTubeConfig
 
 # Local token storage file
@@ -74,22 +75,7 @@ def main(config: Config, mp4_filepath: str):
         raise ValueError("YouTube configuration not found in config file")
 
     youtube = get_authenticated_youtube(yt_config)
-
-    # Prepare video metadata from config
-    body = {
-        "snippet": {
-            "title": "Sample title",
-            "description": "Sample description",
-            # "tags": yt_config.video_tags,
-            # "categoryId": yt_config.video_category_id,
-        },
-        "status": {
-            "privacyStatus": yt_config["visibility"],
-            # "publishAt": yt_config.publish_at
-            # if hasattr(yt_config, "publish_at")
-            # else None,
-        },
-    }
+    body = youtube_metadata.main(config)
 
     media = MediaFileUpload(mp4_filepath, mimetype="video/mp4", resumable=True)
     request = youtube.videos().insert(

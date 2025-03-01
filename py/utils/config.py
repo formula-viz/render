@@ -27,11 +27,6 @@ class YouTubeConfig(TypedDict):
     """YouTube-specific configuration settings."""
 
     client_secret_path: str
-
-    description: str
-    category: str
-    playlist: Optional[str]
-    is_made_for_kids: bool
     visibility: Literal["public", "private", "unlisted"]
 
 
