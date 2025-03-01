@@ -17,7 +17,7 @@ CAR_FBX_PATH = str(
     RESOURCES_DIR
     / "cars/formula-1-2024-generic/source/F1_TexPaintBlender_v01_20210215.fbx"
 )
-F1_CAR_BLEND_PATH = str(RESOURCES_DIR / "cars/f1-car-gerulf.blend")
+F1_CAR_BLEND_PATH = str(RESOURCES_DIR / "cars/f1-car-2024.blend")
 CAR_PAINTS_DIR = str(TEMPORARY_DIR / "car_paints")
 CAR_TEXTURES_DIR = str(RESOURCES_DIR / "cars/formula-1-2024-generic/textures")
 FORMULA_VIZ_CAR_PATH = str(RESOURCES_DIR / "cars/formula_viz_car.blend")

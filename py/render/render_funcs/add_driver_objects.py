@@ -1,55 +1,100 @@
-import math
+"""Create all drivers and return a dictionary mapping driver abbreviations to their objects given the driver data."""
+
 import time
 
-import bpy  # pyright: ignore
-import mathutils  # pyright: ignore
+import bpy
+import mathutils
+import numpy as np
 from PIL import Image
 
 from py.utils.colors import hex_to_blender_rgb, hex_to_normal_rgb
-from py.utils.logger import log_info, log_warn
+from py.utils.logger import log_info
 from py.utils.project_structure import F1_CAR_BLEND_PATH, Resources
 
 
-def import_crown():
-    crown_path = (
-        Resources.get_crown_path()
-    )  # You'll need to add this method to your Resources class
-    bpy.ops.import_scene.gltf(filepath=crown_path)
-    # Get the imported crown object
-    for obj in bpy.context.selected_objects:
-        if "crown" in obj.name.lower():
-            return obj
-    return None
+def create_driver_obj(driver):
+    """Create a driver object by loading the F1 car collection and linking it to the scene."""
+    with bpy.data.libraries.load(F1_CAR_BLEND_PATH) as (data_from, data_to):
+        data_to.collections = ["f1-car-gerulf"]
 
+    driver_collection = data_to.collections[0]
+    # ensure collection is linked to the scene
+    if driver_collection.name not in bpy.context.scene.collection.children:  # pyright: ignore
+        bpy.context.scene.collection.children.link(driver_collection)  # pyright: ignore
 
-def set_color(obj, rgb_color: tuple[float, float, float]):
-    # if obj has no mat at all, we need to create one
-    if not obj.data.materials:
-        mat = bpy.data.materials.new(name="CustomColorMaterial")
-        obj.data.materials.append(mat)
-    else:
-        mat = obj.data.materials[0]
-
-    mat.use_nodes = True
-    nodes = mat.node_tree.nodes
-
-    principled_bsdf = None
-    for node in nodes:
-        if node.type == "BSDF_PRINCIPLED":
-            principled_bsdf = node
+    # Set the driver collection as the active collection
+    layer_collection = bpy.context.view_layer.layer_collection  # pyright: ignore
+    for child in layer_collection.children:
+        if child.collection == driver_collection:
+            bpy.context.view_layer.active_layer_collection = child  # pyright: ignore
             break
-    for link in mat.node_tree.links:
-        if link.to_node == principled_bsdf and link.to_socket.name == "Base Color":
-            mat.node_tree.links.remove(link)
 
-    principled_bsdf.inputs["Base Color"].default_value = (*rgb_color, 1)
+    # Rename the collection to match the driver
+    driver_collection.name = f"{driver.title()}CarObject"  # pyright: ignore
+
+    bpy.ops.object.empty_add(type="PLAIN_AXES")
+    empty_obj = bpy.context.object
+    if empty_obj is None:
+        raise ValueError("Failed to create empty object")
+
+    empty_obj.name = f"{driver.title()}MasterEmpty"
+    empty_obj.hide_viewport = True
+    empty_obj.hide_render = True
+
+    if empty_obj.name not in driver_collection.objects:  # pyright: ignore
+        driver_collection.objects.link(empty_obj)  # pyright: ignore
+
+    for obj in driver_collection.objects:  # pyright: ignore
+        if obj != empty_obj:
+            obj.name = f"{driver.title()}CarObject-{obj.name}"
+            obj.parent = empty_obj
+
+    return empty_obj
 
 
-def replace_color_in_image(blender_obj, hex_color, driver_abbrev):
+# Time,X,Y,Z,RotW,RotX,RotY,RotZ
+def add_driver_keyframes(driver_obj, df):
+    """Add keyframes to driver object based on dataframe values."""
+    # Pre-fetch all the data we'll need to avoid repeated lookups
+    x_values = df["X"]
+    y_values = df["Y"]
+    rot_w = df["RotW"]
+    rot_x = df["RotX"]
+    rot_y = df["RotY"]
+    rot_z = df["RotZ"]
+
+    # Prepare driver keyframes
+    driver_loc_keyframes = []
+    driver_rot_keyframes = []
+    for i in range(len(df)):
+        frame = i + 1
+        point = mathutils.Vector((x_values[i], y_values[i], 0))
+
+        rot_quat = mathutils.Quaternion((rot_w[i], rot_x[i], rot_y[i], rot_z[i]))
+        rot_eul = rot_quat.to_euler()
+
+        driver_loc_keyframes.append((point, frame))
+        driver_rot_keyframes.append((rot_eul, frame))
+
+    # Apply driver keyframes in batch
+    for point, frame in driver_loc_keyframes:
+        driver_obj.location = point
+        driver_obj.keyframe_insert(data_path="location", frame=frame)
+
+    for rot_eul, frame in driver_rot_keyframes:
+        driver_obj.rotation_euler = rot_eul
+        driver_obj.keyframe_insert(data_path="rotation_euler", frame=frame)
+
+
+def replace_color_in_image(blender_obj, hex_color, driver):
+    """Replace color in image texture node of a material.
+
+    This is done by creating a new image file and by replacing the pixels.
+    Using numpy here for faster processing of the pixels.
+    """
     material = blender_obj.material_slots[0].material
     if not material.node_tree.nodes:
-        log_warn(f"Material {material.name} has no nodes.")
-        return
+        raise ValueError(f"Material {material.name} has no nodes.")
 
     image_node = None
     for node in material.node_tree.nodes:
@@ -57,32 +102,32 @@ def replace_color_in_image(blender_obj, hex_color, driver_abbrev):
             image_node = node
             break
 
+    if not image_node:
+        raise ValueError(f"Material {material.name} has no image node.")
+
     image_path = bpy.path.abspath(image_node.image.filepath)
-    new_image_path = Resources.get_new_texture_image_path(
-        driver_abbrev, blender_obj.name
-    )
+    new_image_path = Resources.get_new_texture_image_path(driver, blender_obj.name)
 
+    # Read image and convert to numpy array
     with Image.open(image_path) as img:
-        if img.mode != "RGB":
-            img = img.convert("RGB")
+        # Convert image to numpy array for faster processing
+        img_array = np.array(img)
 
-        width, height = img.size
-        new_img = Image.new("RGB", (width, height))
+        # Define the colors
+        old_color = np.array(hex_to_normal_rgb("#FF472C"))
+        new_color = np.array(hex_to_normal_rgb(hex_color))
 
-        pixels = img.load()
-        new_pixels = new_img.load()
+        # Create a mask where pixels match the old color
+        # The == comparison will create a boolean array for each color channel
+        # All channels must match for a pixel to be replaced
+        mask = np.all(img_array == old_color, axis=2)
 
-        # this is hardcoded for the fbx file, this is fine to hardcode here
-        old_color = hex_to_normal_rgb("#FF472C")
-        new_color = hex_to_normal_rgb(hex_color)
+        # Use the mask to replace the colors
+        # This is much faster than pixel-by-pixel operations
+        img_array[mask] = new_color
 
-        for x in range(width):
-            for y in range(height):
-                if pixels[x, y] == old_color:
-                    new_pixels[x, y] = new_color
-                else:
-                    new_pixels[x, y] = pixels[x, y]
-
+        # Create a new image from the array
+        new_img = Image.fromarray(img_array)
         new_img.save(new_image_path)
 
     # Load the new image into Blender and assign it to the material
@@ -90,199 +135,66 @@ def replace_color_in_image(blender_obj, hex_color, driver_abbrev):
     image_node.image = new_image
 
 
-def load_base_car_fbx(quick_textures_mode: bool):
-    """Load the car BLEND file once and return an empty object which is the parent of the individual objs."""
-    with bpy.data.libraries.load(F1_CAR_BLEND_PATH) as (data_from, data_to):
-        data_to.collections = ["f1-car-gerulf"]
-    base_collection = data_to.collections[0]
-
-    bpy.ops.object.empty_add(type="PLAIN_AXES")
-    empty_obj = bpy.context.object
-    empty_obj.name = "MasterEmpty"
-    # make this empty_obj invisible
-    empty_obj.hide_viewport = True
-
-    for obj in base_collection.objects:
-        if obj != empty_obj:
-            obj.parent = empty_obj
-
-        # move them forward, because the data from fastf1 likely represents the front of the car
-        # this way, when we have the car passing the line, it is the tip of the nose passing
-        # obj.location[1] += 3.3
-
-    # crown_obj = import_crown()
-    # if crown_obj:
-    #     crown_obj.parent = empty_obj
-    # else:
-    #     log_err("Couldn't import the crown object.")
-
-    return empty_obj, base_collection
-
-
-def create_driver_fbx(driver, hex_color, empty_obj, quick_textures_mode: bool):
-    """Create a new driver instance by duplicating base objects."""
-    driver_collection = bpy.data.collections.new(name=driver.title() + "Collection")
-    bpy.context.scene.collection.children.link(driver_collection)
-    bpy.context.view_layer.active_layer_collection = (
-        bpy.context.view_layer.layer_collection.children[-1]
-    )
-
-    new_empty = empty_obj.copy()
-    new_empty.name = "MasterEmpty" + driver.title()
-    driver_collection.objects.link(new_empty)
-
-    wheels_objs = []
-    for child in empty_obj.children_recursive:
-        # the cameras get added to the empty for some reason, just remove them
-        if child.type == "CAMERA":
-            continue
-
-        obj = child.copy()
-        if child.data:
-            obj.data = child.data.copy()
-            # Deep copy materials
-            if isinstance(obj.data, bpy.types.Mesh) and obj.data.materials:
-                for i, mat in enumerate(obj.data.materials):
-                    if mat:
-                        new_mat = mat.copy()
-                        obj.data.materials[i] = new_mat
-
-        obj.name = f"{driver.title()}_{child.name}"
-        driver_collection.objects.link(obj)
-
-        obj.parent = new_empty
-        # Maintain original transformation
-        obj.matrix_local = child.matrix_local.copy()
-
-        if "wheel" in obj.name.lower() and "steering" not in obj.name.lower():
-            wheels_objs.append(obj)
-        if "chassis" in obj.name.lower() and not quick_textures_mode:
-            replace_color_in_image(obj, hex_color, driver)
-        if "wings" in obj.name.lower() and not quick_textures_mode:
-            set_color(obj, hex_to_blender_rgb(hex_color))
-        if "steering" in obj.name.lower():
-            # we want to set this invisible for now
-            obj.hide_viewport = True
-            obj.hide_render = True
-
-    bpy.ops.object.camera_add()
-    camera = bpy.context.object
-    camera.name = driver.title() + "_Camera"
-    camera.location = (
-        0,
-        3.8,
-        1.25,
-    )  # Position the camera 5 units above the empty object
-    camera.data.dof.focus_distance = 15
-    camera.parent = empty_obj
-    camera.rotation_euler = (
-        math.radians(82),
-        0,
-        math.radians(180),
-    )  # Rotate 90 degrees around Z-axis
-
-    for col in camera.users_collection:
-        col.objects.unlink(camera)
-    # Link only to driver collection
-    driver_collection.objects.link(camera)
-
-    return new_empty, wheels_objs
-
-
-# Time,X,Y,Z,RotW,RotX,RotY,RotZ
-def add_keyframes(driver_obj, wheels_objs, df):
-    for i in range(len(df)):
-        idx = i + 1
-
-        # point = mathutils.Vector((df["X"][i], df["Y"][i], df["Z"][i]))
-        # TODO: for now setting all z to 0 because cars appear to be under the track
-        point = mathutils.Vector((df["X"][i], df["Y"][i], 0))
-
-        rot_eul = mathutils.Quaternion(
-            (
-                df["RotW"][i],
-                df["RotX"][i],
-                df["RotY"][i],
-                df["RotZ"][i],
+def set_color(driver_obj, color, driver):
+    """Set color for different parts of the driver's car."""
+    for child_obj in driver_obj.children:
+        if "chassis" in child_obj.name.lower():
+            start_time = time.time()
+            replace_color_in_image(child_obj, color, driver)
+            log_info(
+                f"  Time to replace color in chassis: {time.time() - start_time:.2f} seconds"
             )
-        ).to_euler()
-        # harsher_rot_eul = mathutils.Quaternion((
-        #     df["HarsherRotW"][i],
-        #     df["HarsherRotX"][i],
-        #     df["HarsherRotY"][i],
-        #     df["HarsherRotZ"][i],
-        # )).to_euler()
+        if "wings" in child_obj.name.lower():
+            # Reset material nodes as it was originally an image and set color
+            rgb_color = hex_to_blender_rgb(color)
+            if child_obj.material_slots and child_obj.material_slots[0].material:
+                material = child_obj.material_slots[0].material
 
-        # for the front wheels, get the differences between the z's for harsher and normal, then add the diff to the front wheel rot
-        # front_wheel_diff = harsher_rot_eul[2] - rot_eul[2]
+                # Find the principled BSDF node
+                bsdf_node = None
+                for node in material.node_tree.nodes:
+                    if node.type == "BSDF_PRINCIPLED":
+                        bsdf_node = node
+                        break
 
-        wheel_rot = df["TireRot"][i]
-        for wheel_obj in wheels_objs:
-            # the other infos for y, z may change so just grab what already exists first
-            rot = wheel_obj.rotation_euler
-            rot[0] = wheel_rot
+                # Find any image texture connected to base color and disconnect it
+                for link in material.node_tree.links:
+                    if (
+                        link.to_node == bsdf_node
+                        and link.to_socket.name == "Base Color"
+                    ):
+                        material.node_tree.links.remove(link)
 
-            # TODO: I need to remove the front wheel physics for now because it is janky
-            # if "frontwheel" in wheel_obj.name.lower():
-            #     default = -np.pi if wheel_obj.name[-1] == "R" else 0
-            #     rot[2] = default - front_wheel_diff
+                # Set the RGB color directly
+                bsdf_node.inputs["Base Color"].default_value = (*rgb_color, 1.0)  # pyright: ignore
 
-            wheel_obj.rotation_euler = rot
-            wheel_obj.keyframe_insert(data_path="rotation_euler", frame=idx)
-
-        driver_obj.location = point
-        driver_obj.keyframe_insert(data_path="location", frame=idx)
-
-        driver_obj.rotation_euler = rot_eul
-        driver_obj.keyframe_insert(data_path="rotation_euler", frame=idx)
+        if "steering" in child_obj.name.lower():
+            child_obj.hide_viewport = True
+            child_obj.hide_render = True
 
 
-def add_driver(
-    driver_abbrev,
-    driver_color,
-    driver_df,
-    empty_obj,
-    quick_textures_mode,
-    driver_index,
-    total_drivers,
-):
-    """Add a driver to the scene with the given properties and return the driver object."""
-    start_time = time.time()
-
-    log_info(
-        f"Adding driver {driver_index + 1}/{total_drivers}: {driver_abbrev} with color: {driver_color}"
-    )
-
-    driver_obj, wheels_objs = create_driver_fbx(
-        driver_abbrev, driver_color, empty_obj, quick_textures_mode
-    )
-    add_keyframes(driver_obj, wheels_objs, driver_df)
-
-    elapsed_time = time.time() - start_time
-    log_info(f"Added driver {driver_abbrev} in {elapsed_time:.2f} seconds")
-
-    return driver_obj
-
-
-def main(driver_dfs, drivers, driver_colors, quick_textures_mode: bool):
+def main(
+    driver_dfs, drivers, driver_colors, quick_textures_mode: bool
+) -> dict[str, bpy.types.Object]:
     """Process all drivers and return a dictionary mapping driver abbreviations to their objects."""
-    empty_obj, base_collection = load_base_car_fbx(quick_textures_mode)
+    quick_textures_mode_max = 2
 
     driver_objs = {}
-    for i, driver_abbrev in enumerate(drivers):
-        if quick_textures_mode and i >= 2:
+    for i, (driver, color) in enumerate(zip(drivers, driver_colors)):
+        if quick_textures_mode and i >= quick_textures_mode_max:
             continue
 
-        driver_obj = add_driver(
-            driver_abbrev,
-            driver_colors[i],
-            driver_dfs[driver_abbrev],
-            empty_obj,
-            quick_textures_mode,
-            i,
-            len(drivers),
-        )
-        driver_objs[driver_abbrev] = driver_obj
+        log_info(f"Adding {i + 1}/{len(drivers)} driver: {driver} in color: {color}")
+        start_time = time.time()
 
-    bpy.data.collections.remove(base_collection, do_unlink=True)
+        driver_obj = create_driver_obj(driver)
+        if not quick_textures_mode:
+            set_color(driver_obj, color, driver)
+        add_driver_keyframes(driver_obj, driver_dfs[driver])
+
+        driver_objs[driver] = driver_obj
+
+        elapsed_time = time.time() - start_time
+        log_info(f"Driver {driver} added in {elapsed_time:.2f} seconds")
+
     return driver_objs
