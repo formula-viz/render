@@ -20,6 +20,11 @@ jobs:
       group: gpu-runners
       labels: render-runner
     steps:
+      - name: Install Git LFS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-lfs
+
       - uses: actions/checkout@v4
         with:
           lfs: true
