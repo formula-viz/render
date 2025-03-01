@@ -1,10 +1,10 @@
 {
-  "track": "SIN",
+  "track": "AUSTRALIA",
   "year": 2024,
-  "type": "head-to-head",
-  "drivers": ["NOR", "VER"],
+  "type": "rest-of-field",
+  "drivers": ["VER"],
   "dev_settings": {
-    "ui_mode": true,
+    "ui_mode": false,
     "quick_textures_mode": false,
     "limited_frames_mode": false
   },
