@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from py.post_process.post_process import post_process
+from py.socials import youtube_upload
 
 
 def main():
@@ -46,7 +47,8 @@ def main():
 
         subprocess.run(cmd, check=True)
 
-        post_process(config)
+        mp4_filepath = post_process(config)
+        youtube_upload.main(config, mp4_filepath)
 
         return 0
     except subprocess.CalledProcessError as e:

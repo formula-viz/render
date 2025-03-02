@@ -62,7 +62,7 @@ def add_background_music(
         raise RuntimeError(f"Failed to add background music: {str(e)}")
 
 
-def post_process(config: Config):
+def post_process(config: Config) -> str:
     """Post process video and output to same video_path.
 
     Args:
@@ -76,3 +76,5 @@ def post_process(config: Config):
     log_info("Starting post-processing")
     add_background_music(config)
     log_info("Post-processing complete")
+
+    return config["post_process"]["output"]
