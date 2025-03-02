@@ -1,3 +1,5 @@
+"""Add a live leaderboard to the scene."""
+
 import bpy
 from mathutils import Vector
 
@@ -7,11 +9,12 @@ from py.utils.project_structure import Resources
 
 
 class LiveLeaderboard:
+    """Add a live leaderboard to the scene."""
+
     def __init__(
         self,
         config,
-        driver_abbrevs: list[str],
-        driver_colors: list[str],
+        driver_abbrevs_and_colors: list[tuple[str, str]],
         car_rankings: list[list[tuple[str, float]]],
         is_fancy_mode: bool,
         camera_obj: bpy.types.Object,
@@ -19,18 +22,17 @@ class LiveLeaderboard:
         """Create the live leaderboard.
 
         Args:
-            driver_abbrevs: List of driver abbreviations (e.g., ['HAM', 'VER'])
-            driver_colors: List of hex color codes for each driver
+            config: Configuration dictionary with rendering settings
+            driver_abbrevs_and_colors: List of driver abbreviations and colors (e.g., [('HAM', '#FF0000'), ('VER', '#00FF00')])
+            car_rankings: List of rankings for each frame containing driver-time tuples
+            is_fancy_mode: Whether to use fancy rendering mode with driver circles
+            camera_obj: The camera object to parent the leaderboard to
 
         """
-        if not (len(driver_abbrevs) == len(driver_colors)):
-            raise ValueError("All input lists must have the same length")
-
         log_info("Initializing LiveLeaderboard...")
 
         self.config = config
-        self.driver_abbrevs = driver_abbrevs
-        self.driver_colors = driver_colors
+        self.driver_abbrevs_and_colors = driver_abbrevs_and_colors
         self.car_rankings = car_rankings
         self.is_fancy_mode = is_fancy_mode
         self.driver_objects = {}  # Store references to driver objects
@@ -43,11 +45,17 @@ class LiveLeaderboard:
 
         # Create main collection
         self.collection = bpy.data.collections.new("LiveLeaderboard")
-        bpy.context.scene.collection.children.link(self.collection)
+        scene = bpy.context.scene
+        if not scene:
+            raise ValueError("No active scene found")
+        scene.collection.children.link(self.collection)
 
         # Create empty parent object for camera-relative positioning
         bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))
-        self.parent_empty = bpy.context.active_object
+        parent_empty = bpy.context.active_object
+        if not parent_empty:
+            raise ValueError("Failed to create parent empty object")
+        self.parent_empty = parent_empty
         # ensure the parent empty is not rendered and invisible in viewport
         self.parent_empty.hide_render = True
         self.parent_empty.hide_viewport = True
@@ -96,9 +104,7 @@ class LiveLeaderboard:
 
     def _build_initial_objs(self) -> None:
         """Create initial objects for each driver in the leaderboard."""
-        for idx, (abbrev, color) in enumerate(
-            zip(self.driver_abbrevs, self.driver_colors)
-        ):
+        for idx, (abbrev, color) in enumerate(self.driver_abbrevs_and_colors):
             position = idx + 1
             empty_obj = self._create_element_obj(abbrev, color)
 
@@ -120,6 +126,9 @@ class LiveLeaderboard:
         # Create empty parent for text
         bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))
         empty_obj = bpy.context.active_object
+        if not empty_obj:
+            raise ValueError("Failed to create empty object")
+
         empty_obj.name = f"Empty_{abbrev}"
         empty_obj.hide_render = True
         empty_obj.hide_viewport = True
@@ -144,24 +153,31 @@ class LiveLeaderboard:
 
         bpy.ops.object.text_add(location=text_loc)
         text_obj = bpy.context.active_object
+        if not text_obj:
+            raise ValueError("Failed to create text object")
+
         text_obj.name = f"Text_{abbrev}"
-        text_obj.data.body = abbrev
+        text_curve = text_obj.data
+        if not isinstance(text_curve, bpy.types.TextCurve):
+            raise TypeError("Expected text_obj.data to be of type bpy.types.TextCurve")
+
+        text_curve.body = abbrev
         text_obj.parent = empty_obj
 
-        text_obj.data.font = bpy.data.fonts.load(str(Resources.get_bold_font()))
-        text_obj.data.size = 0.02
-        text_obj.data.align_x = "LEFT"
+        text_curve.font = bpy.data.fonts.load(str(Resources.get_bold_font()))
+        text_curve.size = 0.02
+        text_curve.align_x = "LEFT"
 
         # Create material for text
         mat = bpy.data.materials.new(name=f"Material_{abbrev}")
         mat.use_nodes = True
-        nodes = mat.node_tree.nodes
-        nodes["Principled BSDF"].inputs["Base Color"].default_value = self._hex_to_rgba(
+        nodes = mat.node_tree.nodes  # pyright: ignore
+        nodes["Principled BSDF"].inputs["Base Color"].default_value = self._hex_to_rgba(  # pyright: ignore
             color
         )
 
         # Assign material to text
-        text_obj.data.materials.append(mat)
+        text_obj.data.materials.append(mat)  # pyright: ignore
 
         # Link both objects to the main collection
         for obj in [empty_obj, text_obj]:
@@ -178,7 +194,7 @@ class LiveLeaderboard:
             Dict[int, Vector]: Dictionary mapping position numbers to Vector locations
 
         """
-        num_drivers = len(self.driver_abbrevs)
+        num_drivers = len(self.driver_abbrevs_and_colors)
         offsets = {}
 
         for position in range(1, num_drivers + 1):

@@ -37,7 +37,7 @@ def create_driver_from_base(driver, base_empty_obj):
     """Create a driver object by copying the base empty object and its children."""
     # Create a new collection for this driver
     driver_collection = bpy.data.collections.new(f"{driver.title()}CarObject")
-    bpy.context.scene.collection.children.link(driver_collection)
+    bpy.context.scene.collection.children.link(driver_collection)  # pyright: ignore
 
     # Create a copy of the master empty
     new_empty = base_empty_obj.copy()

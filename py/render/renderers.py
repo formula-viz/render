@@ -36,7 +36,7 @@ class RendererState:
     track_data: Any = None
     driver_dfs: Dict[str, Any] = field(default_factory=dict)
     driver_objs: Dict[str, Any] = field(default_factory=dict)
-    driver_colors: List[Any] = field(default_factory=list)
+    driver_colors: List[str] = field(default_factory=list)
     start_finish_line_idx: int = 0
     num_frames: int = 0
     camera_obj: Any = None
@@ -211,8 +211,7 @@ class HeadToHeadRenderer(AbstractRenderer):
         )
         live_leaderboard.LiveLeaderboard(
             self.config,
-            self.config["drivers"],
-            self.state.driver_colors,
+            list(zip(self.config["drivers"], self.state.driver_colors)),
             self.state.car_rankings,
             True,
             self.state.camera_obj,
@@ -302,8 +301,12 @@ class RestOfFieldRenderer(AbstractRenderer):
         )
         live_leaderboard.LiveLeaderboard(
             self.config,
-            self.state.drivers_in_color_order,
-            self.state.driver_colors[0 : len(self.state.driver_dfs)],
+            list(
+                zip(
+                    self.state.drivers_in_color_order,
+                    self.state.driver_colors[0 : len(self.state.driver_dfs)],
+                )
+            ),
             self.state.car_rankings,
             False,
             self.state.camera_obj,

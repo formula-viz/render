@@ -1,3 +1,5 @@
+"""Add social media links and other outro elements at the end of the video."""
+
 import math
 
 import bpy
@@ -14,8 +16,10 @@ from py.utils.project_structure import (
 
 
 class Outro:
+    """Add social media links and other outro elements at the end of the video."""
+
     def __init__(self, config, camera_obj, num_frames):
-        """Adds social media links and other outro elements at the end of the video."""
+        """Add social media links and other outro elements at the end of the video."""
         log_info("Initializing Outro...")
         self.config = config
         self.camera_obj = camera_obj
@@ -23,7 +27,7 @@ class Outro:
 
         # Create a collection to store all outro objects
         self.outro_collection = bpy.data.collections.new("Outro_Elements")
-        bpy.context.scene.collection.children.link(self.outro_collection)
+        bpy.context.scene.collection.children.link(self.outro_collection)  # pyright: ignore
 
         # Create parent empty object
         self.parent_empty = bpy.data.objects.new("Outro_Parent", None)
@@ -38,11 +42,11 @@ class Outro:
         self._create_all_outro_elements()
 
     def _create_text_material(self):
-        """Creates a shared white text material."""
+        """Create a shared white text material."""
         material = bpy.data.materials.new(name="Shared_Text_Material")
         material.use_nodes = True
-        nodes = material.node_tree.nodes
-        nodes["Principled BSDF"].inputs["Base Color"].default_value = (
+        nodes = material.node_tree.nodes  # pyright: ignore
+        nodes["Principled BSDF"].inputs["Base Color"].default_value = (  # pyright: ignore
             0.95,
             0.95,
             0.95,
@@ -53,32 +57,32 @@ class Outro:
     def _create_social_element(
         self, offset: Vector, image_path: str, title: str, platform: str
     ):
-        """Creates a social media element with platform icon and username."""
+        """Create a social media element with platform icon and username."""
         # Enable import images as planes addon
         bpy.ops.preferences.addon_enable(module="io_import_images_as_planes")
 
         # Import image as plane
-        bpy.ops.import_image.to_plane(files=[{"name": image_path}])
+        bpy.ops.import_image.to_plane(files=[{"name": image_path}])  # pyright: ignore
         icon_plane = bpy.context.selected_objects[0]
         icon_plane.name = f"Icon_{platform}"
         # set rotation in degrees
         icon_plane.rotation_euler = Vector(
             (math.radians(180), math.radians(180), math.radians(180))
-        )
+        )  # pyright: ignore
 
         # Create text for username/handle
         text_curve = bpy.data.curves.new(name=f"Text_{platform}", type="FONT")
         text_obj = bpy.data.objects.new(name=f"Text_{platform}", object_data=text_curve)
         self.outro_collection.objects.link(text_obj)
 
-        text_obj.data.body = title
-        text_obj.data.align_x = "LEFT"
-        text_obj.data.align_y = "CENTER"
-        text_obj.data.font = bpy.data.fonts.load(Resources.get_main_font())
-        text_obj.data.size = 0.5
+        text_obj.data.body = title  # pyright: ignore
+        text_obj.data.align_x = "LEFT"  # pyright: ignore
+        text_obj.data.align_y = "CENTER"  # pyright: ignore
+        text_obj.data.font = bpy.data.fonts.load(str(Resources.get_main_font()))  # pyright: ignore
+        text_obj.data.size = 0.5  # pyright: ignore
 
         # Assign shared text material
-        text_obj.data.materials.append(self.text_material)
+        text_obj.data.materials.append(self.text_material)  # pyright: ignore
 
         # Create empty to group icon and text
         group_empty = bpy.data.objects.new(f"Social_{platform}", None)
@@ -101,17 +105,17 @@ class Outro:
         return group_empty
 
     def _create_background_plane(self):
-        """Creates a semi-transparent black background plane."""
+        """Create a semi-transparent black background plane."""
         bpy.ops.mesh.primitive_plane_add(size=10.0)
         bg_plane = bpy.context.active_object
-        bg_plane.name = "Outro_Background"
+        bg_plane.name = "Outro_Background"  # pyright: ignore
 
         # Create semi-transparent black material
         bg_mat = bpy.data.materials.new(name="Outro_Background_Material")
         bg_mat.use_nodes = True
         bg_mat.blend_method = "BLEND"  # Enable transparency
-        nodes = bg_mat.node_tree.nodes
-        links = bg_mat.node_tree.links
+        nodes = bg_mat.node_tree.nodes  # pyright: ignore
+        links = bg_mat.node_tree.links  # pyright: ignore
         nodes.clear()
 
         # Set up principled shader with transparency
@@ -119,31 +123,31 @@ class Outro:
         output = nodes.new("ShaderNodeOutputMaterial")
 
         # Set to black with transparency
-        principled.inputs["Base Color"].default_value = (0, 0, 0, 1)
-        principled.inputs["Alpha"].default_value = 0.3
+        principled.inputs["Base Color"].default_value = (0, 0, 0, 1)  # pyright: ignore
+        principled.inputs["Alpha"].default_value = 0.3  # pyright: ignore
 
         links.new(principled.outputs[0], output.inputs[0])
 
-        bg_plane.data.materials.append(bg_mat)
-        bg_plane.parent = self.parent_empty
-        bg_plane.location = Vector((2.8, 0, -1.1))
-        bg_plane.scale = Vector((0.9, 1.6, 0))
+        bg_plane.data.materials.append(bg_mat)  # pyright: ignore
+        bg_plane.parent = self.parent_empty  # pyright: ignore
+        bg_plane.location = Vector((2.8, 0, -1.1))  # pyright: ignore
+        bg_plane.scale = Vector((0.9, 1.6, 0))  # pyright: ignore
         return bg_plane
 
     def _create_bottom_text(self, location: Vector):
-        """Creates bottom text element."""
+        """Create bottom text element."""
         text_curve = bpy.data.curves.new(name="Bottom_Text", type="FONT")
         text_obj = bpy.data.objects.new("Bottom_Text", object_data=text_curve)
         self.outro_collection.objects.link(text_obj)
 
-        text_obj.data.body = "Uploading every F1 qualifying"
-        text_obj.data.align_x = "CENTER"
-        text_obj.data.align_y = "CENTER"
-        text_obj.data.font = bpy.data.fonts.load(Resources.get_main_font())
-        text_obj.data.size = 0.4
+        text_obj.data.body = "Uploading every F1 qualifying"  # pyright: ignore
+        text_obj.data.align_x = "CENTER"  # pyright: ignore
+        text_obj.data.align_y = "CENTER"  # pyright: ignore
+        text_obj.data.font = bpy.data.fonts.load(str(Resources.get_main_font()))  # pyright: ignore
+        text_obj.data.size = 0.4  # pyright: ignore
 
         # Assign shared text material
-        text_obj.data.materials.append(self.text_material)
+        text_obj.data.materials.append(self.text_material)  # pyright: ignore
 
         text_obj.parent = self.parent_empty
         text_obj.location = location
@@ -151,7 +155,7 @@ class Outro:
         return text_obj
 
     def _create_all_outro_elements(self):
-        """Creates all outro elements with visibility animation."""
+        """Create all outro elements with visibility animation."""
         self._create_background_plane()
 
         # Create social media elements

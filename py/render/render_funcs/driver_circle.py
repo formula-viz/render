@@ -1,3 +1,5 @@
+"""Create a circle above the driver with their face."""
+
 import math
 from typing import Optional
 
@@ -10,6 +12,8 @@ from py.utils.project_structure import DriverDataPS
 
 
 class DriverCircle:
+    """Create a circle above the driver with their face."""
+
     def __init__(
         self,
         driver_abbrev: str,
@@ -18,6 +22,7 @@ class DriverCircle:
         camera_obj: Optional[bpy.types.Object],
         pre_existing_empty: Optional[bpy.types.Object] = None,
     ):
+        """Initialize the DriverCircle object."""
         self.driver_abbrev = driver_abbrev
         self.driver_car_obj = driver_car_obj
         self.camera_obj = camera_obj
@@ -26,37 +31,43 @@ class DriverCircle:
         log_info(f"Initializing DriverCircle for {driver_abbrev}...")
 
         if pre_existing_empty:
-            self.parent_empty = pre_existing_empty
+            parent_empty = pre_existing_empty
         else:
             bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))
-            self.parent_empty = bpy.context.active_object
-            self.parent_empty.hide_render = True
-            self.parent_empty.hide_viewport = True
-            self.parent_empty.name = f"{driver_abbrev}CircleParent"
+            parent_empty = bpy.context.active_object
+            parent_empty.hide_render = True  # pyright: ignore
+            parent_empty.hide_viewport = True  # pyright: ignore
+            parent_empty.name = f"{driver_abbrev}CircleParent"  # pyright: ignore
 
-        self._setup()
+        if not parent_empty:
+            raise ValueError("Failed to create parent empty")
 
-    def _setup(self):
+        self._setup(parent_empty)
+
+    def _setup(self, parent_empty: bpy.types.Object):
         self.circle_face = self._create_circle_face()
         outline = self._create_outline()
 
         # Parent outline to circle face
         outline.parent = self.circle_face
         # Parent circle to empty
-        self.circle_face.parent = self.parent_empty
+        self.circle_face.parent = parent_empty
 
         # if these are not given, then assume this is in isolated mode
         # we will handle the relative parenting later
         if self.camera_obj and self.driver_car_obj:
             # Parent empty to car
-            self._parent_to_car()
+            self._parent_to_car(parent_empty)
             # Add track to camera constraint
-            self._add_camera_tracking()
+            self._add_camera_tracking(parent_empty)
 
     def _create_circle_face(self) -> bpy.types.Object:
         # Create circular face for the image
         bpy.ops.mesh.primitive_circle_add(radius=1.0, vertices=32, fill_type="NGON")
         circle_obj = bpy.context.active_object
+        if not circle_obj:
+            raise ValueError("Failed to create circle object")
+
         circle_obj.name = f"{self.driver_abbrev}CircleFace"
 
         circle_obj.rotation_euler.z = math.radians(-75)
@@ -70,7 +81,7 @@ class DriverCircle:
             name=f"{self.driver_abbrev}CircleFaceMaterial"
         )
         face_mat.use_nodes = True
-        nodes = face_mat.node_tree.nodes
+        nodes = face_mat.node_tree.nodes  # pyright: ignore
         nodes.clear()
 
         # Create nodes for image texture
@@ -84,13 +95,13 @@ class DriverCircle:
         # Load and assign the image
         image_path = DriverDataPS.get_driver_image_path(self.driver_abbrev)
         image = bpy.data.images.load(str(image_path))
-        node_tex.image = image
+        node_tex.image = image  # pyright: ignore
 
         # Set emission strength
-        node_emission.inputs["Strength"].default_value = 1.0
+        node_emission.inputs["Strength"].default_value = 1.0  # pyright: ignore
 
         # Link nodes
-        links = face_mat.node_tree.links
+        links = face_mat.node_tree.links  # pyright: ignore
         # UV to Image Texture
         links.new(node_uvmap.outputs[0], node_tex.inputs[0])
         # Color to emission
@@ -98,10 +109,10 @@ class DriverCircle:
         links.new(node_emission.outputs[0], node_output.inputs[0])
 
         # Add material to object
-        circle_obj.data.materials.append(face_mat)
+        circle_obj.data.materials.append(face_mat)  # pyright: ignore
 
         # Ensure proper UV mapping
-        bpy.context.view_layer.objects.active = circle_obj
+        bpy.context.view_layer.objects.active = circle_obj  # pyright: ignore
         bpy.ops.object.mode_set(mode="EDIT")
         bpy.ops.uv.unwrap(method="ANGLE_BASED", margin=0.001)
         bpy.ops.object.mode_set(mode="OBJECT")
@@ -117,6 +128,9 @@ class DriverCircle:
             minor_segments=8,  # Segments of the tube
         )
         outline = bpy.context.active_object
+        if not outline:
+            raise ValueError("Failed to create outline object")
+
         outline.name = f"{self.driver_abbrev}CircleOutline"
 
         # Disable shadow casting, no shadow on the car
@@ -128,7 +142,7 @@ class DriverCircle:
             name=f"{self.driver_abbrev}CircleOutlineMaterial"
         )
         outline_mat.use_nodes = True
-        nodes = outline_mat.node_tree.nodes
+        nodes = outline_mat.node_tree.nodes  # pyright: ignore
         nodes.clear()
 
         # Create emission node
@@ -136,27 +150,27 @@ class DriverCircle:
         node_output = nodes.new("ShaderNodeOutputMaterial")
 
         # Set emission color and strength
-        node_emission.inputs["Color"].default_value = (
+        node_emission.inputs["Color"].default_value = (  # pyright: ignore
             *hex_to_blender_rgb(self.color),
             1,
         )
-        node_emission.inputs["Strength"].default_value = 0.1
+        node_emission.inputs["Strength"].default_value = 0.1  # pyright: ignore
 
         # Link nodes
-        links = outline_mat.node_tree.links
+        links = outline_mat.node_tree.links  # pyright: ignore
         links.new(node_emission.outputs[0], node_output.inputs[0])
 
-        outline.data.materials.append(outline_mat)
+        outline.data.materials.append(outline_mat)  # pyright: ignore
         return outline
 
-    def _parent_to_car(self) -> None:
+    def _parent_to_car(self, parent_empty: bpy.types.Object) -> None:
         """Parent the circle to the car and position it above."""
-        self.parent_empty.parent = self.driver_car_obj
-        self.parent_empty.location = Vector((0, 0, 2.5))
+        parent_empty.parent = self.driver_car_obj
+        parent_empty.location = Vector((0, 0, 2.5))
 
-    def _add_camera_tracking(self) -> None:
+    def _add_camera_tracking(self, parent_empty: bpy.types.Object) -> None:
         """Add constraint to make circle face camera."""
-        constraint = self.parent_empty.constraints.new("TRACK_TO")
-        constraint.target = self.camera_obj
-        constraint.track_axis = "TRACK_Z"
-        constraint.up_axis = "UP_Y"
+        constraint = parent_empty.constraints.new("TRACK_TO")
+        constraint.target = self.camera_obj  # pyright: ignore
+        constraint.track_axis = "TRACK_Z"  # pyright: ignore
+        constraint.up_axis = "UP_Y"  # pyright: ignore
