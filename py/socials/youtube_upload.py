@@ -69,6 +69,12 @@ def main(config: Config, mp4_filepath: str):
         config: Configuration object containing YouTube API credentials and upload settings
         mp4_filepath: Path to the MP4 file to upload
 
+    Returns:
+        str: URL of the uploaded YouTube video
+
+    Raises:
+        ValueError: If YouTube configuration is missing or upload fails
+
     """
     yt_config = config["socials"]["youtube"]
     if not yt_config:
@@ -83,4 +89,11 @@ def main(config: Config, mp4_filepath: str):
     )
 
     response = request.execute()
-    return response
+
+    if not response or "id" not in response:
+        raise ValueError("YouTube upload failed - received invalid response")
+
+    video_id = response["id"]
+    video_url = f"https://www.youtube.com/watch?v={video_id}"
+
+    return video_url
