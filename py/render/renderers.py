@@ -28,6 +28,7 @@ from py.render.data_funcs import (
 )
 from py.render.data_funcs.load_driver_data import Driver
 from py.render.data_funcs.load_track_data import TrackData
+from py.render.thumbnail.create_thumbnail import ThumbnailGenerator
 from py.utils.colors import get_head_to_head_colors, get_rest_of_field_colors
 from py.utils.config import Config
 from py.utils.logger import log_info
@@ -96,6 +97,14 @@ class AbstractRenderer(ABC):
         """
         pass
 
+    @abstractmethod
+    def load_driver_data(self):
+        """Load driver data from the configured source.
+
+        Decoupled from add_drivers for the sake of generating necessary data needed for thumbnail gen beforehand.
+        """
+        pass
+
     def setup_world(self):
         """Initialize the 3D world with track and lighting.
 
@@ -142,26 +151,31 @@ class AbstractRenderer(ABC):
         Main process that coordinates the setup and rendering steps in the proper sequence.
         The order of the setup functions is significant because some create dependencies.
         """
+        # thumbnail generator needs these two
         self.setup_world()
-        self.add_drivers()
-        self.add_indicators()
-        self.add_camera()
-        self.configure_widgets()
-        add_formula_viz_car.main(
-            self.state.camera_obj, self.config["render"]["is_shorts_output"]
+        self.load_driver_data()
+        ThumbnailGenerator(
+            config=self.config,
+            drivers_in_color_order=self.state.drivers_in_color_order,
+            colors=self.state.driver_colors,
         )
-        self.trigger_render()
+
+        if not self.config["dev_settings"]["thumbnail_mode"]:
+            self.add_drivers()
+            self.add_indicators()
+            self.add_camera()
+            self.configure_widgets()
+            add_formula_viz_car.main(
+                self.state.camera_obj, self.config["render"]["is_shorts_output"]
+            )
+            self.trigger_render()
 
 
 class HeadToHeadRenderer(AbstractRenderer):
     """Head to Head render will have a finite number of drivers, designed for 2-4."""
 
-    def add_drivers(self):
-        """Load and set up driver data for head-to-head comparison.
-
-        Creates driver objects with appropriate colors for direct comparison
-        between a small number of drivers.
-        """
+    def load_driver_data(self):
+        """Load and set up driver data for head-to-head comparison."""
         self.state.driver_dfs, self.state.start_finish_line_idx = load_driver_data.main(
             self.config, self.state.track_data
         )
@@ -179,6 +193,12 @@ class HeadToHeadRenderer(AbstractRenderer):
         self.state.focused_driver = self.state.drivers_in_order[0]
         self.state.driver_colors = get_head_to_head_colors(self.state.drivers_in_order)
 
+    def add_drivers(self):
+        """Load and set up driver data for head-to-head comparison.
+
+        Creates driver objects with appropriate colors for direct comparison
+        between a small number of drivers.
+        """
         self.state.driver_objs = add_driver_objects.main(
             self.state.driver_dfs,
             self.state.drivers_in_order,
@@ -189,6 +209,10 @@ class HeadToHeadRenderer(AbstractRenderer):
         assert self.state.track_data is not None, (
             "Must load track data before adding car rankings"
         )
+
+        if self.state.focused_driver is None:
+            raise ValueError("Focused driver is not set.")
+
         self.state.car_rankings = add_car_rankings.main(
             self.state.track_data,
             self.state.start_finish_line_idx,
@@ -252,15 +276,15 @@ class RestOfFieldRenderer(AbstractRenderer):
     The highlighted driver, first in the config list of drivers will be highlighted. The rest of the will be shades of gray / white / black.
     """
 
-    def add_drivers(self):
-        """Load and set up driver data for the entire field.
+    def load_driver_data(self):
+        """Load driver data from the configured source.
 
-        Creates driver objects with the focused driver (first in config) highlighted
-        and all other drivers in grayscale.
+        Decoupled from add_drivers for the sake of generating necessary data needed for thumbnail gen beforehand.
         """
         self.state.driver_dfs, self.state.start_finish_line_idx = load_driver_data.main(
             self.config, self.state.track_data
         )
+
         self.state.driver_colors = get_rest_of_field_colors()
 
         for driver in self.state.driver_dfs.keys():
@@ -279,6 +303,17 @@ class RestOfFieldRenderer(AbstractRenderer):
             if driver != self.state.focused_driver
         ]
         self.state.drivers_in_color_order.insert(0, self.state.focused_driver)
+
+    def add_drivers(self):
+        """Load and set up driver data for the entire field.
+
+        Creates driver objects with the focused driver (first in config) highlighted
+        and all other drivers in grayscale.
+        """
+        if not self.state.focused_driver:
+            raise ValueError(
+                "No focused driver found,this indicates that the focused driver was not the first in the array of drivers in config."
+            )
 
         self.state.driver_objs = add_driver_objects.main(
             self.state.driver_dfs,

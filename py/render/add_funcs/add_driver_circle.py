@@ -19,8 +19,8 @@ class DriverCircle:
         self,
         driver: Driver,
         color: str,  # color will be hex
-        driver_car_obj: Optional[bpy.types.Object],
-        camera_obj: Optional[bpy.types.Object],
+        driver_car_obj: Optional[bpy.types.Object] = None,
+        camera_obj: Optional[bpy.types.Object] = None,
         pre_existing_empty: Optional[bpy.types.Object] = None,
     ):
         """Initialize the DriverCircle object."""
@@ -125,8 +125,8 @@ class DriverCircle:
         bpy.ops.mesh.primitive_torus_add(
             major_radius=1.0,  # Radius of the circle
             minor_radius=0.03,  # Thickness of the outline
-            major_segments=32,  # Segments of the circle
-            minor_segments=8,  # Segments of the tube
+            major_segments=128,  # Segments of the circle
+            minor_segments=32,  # Segments of the tube
         )
         outline = bpy.context.active_object
         if not outline:
@@ -155,7 +155,7 @@ class DriverCircle:
             *hex_to_blender_rgb(self.color),
             1,
         )
-        node_emission.inputs["Strength"].default_value = 0.1  # pyright: ignore
+        node_emission.inputs["Strength"].default_value = 0.4  # pyright: ignore
 
         # Link nodes
         links = outline_mat.node_tree.links  # pyright: ignore

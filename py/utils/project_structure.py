@@ -31,6 +31,7 @@ BACKGROUND_MUSIC_PATH = RESOURCES_DIR / "audio/lofi-hiphop-background.m4a"
 BACKGROUND_IMAGE_PATH = RESOURCES_DIR / "backgrounds/background1.jpeg"
 MAIN_FONT = RESOURCES_DIR / "fonts/Formula1-Regular.ttf"
 BOLD_FONT = RESOURCES_DIR / "fonts/Formula1-Bold.ttf"
+IMPACT_FONT = RESOURCES_DIR / "fonts/Impact.ttf"
 
 # Output directories
 FRAMES_DIR = TEMPORARY_DIR / "frames"
