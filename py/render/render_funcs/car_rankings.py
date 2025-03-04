@@ -1,12 +1,22 @@
+"""Calculate car ranking.
+
+For each frame in the video, return a list of tuples containing the driver and their distance to the reference line.
+"""
+
 import numpy as np
+import pandas as pd
 from numpy._typing import NDArray
+
+from py.utils.config import Config
+from py.utils.models import Driver
 
 
 def point_to_line_distance(
     point: NDArray[np.float64],
     line_start: NDArray[np.float64],
     line_end: NDArray[np.float64],
-):
+) -> float:
+    """Calculate the distance from a point to a line segment."""
     point = np.array(point)
     line_start = np.array(line_start)
     line_end = np.array(line_end)
@@ -20,20 +30,35 @@ def point_to_line_distance(
 
     # If projection falls before beginning of line segment
     if projection_length < 0:
-        return np.linalg.norm(point - line_start)
+        return float(np.linalg.norm(point - line_start))
     # If projection falls after end of line segment
     if projection_length > line_length:
-        return np.linalg.norm(point - line_end)
+        return float(np.linalg.norm(point - line_end))
 
     projection = line_start + line_vec * projection_length
-    return np.linalg.norm(point - projection)
+    return float(np.linalg.norm(point - projection))
 
 
-# the previous_reference_idx is the line from which the previous
-# frame's ranking was calculated
 def find_closest_track_idx(
     inner_points, outer_points, previous_reference_idx, car_point
-):
+) -> int:
+    """Find the closest track segment to a car point.
+
+    This function searches for the track segment closest to the car point,
+    starting from the previous reference index. It searches in both positive
+    and negative directions along the track.
+
+    Args:
+        inner_points: List of inner track boundary points
+        outer_points: List of outer track boundary points
+        previous_reference_idx: The index of the line from which the previous
+            frame's ranking was calculated
+        car_point: The position of the car
+
+    Returns:
+        The index of the closest track segment to the car point
+
+    """
     assert len(inner_points) == len(outer_points), (
         "Inner and outer points must have the same length"
     )
@@ -81,14 +106,16 @@ def find_closest_track_idx(
     return pos if pos_distance < neg_distance else neg
 
 
-# find the point which is furthest from the previous line which was used
-# to calculate the ranking. This will allow us to find the next reference line
 def find_most_distant_closest_point(
     inner_points: list[NDArray[np.float64]],
     outer_points: list[NDArray[np.float64]],
     previous_reference_idx: int,
     car_points: list[NDArray[np.float64]],
 ):
+    """Find the point which is furthest from the previous line which was used to calculate the ranking.
+
+    This will allow us to find the next reference line.
+    """
     closest_idxs = [
         find_closest_track_idx(
             inner_points, outer_points, previous_reference_idx, car_point
@@ -113,6 +140,7 @@ def ranking_at_frame(
     previous_reference_idx: int,
     car_points: list[NDArray[np.float64]],
 ) -> tuple[list[tuple[int, float]], int]:
+    """Calculate car ranking at one frame."""
     new_reference_idx = find_most_distant_closest_point(
         inner_points, outer_points, previous_reference_idx, car_points
     )
@@ -132,14 +160,24 @@ def ranking_at_frame(
     return (sorted(drivers, key=lambda x: x[1]), new_reference_idx)
 
 
-def main(track_data, start_finish_line_idx, driver_dfs, config, focused_driver):
+def main(
+    track_data: pd.DataFrame,
+    start_finish_line_idx: int,
+    driver_dfs: dict[Driver, pd.DataFrame],
+    config: Config,
+    focused_driver: Driver,
+) -> list[list[tuple[Driver, float]]]:
+    """Caclulate car ranking.
+
+    For each frame in the video, return a list of tuples containing the driver and their distance to the reference line.
+    """
     start_buffer_frames = config["render"]["start_buffer_frames"]
     end_buffer_frames = config["render"]["end_buffer_frames"]
 
     inner_points = [np.array(p) for p in track_data.inner_points]
     outer_points = [np.array(p) for p in track_data.outer_points]
 
-    indices = {}
+    indices: dict[int, Driver] = {}
     driver_data = []
     for i, (driver, df) in enumerate(driver_dfs.items()):
         car_points = [
@@ -148,8 +186,7 @@ def main(track_data, start_finish_line_idx, driver_dfs, config, focused_driver):
         driver_data.append(car_points)
         indices[i] = driver
 
-    final_rank = []
-
+    final_rank: list[list[tuple[Driver, float]]] = []
     reference_idx = start_finish_line_idx
     for i in range(
         start_buffer_frames, len(driver_dfs[focused_driver]) - end_buffer_frames

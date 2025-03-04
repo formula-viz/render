@@ -9,18 +9,20 @@ import numpy as np
 import pandas as pd
 import requests
 from fastf1.core import Laps, Telemetry
+from fastf1.plotting import get_driver_name
 from scipy.interpolate import UnivariateSpline
 
 from py.utils.logger import log_info, log_warn
+from py.utils.models import Driver
 from py.utils.project_structure import DriverDataPS
 
 
-def load_driver_headshots(driver_abbrevs, headshot_urls):
+def load_driver_headshots(drivers: list[Driver], headshot_urls):
     # taking before .transform gives the original image
     headshot_urls = [url.split(".transform")[0] for url in headshot_urls]
 
     downloaded_count = 0
-    for driver, url in zip(driver_abbrevs, headshot_urls):
+    for driver, url in zip(drivers, headshot_urls):
         image_path = DriverDataPS.get_driver_image_path(driver)
 
         if not os.path.exists(image_path):
@@ -38,7 +40,15 @@ def load_driver_headshots(driver_abbrevs, headshot_urls):
         log_info(f"Downloaded {downloaded_count} driver headshots")
 
 
-def save_driver_times(driver_times: dict[str, str], year: str, track: str):
+def save_driver_times(driver_times: dict[Driver, str], year: str, track: str):
+    """Save driver lap times to a JSON file.
+
+    Args:
+        driver_times: Dictionary mapping Driver objects to their lap time strings
+        year: The year of the race/session
+        track: The name of the track
+
+    """
     loc = DriverDataPS.get_driver_times_path(year, track)
     with open(loc, "w") as file:
         json.dump(driver_times, file)
@@ -53,15 +63,26 @@ def load_from_fastf1(year: int, track: str):
 
     drivers = session.drivers
     drivers = [session.get_driver(d) for d in drivers]
-    driver_abbrevs: list[str] = [d["Abbreviation"] for d in drivers]
+
+    driver_classes: list[Driver] = []
+    driver_abbrevs = []
+    driver_last_names = []
+    for d in drivers:
+        abbrev = str(d["Abbreviation"])
+
+        last_name = get_driver_name(abbrev, session).split(" ")[-1]
+
+        driver_classes.append(Driver(last_name, abbrev))
+        driver_abbrevs.append(abbrev)
+        driver_last_names.append(last_name)
 
     # let's load the driver images if they are not present already
     headshot_urls = [d["HeadshotUrl"] for d in drivers]
-    load_driver_headshots(driver_abbrevs, headshot_urls)
+    load_driver_headshots(driver_classes, headshot_urls)
 
     laps = session.laps
 
-    def process_tel(q: Laps, driver: str):
+    def process_tel(q: Laps, driver: Driver):
         try:
             tel: Telemetry = (
                 q.pick_not_deleted().pick_fastest().get_telemetry(frequency="original")
@@ -70,7 +91,7 @@ def load_from_fastf1(year: int, track: str):
             log_warn(f"Couldn't get proper telemetry for {driver}: {e}")
             return
 
-        tel = tel[tel["Source"].isin(["pos", "interpolation"])]
+        tel = tel[tel["Source"].isin(["pos", "interpolation"])]  # pyright: ignore
         tel.reset_index(drop=True, inplace=True)
 
         tel["X"] = tel["X"].apply(lambda x: x / 10)
@@ -81,17 +102,17 @@ def load_from_fastf1(year: int, track: str):
         # this is a time_delta, we want format: 1:23.342
         # it will be in the format of: 00:01:23.342343
         total_time = total_time.split(" ")[-1][3:12]
-        # it looks like if it is exactly 1:12, then there is no decimal
+
         if len(total_time) == 5:
             total_time += ".000"
-        driver_times[driver] = total_time
 
+        driver_times[driver] = total_time
         driver_tels[driver] = tel
 
-    driver_times: dict[str, str] = {}
-    driver_tels: dict[str, Telemetry] = {}
-    for driver in driver_abbrevs:
-        q1, q2, q3 = laps.pick_drivers(driver).split_qualifying_sessions()
+    driver_times: dict[Driver, str] = {}
+    driver_tels: dict[Driver, Telemetry] = {}
+    for driver in driver_classes:
+        q1, q2, q3 = laps.pick_drivers(driver.abbrev).split_qualifying_sessions()
         # we want to get the fastest lap for the highest qualifying session which the driver reached
 
         if q3 is not None:
@@ -101,19 +122,29 @@ def load_from_fastf1(year: int, track: str):
         elif q1 is not None:
             process_tel(q1, driver)
 
-    save_driver_times(driver_times, str(year), track)
+    # save_driver_times(driver_times_str_key, str(year), track)
 
     return driver_tels
 
 
-# the data for the start and end of runs from fastf1 is unrelaibale, we can get close to the actual
-# start/finish line by getting the average of all the start and end points, it is the same line for
-# start and finish. Then, use track data to define a line based on these points, the starting and end
-# point of each car will be the part on the line which is closest to the actual data we have for that
-# car's start or end point
 def process_grouped_driver_tels(
-    driver_tels: dict[str, Telemetry], inner_points, outer_points
+    driver_tels: dict[Driver, Telemetry], inner_points, outer_points
 ):
+    """Process telemetry data to standardize start/finish lines.
+
+    The data for the start and end of runs from fastf1 is unreliable. We can get close to the actual
+    start/finish line by getting the average of all the start and end points, as it is the same line for
+    start and finish. Then, use track data to define a line based on these points. The starting and end
+    point of each car will be the part on the line which is closest to the actual data we have for that
+    car's start or end point.
+
+    Args:
+        driver_tels: Dictionary mapping Driver objects to their telemetry data
+        inner_points: List of inner track boundary points
+        outer_points: List of outer track boundary points
+
+    """
+
     def get_average_start_end():
         start_points = np.array(
             [
@@ -451,7 +482,7 @@ def save(
     year: str,
     track: str,
     fps: str,
-    dfs: dict[str, pd.DataFrame],
+    dfs: dict[Driver, pd.DataFrame],
     start_finish_line_idx: int,
 ):
     cur_dir = DriverDataPS.get_car_data_dir(year, track, fps)
@@ -465,19 +496,27 @@ def save(
         file.write(str(start_finish_line_idx))
 
 
-def already_done(year: str, track: str, fps: str):
+def already_done(
+    year: str, track: str, fps: str
+) -> tuple[bool, dict[Driver, pd.DataFrame], int]:
     cur_dir = DriverDataPS.get_car_data_dir(year, track, fps)
     start_finish_line_idx = 0
 
     if os.path.exists(cur_dir):
-        driver_dfs = {}
+        driver_dfs: dict[Driver, pd.DataFrame] = {}
         for driver in os.listdir(cur_dir):
             if driver == "start_finish_line_idx.txt":
                 with open(os.path.join(cur_dir, driver), "r") as file:
                     start_finish_line_idx = int(file.read())
                 continue
             driver_path = os.path.join(cur_dir, driver)
-            driver_dfs[driver.split(".")[0]] = pd.read_csv(driver_path)
+            driver_str = driver.split(".")[0]
+
+            driver_abbrev = driver_str.split("-")[0]
+            driver_last_name = driver_str.split("-")[1]
+
+            driver = Driver(driver_last_name, driver_abbrev)
+            driver_dfs[driver] = pd.read_csv(driver_path)
 
         return True, driver_dfs, start_finish_line_idx
 
@@ -599,7 +638,7 @@ def main(config, track_data):
         driver_tels, track_data.inner_points, track_data.outer_points
     )
 
-    driver_dfs = {}
+    driver_dfs: dict[Driver, pd.DataFrame] = {}
     for driver, tel in driver_tels.items():
         driver_df = get_driver_df(tel, 3, config["render"]["fps"])
         driver_df = add_start_buffer(driver_df, config["render"]["start_buffer_frames"])

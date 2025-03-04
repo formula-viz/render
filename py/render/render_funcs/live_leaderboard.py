@@ -5,6 +5,7 @@ from mathutils import Vector
 
 from py.render.render_funcs.driver_circle import DriverCircle
 from py.utils.logger import log_info
+from py.utils.models import Driver
 from py.utils.project_structure import Resources
 
 
@@ -14,8 +15,8 @@ class LiveLeaderboard:
     def __init__(
         self,
         config,
-        driver_abbrevs_and_colors: list[tuple[str, str]],
-        car_rankings: list[list[tuple[str, float]]],
+        drivers_and_colors: list[tuple[Driver, str]],
+        car_rankings: list[list[tuple[Driver, float]]],
         is_fancy_mode: bool,
         camera_obj: bpy.types.Object,
     ):
@@ -23,7 +24,7 @@ class LiveLeaderboard:
 
         Args:
             config: Configuration dictionary with rendering settings
-            driver_abbrevs_and_colors: List of driver abbreviations and colors (e.g., [('HAM', '#FF0000'), ('VER', '#00FF00')])
+            drivers_and_colors: List of driver objects and colors (e.g., [(Driver, '#FF0000'), (Driver, '#00FF00')])
             car_rankings: List of rankings for each frame containing driver-time tuples
             is_fancy_mode: Whether to use fancy rendering mode with driver circles
             camera_obj: The camera object to parent the leaderboard to
@@ -32,7 +33,7 @@ class LiveLeaderboard:
         log_info("Initializing LiveLeaderboard...")
 
         self.config = config
-        self.driver_abbrevs_and_colors = driver_abbrevs_and_colors
+        self.drivers_and_colors = drivers_and_colors
         self.car_rankings = car_rankings
         self.is_fancy_mode = is_fancy_mode
         self.driver_objects = {}  # Store references to driver objects
@@ -104,19 +105,20 @@ class LiveLeaderboard:
 
     def _build_initial_objs(self) -> None:
         """Create initial objects for each driver in the leaderboard."""
-        for idx, (abbrev, color) in enumerate(self.driver_abbrevs_and_colors):
+        for idx, (driver, color) in enumerate(self.drivers_and_colors):
             position = idx + 1
-            empty_obj = self._create_element_obj(abbrev, color)
+
+            empty_obj = self._create_element_obj(driver, color)
 
             empty_obj.location = self.position_offsets[position]
 
-            self.driver_objects[abbrev] = empty_obj
+            self.driver_objects[driver] = empty_obj
 
-    def _create_element_obj(self, abbrev: str, color: str) -> bpy.types.Object:
+    def _create_element_obj(self, driver: Driver, color: str) -> bpy.types.Object:
         """Create an empty object as parent for the driver's text object.
 
         Args:
-            abbrev: Driver abbreviation
+            driver: Driver object
             color: Hex color code for the driver
 
         Returns:
@@ -129,7 +131,7 @@ class LiveLeaderboard:
         if not empty_obj:
             raise ValueError("Failed to create empty object")
 
-        empty_obj.name = f"Empty_{abbrev}"
+        empty_obj.name = f"Empty_{driver.abbrev}"
         empty_obj.hide_render = True
         empty_obj.hide_viewport = True
         empty_obj.parent = self.parent_empty
@@ -137,7 +139,7 @@ class LiveLeaderboard:
         # Create driver circle if in fancy mode
         if self.is_fancy_mode:
             self.driver_circle = DriverCircle(
-                driver_abbrev=abbrev,
+                driver=driver,
                 color=color,
                 driver_car_obj=None,  # Using empty_obj as the parent
                 camera_obj=None,
@@ -156,12 +158,12 @@ class LiveLeaderboard:
         if not text_obj:
             raise ValueError("Failed to create text object")
 
-        text_obj.name = f"Text_{abbrev}"
+        text_obj.name = f"Text_{driver.abbrev}"
         text_curve = text_obj.data
         if not isinstance(text_curve, bpy.types.TextCurve):
             raise TypeError("Expected text_obj.data to be of type bpy.types.TextCurve")
 
-        text_curve.body = abbrev
+        text_curve.body = driver.abbrev
         text_obj.parent = empty_obj
 
         text_curve.font = bpy.data.fonts.load(str(Resources.get_bold_font()))
@@ -169,7 +171,7 @@ class LiveLeaderboard:
         text_curve.align_x = "LEFT"
 
         # Create material for text
-        mat = bpy.data.materials.new(name=f"Material_{abbrev}")
+        mat = bpy.data.materials.new(name=f"Material_{driver.abbrev}")
         mat.use_nodes = True
         nodes = mat.node_tree.nodes  # pyright: ignore
         nodes["Principled BSDF"].inputs["Base Color"].default_value = self._hex_to_rgba(  # pyright: ignore
@@ -194,7 +196,7 @@ class LiveLeaderboard:
             Dict[int, Vector]: Dictionary mapping position numbers to Vector locations
 
         """
-        num_drivers = len(self.driver_abbrevs_and_colors)
+        num_drivers = len(self.drivers_and_colors)
         offsets = {}
 
         for position in range(1, num_drivers + 1):

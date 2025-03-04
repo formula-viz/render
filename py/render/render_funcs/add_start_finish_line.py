@@ -11,8 +11,8 @@ def add_start_finish_line(
     inner_points,
     outer_points,
     start_finish_line_idx,
+    name,
     line_width=3,
-    z_offset=0.02,
 ):
     """Create a start/finish line between inner and outer track points.
 
@@ -26,13 +26,14 @@ def add_start_finish_line(
         inner_points: List of inner track boundary points
         outer_points: List of outer track boundary points
         start_finish_line_idx: Index of the point defining the start/finish line
+        name: Name of the start/finish line object
         line_width: Number of vertices to use for line width
-        z_offset: Height offset to raise the line above the track
 
     Returns:
         The created start/finish line object
 
     """
+    z_offset = 0.02
     points = []
     for i in range(0, line_width):
         points.append(inner_points[(start_finish_line_idx - i) % len(inner_points)])
@@ -43,7 +44,7 @@ def add_start_finish_line(
     for i in range(len(points)):
         points[i] = (points[i][0], points[i][1], points[i][2] + z_offset)
 
-    prefix = "StartFinishLine"
+    prefix = name
     mesh = bpy.data.meshes.new(f"{prefix}Mesh")
     obj = bpy.data.objects.new(prefix, mesh)
     bpy.context.collection.objects.link(obj)  # pyright: ignore
@@ -67,7 +68,7 @@ def add_start_finish_line(
 
 
 # where at_start is the index of the point where the car is at the start/finish line
-def main(inner_curb_points, outer_curb_points, start_finish_line_idx):
+def main(inner_curb_points, outer_curb_points, start_finish_line_idx, name):
     """Add start/finish line."""
     indicators_collection = bpy.data.collections.new(name="IndicatorsCollection")
     bpy.context.scene.collection.children.link(indicators_collection)  # pyright: ignore
@@ -76,5 +77,5 @@ def main(inner_curb_points, outer_curb_points, start_finish_line_idx):
     )
 
     return add_start_finish_line(
-        inner_curb_points, outer_curb_points, start_finish_line_idx
+        inner_curb_points, outer_curb_points, start_finish_line_idx, name
     )

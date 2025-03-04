@@ -3,6 +3,8 @@ from colormath.color_conversions import convert_color
 from colormath.color_diff import delta_e_cie2000
 from colormath.color_objects import LabColor, sRGBColor
 from fastf1 import plotting
+
+from py.render.render_funcs.load_driver_data import Driver
 from py.utils.logger import log_warn
 
 GOLD_RGB = (255, 215, 0)
@@ -15,13 +17,13 @@ def hex_to_blender_rgb(hex_color: str) -> tuple:
     # Convert a hex color to a Blender RGB tuple.
     # In blender, the RGB values are between 0 and 1.
     hex_color = hex_color.lstrip("#")
-    return tuple(int(hex_color[i: i + 2], 16) / 255.0 for i in (0, 2, 4))
+    return tuple(int(hex_color[i : i + 2], 16) / 255.0 for i in (0, 2, 4))
 
 
 def hex_to_normal_rgb(hex_color: str) -> tuple:
     # Convert a hex color to a normal RGB tuple.
     hex_color = hex_color.lstrip("#")
-    return tuple(int(hex_color[i: i + 2], 16) for i in (0, 2, 4))
+    return tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
 
 
 def rgb_to_hex(rgb_color: tuple) -> str:
@@ -37,7 +39,7 @@ def get_rest_of_field_colors():
     return [rgb_to_hex(x) for x in gray_scale]
 
 
-def get_head_to_head_colors(*drivers):
+def get_head_to_head_colors(drivers: list[Driver]):
     def rgb_to_lab(rgb):
         srgb = sRGBColor(*rgb, is_upscaled=True)
         return convert_color(srgb, LabColor)
@@ -62,7 +64,8 @@ def get_head_to_head_colors(*drivers):
     base_color_idx = 0
 
     colors = [
-        plotting.DRIVER_COLORS[plotting.DRIVER_TRANSLATE[driver]] for driver in drivers
+        plotting.DRIVER_COLORS[plotting.DRIVER_TRANSLATE[driver.abbrev]]
+        for driver in drivers
     ]
 
     # reverse here because the first driver will be the one who won by convention, so

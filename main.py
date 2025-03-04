@@ -48,7 +48,7 @@ def main():
         subprocess.run(cmd, check=True)
 
         mp4_filepath = post_process(config)
-        yt_url = youtube_upload.main(config, mp4_filepath)
+        yt_url = youtube_upload.main(config, os.path.join("output", mp4_filepath))
 
         print(f"Video uploaded to {yt_url}")
 
