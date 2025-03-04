@@ -1,3 +1,22 @@
+"""Car Data Processing Module.
+
+This module processes telemetry data from Formula 1 qualifying sessions to extract car movement,
+position, and speed data for visualization and analysis purposes. It handles downloading driver
+images, processing telemetry data, generating smooth interpolated paths, adding buffer frames
+before and after laps, calculating car rotations, and validating track limits.
+
+Main functionality includes:
+- Loading F1 telemetry data via FastF1 API
+- Standardizing start/finish lines across drivers
+- Generating smooth car paths using spline interpolation
+- Adding realistic car rotations and wheel rotations
+- Ensuring cars stay within track limits
+- Saving processed data for later visualization
+
+The processed data can be used to create 3D visualizations of qualifying laps.
+"""
+
+import concurrent
 import concurrent.futures
 import json
 import os
@@ -17,7 +36,14 @@ from py.utils.models import Driver
 from py.utils.project_structure import DriverDataPS
 
 
-def load_driver_headshots(drivers: list[Driver], headshot_urls):
+def load_driver_headshots(drivers: list[Driver], headshot_urls) -> None:
+    """Download driver headshot images if they aren't already cached.
+
+    Args:
+        drivers: List of Driver objects
+        headshot_urls: List of URLs for driver headshots
+
+    """
     # taking before .transform gives the original image
     headshot_urls = [url.split(".transform")[0] for url in headshot_urls]
 
@@ -43,6 +69,9 @@ def load_driver_headshots(drivers: list[Driver], headshot_urls):
 def save_driver_times(driver_times: dict[Driver, str], year: str, track: str):
     """Save driver lap times to a JSON file.
 
+    This is a legacy function which saved files used in the post processing.
+    It could be useful in the future so I am leaving it in.
+
     Args:
         driver_times: Dictionary mapping Driver objects to their lap time strings
         year: The year of the race/session
@@ -54,10 +83,20 @@ def save_driver_times(driver_times: dict[Driver, str], year: str, track: str):
         json.dump(driver_times, file)
 
 
-# this will only need to be called once for a particular year and track
-# grab all drivers, then immediately process the data, do this in a batch
-# so that the drives can be normalized with respect to each other
 def load_from_fastf1(year: int, track: str):
+    """Load driver telemetry data from FastF1 API.
+
+    Gets qualifying session data for the specified year and track,
+    processes telemetry for each driver's fastest qualifying lap.
+
+    Args:
+        year: The year of the race/session
+        track: The name of the track
+
+    Returns:
+        Dictionary mapping Driver objects to their telemetry data
+
+    """
     session = ff1.get_session(year, track, "Q")
     session.load()
 
@@ -92,7 +131,7 @@ def load_from_fastf1(year: int, track: str):
             return
 
         tel = tel[tel["Source"].isin(["pos", "interpolation"])]  # pyright: ignore
-        tel.reset_index(drop=True, inplace=True)
+        tel.reset_index(drop=True)
 
         tel["X"] = tel["X"].apply(lambda x: x / 10)
         tel["Y"] = tel["Y"].apply(lambda y: y / 10)
@@ -103,7 +142,9 @@ def load_from_fastf1(year: int, track: str):
         # it will be in the format of: 00:01:23.342343
         total_time = total_time.split(" ")[-1][3:12]
 
-        if len(total_time) == 5:
+        # if exactly 01:21, then the decimals aren't added automatically. This is not
+        # aesthetically pleasing, so add them manually
+        if "." not in total_time:
             total_time += ".000"
 
         driver_times[driver] = total_time
@@ -142,6 +183,9 @@ def process_grouped_driver_tels(
         driver_tels: Dictionary mapping Driver objects to their telemetry data
         inner_points: List of inner track boundary points
         outer_points: List of outer track boundary points
+
+    Returns:
+        Index of the point in track data that represents the start/finish line
 
     """
 
@@ -222,6 +266,21 @@ def process_grouped_driver_tels(
 
 
 def get_driver_df(tel, s_divisor: int, frames_per_second: int):
+    """Generate a driver's position and speed DataFrame from telemetry.
+
+    Processes raw telemetry data to create a DataFrame with X, Y, Z coordinates
+    and Speed values at a consistent frame rate. Uses spline interpolation for
+    smooth path generation.
+
+    Args:
+        tel: Raw telemetry data
+        s_divisor: Smoothness divisor for the spline (higher = less smooth)
+        frames_per_second: Target frame rate for the output data
+
+    Returns:
+        DataFrame with X, Y, Z, and Speed columns at specified frame rate
+
+    """
     total_distance = 0
     distances = [0.0]
     for i in range(1, len(tel)):
@@ -290,12 +349,15 @@ def get_driver_df(tel, s_divisor: int, frames_per_second: int):
     )
 
 
-# driver_df has: X, Y, Z, Speed
 def _generate_buffer(driver_df, num_frames, is_start=True):
     """Generate buffer points for start and end_buffers.
 
+    This is based on essentially what the car would have been doing before or after the official lap started.
+    It is unnecessary to try to get the actual movement because it is irrelevant, essentially they will just go in
+    a straight line at the speed they were traveling after / before.
+
     Args:
-        driver_df: DataFrame with position and speed data
+        driver_df: DataFrame with position and speed data, columns: X, Y, Z, Speed
         num_frames: Number of buffer frames to add
         is_start: If True, generate start buffer; if False, generate end buffer
 
@@ -303,7 +365,8 @@ def _generate_buffer(driver_df, num_frames, is_start=True):
         DataFrame with buffer points
 
     """
-    # first or last 25 points
+    # first or last 25 points, previously only the first 2 or last 2 points were used,
+    # this gave inconsistent results.
     num_points = min(25, len(driver_df) - 1)
     ref_points = (
         driver_df.iloc[:num_points] if is_start else driver_df.iloc[-num_points:]
@@ -407,6 +470,24 @@ def add_end_buffer(driver_df, end_buffer_frames):
 
 
 def add_car_rots(df):
+    """Add car rotation quaternions to the DataFrame.
+
+    Calculates two sets of quaternion rotations for the car:
+    1. Standard rotations with more smoothing for natural-looking movement
+    2. "Harsher" rotations with less smoothing for more responsive cornering visualization
+
+    The rotations are calculated by looking ahead at future positions and creating
+    a direction vector, then converting this to a quaternion rotation. Spherical
+    linear interpolation (SLERP) is used to smooth transitions between rotations.
+
+    Args:
+        df: DataFrame with X, Y, Z position data
+
+    Returns:
+        DataFrame with added rotation quaternion columns (RotW, RotX, RotY, RotZ)
+        and harsher rotation quaternions (HarsherRotW, HarsherRotX, HarsherRotY, HarsherRotZ)
+
+    """
     points = [(df["X"][i], df["Y"][i], df["Z"][i]) for i in range(len(df))]
 
     def get_rots(points, lookahead_points=20, slerp_val=0.1):

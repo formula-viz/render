@@ -9,13 +9,14 @@ import unittest
 
 import numpy as np
 
-from py.render.render_funcs.car_rankings import (
+from py.render.add_funcs.add_car_rankings import (
     find_closest_track_idx,
     find_most_distant_closest_point,
     main,
     point_to_line_distance,
     ranking_at_frame,
 )
+from py.utils.models import Driver
 from tests.bases import SetupAlpha
 
 
@@ -252,7 +253,7 @@ class TestCarRankingsMain(SetupAlpha):
         driver_dfs = self.driver_dfs
         start_finish_line_idx = self.start_finish_line_idx
         config = self.config
-        focused_driver = "NOR"
+        focused_driver: Driver = Driver("Norris", "NOR")
 
         rankings = main(
             track_data, start_finish_line_idx, driver_dfs, config, focused_driver

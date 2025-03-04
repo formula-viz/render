@@ -3,7 +3,7 @@
 import bmesh
 import bpy
 
-from py.render.render_funcs.add_track import create_material
+from py.render.add_funcs.add_track import create_material
 from py.utils.colors import StartFinishLineColor
 
 

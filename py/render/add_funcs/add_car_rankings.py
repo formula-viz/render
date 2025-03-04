@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from numpy._typing import NDArray
 
+from py.render.data_funcs.load_track_data import TrackData
 from py.utils.config import Config
 from py.utils.models import Driver
 
@@ -161,7 +162,7 @@ def ranking_at_frame(
 
 
 def main(
-    track_data: pd.DataFrame,
+    track_data: TrackData,
     start_finish_line_idx: int,
     driver_dfs: dict[Driver, pd.DataFrame],
     config: Config,

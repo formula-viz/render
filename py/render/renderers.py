@@ -2,29 +2,32 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Optional
 
 import bpy
 import pandas as pd
 
-from py.render.render_funcs import (
+from py.render import render_animation
+from py.render.add_funcs import (
     add_background_grid,
     add_camera,
+    add_car_rankings,
+    add_driver_circle,
     add_driver_objects,
     add_formula_viz_car,
+    add_live_leaderboard,
+    add_race_timer,
     add_start_finish_line,
+    add_status_track,
     add_sun,
     add_track,
-    car_rankings,
-    driver_circle,
-    live_leaderboard,
+)
+from py.render.data_funcs import (
     load_driver_data,
     load_track_data,
-    race_timer,
-    render_animation,
-    status_track,
 )
-from py.render.render_funcs.load_driver_data import Driver
+from py.render.data_funcs.load_driver_data import Driver
+from py.render.data_funcs.load_track_data import TrackData
 from py.utils.colors import get_head_to_head_colors, get_rest_of_field_colors
 from py.utils.config import Config
 from py.utils.logger import log_info
@@ -35,7 +38,7 @@ class RendererState:
     """Holds all state variables used during rendering to make data flow explicit."""
 
     # Common state variables for all renderers
-    track_data: Any = None
+    track_data: Optional[TrackData] = None
     driver_dfs: dict[Driver, Any] = field(default_factory=dict)
     driver_objs: dict[Driver, Any] = field(default_factory=dict)
     drivers_in_order: list[Driver] = field(default_factory=list)
@@ -123,6 +126,9 @@ class AbstractRenderer(ABC):
         Adds visual elements like the start/finish line to the track.
         This is separate from track creation as it requires driver data to be loaded first.
         """
+        assert self.state.track_data is not None, (
+            "Must load track data before adding indicators"
+        )
         add_start_finish_line.main(
             self.state.track_data.inner_curb_points,
             self.state.track_data.outer_curb_points,
@@ -180,7 +186,10 @@ class HeadToHeadRenderer(AbstractRenderer):
             self.config["dev_settings"]["quick_textures_mode"],
         )
 
-        self.state.car_rankings = car_rankings.main(
+        assert self.state.track_data is not None, (
+            "Must load track data before adding car rankings"
+        )
+        self.state.car_rankings = add_car_rankings.main(
             self.state.track_data,
             self.state.start_finish_line_idx,
             self.state.driver_dfs,
@@ -215,21 +224,21 @@ class HeadToHeadRenderer(AbstractRenderer):
         if self.state.focused_driver is None:
             raise ValueError("Focused driver is not set.")
 
-        status_track.StatusTrack(
+        add_status_track.StatusTrack(
             self.state.track_data,
             self.state.camera_obj,
             self.state.start_finish_line_idx,
             self.state.driver_dfs[self.state.focused_driver],
             self.config["render"]["is_shorts_output"],
         )
-        live_leaderboard.LiveLeaderboard(
+        add_live_leaderboard.LiveLeaderboard(
             self.config,
             list(zip(self.state.drivers_in_order, self.state.driver_colors)),
             self.state.car_rankings,
             True,
             self.state.camera_obj,
         )
-        race_timer.RaceTimer(
+        add_race_timer.RaceTimer(
             self.config,
             self.state.camera_obj,
             self.state.num_frames,
@@ -278,7 +287,10 @@ class RestOfFieldRenderer(AbstractRenderer):
             self.config["dev_settings"]["quick_textures_mode"],
         )
 
-        self.state.car_rankings = car_rankings.main(
+        assert self.state.track_data is not None, (
+            "Must load track data before adding car rankings"
+        )
+        self.state.car_rankings = add_car_rankings.main(
             self.state.track_data,
             self.state.start_finish_line_idx,
             self.state.driver_dfs,
@@ -314,19 +326,19 @@ class RestOfFieldRenderer(AbstractRenderer):
         if self.state.focused_driver is None:
             raise ValueError("Focused driver is not set.")
 
-        status_track.StatusTrack(
+        add_status_track.StatusTrack(
             self.state.track_data,
             self.state.camera_obj,
             self.state.start_finish_line_idx,
             self.state.driver_dfs[self.state.focused_driver],
             self.config["render"]["is_shorts_output"],
         )
-        race_timer.RaceTimer(
+        add_race_timer.RaceTimer(
             self.config,
             self.state.camera_obj,
             self.state.num_frames,
         )
-        live_leaderboard.LiveLeaderboard(
+        add_live_leaderboard.LiveLeaderboard(
             self.config,
             list(
                 zip(
@@ -338,7 +350,7 @@ class RestOfFieldRenderer(AbstractRenderer):
             False,
             self.state.camera_obj,
         )
-        driver_circle.DriverCircle(
+        add_driver_circle.DriverCircle(
             self.state.focused_driver,
             self.state.driver_colors[0],
             self.state.driver_objs[self.state.focused_driver],

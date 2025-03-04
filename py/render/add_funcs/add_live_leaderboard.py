@@ -3,7 +3,7 @@
 import bpy
 from mathutils import Vector
 
-from py.render.render_funcs.driver_circle import DriverCircle
+from py.render.add_funcs.add_driver_circle import DriverCircle
 from py.utils.logger import log_info
 from py.utils.models import Driver
 from py.utils.project_structure import Resources

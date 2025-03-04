@@ -4,7 +4,7 @@ from colormath.color_diff import delta_e_cie2000
 from colormath.color_objects import LabColor, sRGBColor
 from fastf1 import plotting
 
-from py.render.render_funcs.load_driver_data import Driver
+from py.render.data_funcs.load_driver_data import Driver
 from py.utils.logger import log_warn
 
 GOLD_RGB = (255, 215, 0)
@@ -55,7 +55,7 @@ def get_head_to_head_colors(drivers: list[Driver]):
         def patch_asscalar(a):
             return a.item()
 
-        np.asscalar = patch_asscalar
+        np.asscalar = patch_asscalar  # pyright: ignore
         delta_e = delta_e_cie2000(lab1, lab2)
 
         return delta_e
