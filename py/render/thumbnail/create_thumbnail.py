@@ -5,30 +5,141 @@ import math
 import bpy
 
 from py.render.add_funcs import add_formula_viz_car
-from py.render.add_funcs.add_driver_circle import DriverCircle
 from py.render.add_funcs.add_driver_objects import (
     create_base_driver_obj,
     create_driver_from_base,
     set_color,
 )
-from py.utils.colors import hex_to_blender_rgb
+from py.render.add_funcs.add_track import create_material, create_planes
+from py.render.render_animation import setup_ui_mode_viewport
+from py.utils.colors import CurbColor, MainTrackColor, hex_to_blender_rgb
 from py.utils.config import Config
 from py.utils.models import Driver
-from py.utils.project_structure import IMPACT_FONT
+from py.utils.project_structure import DriverDataPS
 
 
 class ThumbnailGenerator:
+    """Generate thumbnail images for race visualizations."""
+
     def __init__(
         self, config: Config, drivers_in_color_order: list[Driver], colors: list[str]
     ):
+        """Initialize the ThumbnailGenerator with configuration and driver data.
+
+        Args:
+            config: Configuration object containing render settings and other parameters
+            drivers_in_color_order: List of Driver objects in the order they should appear in the thumbnail
+            colors: List of color hex codes to use for the drivers and visual elements
+
+        Note:
+            Currently, thumbnail generation for shorts output is not implemented.
+
+        """
+        if config["render"]["is_shorts_output"]:
+            return
+
         self.config: Config = config
         self.drivers_in_color_order: list[Driver] = drivers_in_color_order
         self.colors: list[str] = colors
 
+        self.dy = 1.5
+        self.dx = -3
+
         self.camera = self._add_thumbnail_camera()
         self._add_cars()
-        self._add_titles()
         self._add_formula_viz_car()
+        self._add_sample_track()
+
+        self._add_driver_image()
+        self._add_color_background()
+
+        self._setup_render()
+        if config["dev_settings"]["thumbnail_mode"]:
+            setup_ui_mode_viewport(config)
+        else:
+            self._render()
+
+    def _render(self):
+        """Render the thumbnail image using Eevee and save it to output/thumbnail.png."""
+        scene = bpy.context.scene
+        if not scene:
+            raise ValueError("No active scene found")
+
+        scene.render.engine = "BLENDER_EEVEE"  # pyright: ignore
+        scene.render.image_settings.file_format = "PNG"
+        scene.render.filepath = "output/thumbnail.png"
+
+        # Set render resolution
+        scene.render.resolution_x = 3840
+        scene.render.resolution_y = 2160
+        scene.render.resolution_percentage = 100
+
+        # Render the image
+        bpy.ops.render.render(write_still=True)
+
+    def _setup_render(self):
+        scene = bpy.context.scene
+        if not scene:
+            raise ValueError("No active scene found")
+
+        scene.display_settings.display_device = "sRGB"  # type: ignore
+        scene.view_settings.view_transform = "AgX"  # type: ignore
+        scene.view_settings.look = "AgX - Very High Contrast"  # type: ignore
+        scene.view_settings.gamma = 1.3
+
+    def _add_driver_image(self):
+        # Enable import images as planes addon
+        bpy.ops.preferences.addon_enable(module="io_import_images_as_planes")
+        image_path = str(
+            DriverDataPS.get_driver_image_path(self.drivers_in_color_order[0])
+        )
+
+        # the emission here is of the image pixels themselves, so making the image brighter
+        bpy.ops.import_image.to_plane(  # pyright: ignore
+            files=[{"name": image_path}],
+            shader="EMISSION",  # Use emission shader
+            emit_strength=0.8,  # Set emission strength to 1.0
+        )
+        driver_plane = bpy.context.selected_objects[0]
+        driver_plane.name = "Driver Image"
+
+        driver_plane.parent = self.camera
+        driver_plane.location = (0.18, -0.04, -0.9)
+        driver_plane.rotation_euler = (0, 0, 0)
+        driver_plane.scale = (0.45, 0.45, 0.45)
+
+    def _add_sample_track(self):
+        """Add a track element for the thumbnail based on the necessary width."""
+        close_points = [(1.5, -1000, 0), (1.5, 1000, 0)]
+
+        # here, the first car is actually placed at the origin, so it starts at +1 not 0
+        if self.config["type"] == "head-to-head":
+            total_width_covered = (len(self.drivers_in_color_order) - 1) * abs(self.dx)
+
+            far_points = [
+                (-total_width_covered - 1.5, -1000, 0),
+                (-total_width_covered - 1.5, 1000, 0),
+            ]
+        else:
+            # there will be 10 drivers across for the 2 rows. 20 drivers total in a quali
+            total_width_covered = abs(self.dx) * 3
+
+            far_points = [
+                (-total_width_covered - 1.5, -1000, 0),
+                (-total_width_covered - 1.5, 1000, 0),
+            ]
+
+        close_curb_points = [
+            (point[0] + 1, point[1], point[2]) for point in close_points
+        ]
+        far_curb_points = [(point[0] - 1, point[1], point[2]) for point in far_points]
+
+        track_mat = create_material(MainTrackColor.get_scene_rgb(), "ThumbnailMain")
+        curb_mat = create_material(CurbColor.get_scene_rgb(), "ThumbnailCurb")
+
+        create_planes(close_points, close_curb_points, "ThumbnailInnerCurb", curb_mat)
+        create_planes(far_points, far_curb_points, "ThumbnailOuterCurb", curb_mat)
+        create_planes(close_points, far_points, "ThumbnailMain", track_mat)
 
     def _add_thumbnail_camera(self):
         """Add a camera pointing at the origin (0, 0, 0) for thumbnail rendering."""
@@ -36,11 +147,11 @@ class ThumbnailGenerator:
         camera_obj = bpy.data.objects.new("ThumbnailCamera", camera_data)
         bpy.context.scene.collection.objects.link(camera_obj)  # pyright: ignore
 
-        camera_obj.location = (5, -20, 5)
+        camera_obj.location = (-7.08, 23.16, 9.08)
         camera_obj.rotation_euler = (
-            math.radians(82),
-            0,
-            math.radians(26),
+            math.radians(73),
+            math.radians(0),
+            math.radians(-177),
         )
 
         bpy.context.scene.camera = camera_obj  # pyright: ignore
@@ -49,95 +160,112 @@ class ThumbnailGenerator:
     def _add_formula_viz_car(self):
         formula_viz_car_obj = add_formula_viz_car.import_car_collections()
 
-        formula_viz_car_obj.location = (-0.16, -0.16, -1)
-        formula_viz_car_obj.scale = (0.015, 0.015, 0.015)
-        formula_viz_car_obj.rotation_euler = (math.radians(-90), math.radians(44), 0)
+        formula_viz_car_obj.location = (-0.3, 0.13, -1)
+        formula_viz_car_obj.scale = (0.01, 0.01, 0.01)
+        formula_viz_car_obj.rotation_euler = (math.radians(-80), 0, 0)
 
-        for child in formula_viz_car_obj.children_recursive:
-            if child.type == "MESH" and child.data.materials:
-                for material in child.data.materials:
-                    if material.name == "CAR BASE COLOR" and material.use_nodes:
-                        principled_bsdf = material.node_tree.nodes.get(
-                            "Principled BSDF"
-                        )
-                        if principled_bsdf:
-                            principled_bsdf.inputs["Base Color"].default_value = (
-                                *hex_to_blender_rgb(self.colors[0]),
-                                1.0,
-                            )
+        # for child in formula_viz_car_obj.children_recursive:
+        #     if child.type == "MESH" and child.data.materials:
+        #         for material in child.data.materials:
+        #             if material.name == "CAR BASE COLOR" and material.use_nodes:
+        #                 principled_bsdf = material.node_tree.nodes.get(
+        #                     "Principled BSDF"
+        #                 )
+        #                 if principled_bsdf:
+        #                     principled_bsdf.inputs["Base Color"].default_value = (
+        #                         *hex_to_blender_rgb(self.colors[0]),
+        #                         1.0,
+        #                     )
 
         formula_viz_car_obj.parent = self.camera
 
-    def _add_titles(self):
-        """Add title text as a child of the camera for easy positioning."""
-        bpy.ops.object.text_add()
-        main_title_obj = bpy.context.active_object
-        main_title_obj.name = "MainTitle"
-        main_title_obj.data.body = self.config["track"]
-        main_title_obj.scale = (0.15, 0.15, 0.15)
-        main_title_obj.data.align_x = "LEFT"
-        main_title_obj.data.font = bpy.data.fonts.load(str(IMPACT_FONT))
-        main_title_obj.parent = self.camera
-        main_title_obj.location = (-0.34, 0.1, -1)
+    def _add_color_background(self):
+        """Add a colored background plane for the thumbnail."""
+        bpy.ops.mesh.primitive_plane_add(size=2)
+        color_plane = bpy.context.active_object
+        if not color_plane:
+            raise ValueError("Color plane creation failed")
+        color_plane.name = "BackgroundColorPlane"
 
-        sub_title_obj = bpy.ops.object.text_add()
-        sub_title_obj = bpy.context.active_object
-        sub_title_obj.name = "SubTitle"
-        sub_title_obj.data.body = str(self.config["year"])
-        sub_title_obj.scale = (0.12, 0.12, 0.12)
-        sub_title_obj.data.align_x = "LEFT"
-        sub_title_obj.data.font = bpy.data.fonts.load(str(IMPACT_FONT))
-        sub_title_obj.parent = self.camera
-        sub_title_obj.location = (-0.34, 0.02, -1)
-
-        mat = bpy.data.materials.new("TextMaterial")
+        # Create a new material for the plane
+        mat = bpy.data.materials.new(name="BackgroundMaterial")
         mat.use_nodes = True
-        nodes = mat.node_tree.nodes  # pyright: ignore
+        node_tree = mat.node_tree
+        if not node_tree:
+            raise ValueError("Material node tree is None")
+        nodes = node_tree.nodes
+
+        # Clear existing nodes and create new emission shader
         nodes.clear()
+        emission_node = nodes.new(type="ShaderNodeEmission")
+        output_node = nodes.new(type="ShaderNodeOutputMaterial")
 
-        # Create emission node
-        node_emission = nodes.new("ShaderNodeEmission")
-        node_output = nodes.new("ShaderNodeOutputMaterial")
-
-        # Set emission color and strength
-        node_emission.inputs["Color"].default_value = (  # pyright: ignore
+        # Set the emission color using the first color from the colors list
+        emission_node.inputs["Color"].default_value = (  # pyright: ignore
             *hex_to_blender_rgb(self.colors[0]),
-            1,
+            1.0,
         )
-        node_emission.inputs["Strength"].default_value = 0.4  # pyright: ignore
+        emission_node.inputs["Strength"].default_value = 1.0  # pyright: ignore
 
         # Link nodes
-        links = mat.node_tree.links  # pyright: ignore
-        links.new(node_emission.outputs[0], node_output.inputs[0])
+        links = node_tree.links
+        links.new(emission_node.outputs[0], output_node.inputs[0])
 
-        main_title_obj.data.materials.append(mat)  # pyright: ignore
-        sub_title_obj.data.materials.append(mat)  # pyright: ignore
+        # Ensure we have a mesh data object with materials
+        mesh_data = color_plane.data
+        if not mesh_data or not hasattr(mesh_data, "materials"):
+            raise ValueError("Color plane data is None or has no materials attribute")
 
-        return main_title_obj
+        # Type-check for mesh data with proper materials
+        from bpy.types import Mesh
+
+        if not isinstance(mesh_data, Mesh):
+            raise TypeError(f"Expected Mesh type, got {type(mesh_data).__name__}")
+
+        mesh_data.materials.append(mat)
+
+        # Set as child of camera and position
+        color_plane.parent = self.camera  # pyright: ignore
+        color_plane.location = (1, 0, -100)  # pyright: ignore
+        color_plane.scale = (1001, 1000, 1000)  # pyright: ignore
 
     def _add_cars(self):
         base_empty_obj = create_base_driver_obj()
 
-        cur_x_offset = 0
-        cur_y_offset = 0
+        two_car_positions = [
+            (-6.52, 14.27, 6.56),
+            (-4.82, 11.7, 4.97),
+        ]
+        two_car_rotations = [
+            (math.radians(0), math.radians(21), math.radians(-185)),
+            (math.radians(2), math.radians(-27), math.radians(-167)),
+        ]
 
-        is_first = True
-        num = 0
+        three_car_positions = [
+            (-4.34, 11.77, 4.42),
+            (-6.52, 13.1, 5.27),
+            (-6, 12.35, 6.6),
+        ]
+        three_car_rotations = [
+            (math.radians(3), math.radians(-9), math.radians(-183)),
+            (0, math.radians(21), math.radians(-185)),
+            (math.radians(-5), math.radians(-14), math.radians(-169)),
+        ]
+
+        cars = []
         for driver, color in zip(self.drivers_in_color_order, self.colors):
-            if num == 10:
-                # start a second row
-                cur_x_offset = 0
-                cur_y_offset = 10
-
+            if len(cars) == 3:
+                break
             driver_obj = create_driver_from_base(driver.last_name, base_empty_obj)
-
-            driver_obj.location = (cur_x_offset, cur_y_offset, 0)
-
             set_color(driver_obj, color, driver.abbrev)
-            if is_first:
-                DriverCircle(driver, color, driver_obj, self.camera)
+            cars.append(driver_obj)
 
-            cur_x_offset -= 2.2
-            cur_y_offset += 1.5
-            is_first = False
-            num += 1
+        # Set positions and rotations based on number of cars
+        if len(cars) == 2:
+            for i, car in enumerate(cars):
+                car.location = two_car_positions[i]
+                car.rotation_euler = two_car_rotations[i]
+        else:
+            for i, car in enumerate(cars):
+                car.location = three_car_positions[i]
+                car.rotation_euler = three_car_rotations[i]

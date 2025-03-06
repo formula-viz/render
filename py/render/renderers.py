@@ -108,18 +108,25 @@ class AbstractRenderer(ABC):
     def setup_world(self):
         """Initialize the 3D world with track and lighting.
 
-        Sets up the basic environment by removing default collections,
-        adding lighting, and loading/creating the track geometry.
+        Sets up the basic environment by removing all collections
+        and adding lighting.
         """
-        bpy.data.collections.remove(
-            bpy.data.collections["Collection"], do_unlink=True
-        )  # default collection
+        # Clear all collections
+        for collection in bpy.data.collections:
+            bpy.data.collections.remove(collection, do_unlink=True)
+
+        # Clear all objects
+        for obj in bpy.data.objects:
+            bpy.data.objects.remove(obj, do_unlink=True)
+
         add_sun.main()
+
+    def setup_track(self):
+        """Initialize the racetrack."""
         self.state.track_data = load_track_data.main(
             self.config["year"], self.config["track"]
         )
         add_track.main(self.state.track_data)
-        add_background_grid.main()
 
     def trigger_render(self):
         """Start the rendering process.
@@ -159,8 +166,11 @@ class AbstractRenderer(ABC):
             drivers_in_color_order=self.state.drivers_in_color_order,
             colors=self.state.driver_colors,
         )
-
         if not self.config["dev_settings"]["thumbnail_mode"]:
+            # run setup_world again to reset the world
+            self.setup_world()
+            add_background_grid.main()
+            self.setup_track()
             self.add_drivers()
             self.add_indicators()
             self.add_camera()
@@ -189,6 +199,7 @@ class HeadToHeadRenderer(AbstractRenderer):
                     self.state.drivers_in_order.append(driver_class)
                     break
         self.state.driver_dfs = new_driver_dfs
+        self.state.drivers_in_color_order = self.state.drivers_in_order
 
         self.state.focused_driver = self.state.drivers_in_order[0]
         self.state.driver_colors = get_head_to_head_colors(self.state.drivers_in_order)
