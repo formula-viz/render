@@ -2,27 +2,33 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from typing import Any, Optional
 
 import bpy
+import pandas as pd
 
-from py.render.render_funcs import (
+from py.render import render_animation
+from py.render.add_funcs import (
     add_background_grid,
     add_camera,
+    add_car_rankings,
+    add_driver_circle,
     add_driver_objects,
     add_formula_viz_car,
+    add_live_leaderboard,
+    add_race_timer,
     add_start_finish_line,
+    add_status_track,
     add_sun,
     add_track,
-    car_rankings,
-    driver_circle,
-    live_leaderboard,
+)
+from py.render.data_funcs import (
     load_driver_data,
     load_track_data,
-    race_timer,
-    render_animation,
-    status_track,
 )
+from py.render.data_funcs.load_driver_data import Driver
+from py.render.data_funcs.load_track_data import TrackData
+from py.render.thumbnail.create_thumbnail import ThumbnailGenerator
 from py.utils.colors import get_head_to_head_colors, get_rest_of_field_colors
 from py.utils.config import Config
 from py.utils.logger import log_info
@@ -33,18 +39,18 @@ class RendererState:
     """Holds all state variables used during rendering to make data flow explicit."""
 
     # Common state variables for all renderers
-    track_data: Any = None
-    driver_dfs: Dict[str, Any] = field(default_factory=dict)
-    driver_objs: Dict[str, Any] = field(default_factory=dict)
-    driver_colors: List[str] = field(default_factory=list)
+    track_data: Optional[TrackData] = None
+    driver_dfs: dict[Driver, Any] = field(default_factory=dict)
+    driver_objs: dict[Driver, Any] = field(default_factory=dict)
+    drivers_in_order: list[Driver] = field(default_factory=list)
+    driver_colors: list[str] = field(default_factory=list)
     start_finish_line_idx: int = 0
     num_frames: int = 0
     camera_obj: Any = None
-    focused_driver: str = ""
-    car_rankings: Any = None
+    focused_driver: Driver | None = None
+    car_rankings: list[list[tuple[Driver, float]]] = field(default_factory=list)
 
-    # RestOfFieldRenderer specific state
-    drivers_in_color_order: List[str] = field(default_factory=list)
+    drivers_in_color_order: list[Driver] = field(default_factory=list)
 
 
 class AbstractRenderer(ABC):
@@ -91,21 +97,29 @@ class AbstractRenderer(ABC):
         """
         pass
 
+    @abstractmethod
+    def load_driver_data(self):
+        """Load driver data from the configured source.
+
+        Decoupled from add_drivers for the sake of generating necessary data needed for thumbnail gen beforehand.
+        """
+        pass
+
     def setup_world(self):
         """Initialize the 3D world with track and lighting.
 
-        Sets up the basic environment by removing default collections,
-        adding lighting, and loading/creating the track geometry.
+        Sets up the basic environment by removing all collections
+        and adding lighting.
         """
-        bpy.data.collections.remove(
-            bpy.data.collections["Collection"], do_unlink=True
-        )  # default collection
+        # Clear all collections
+        for collection in bpy.data.collections:
+            bpy.data.collections.remove(collection, do_unlink=True)  # type: ignore
+
+        # Clear all objects
+        for obj in bpy.data.objects:
+            bpy.data.objects.remove(obj, do_unlink=True)  # type: ignore
+
         add_sun.main()
-        self.state.track_data = load_track_data.main(
-            self.config["year"], self.config["track"]
-        )
-        add_track.main(self.state.track_data)
-        add_background_grid.main()
 
     def trigger_render(self):
         """Start the rendering process.
@@ -121,10 +135,14 @@ class AbstractRenderer(ABC):
         Adds visual elements like the start/finish line to the track.
         This is separate from track creation as it requires driver data to be loaded first.
         """
+        assert self.state.track_data is not None, (
+            "Must load track data before adding indicators"
+        )
         add_start_finish_line.main(
             self.state.track_data.inner_curb_points,
             self.state.track_data.outer_curb_points,
             self.state.start_finish_line_idx,
+            "StartFinishLine",
         )
 
     def render(self):
@@ -133,19 +151,56 @@ class AbstractRenderer(ABC):
         Main process that coordinates the setup and rendering steps in the proper sequence.
         The order of the setup functions is significant because some create dependencies.
         """
+        # thumbnail generator needs these
         self.setup_world()
-        self.add_drivers()
-        self.add_indicators()
-        self.add_camera()
-        self.configure_widgets()
-        add_formula_viz_car.main(
-            self.state.camera_obj, self.config["render"]["is_shorts_output"]
+        self.state.track_data = load_track_data.main(
+            self.config["year"], self.config["track"]
         )
-        self.trigger_render()
+        self.load_driver_data()
+        log_info("Before thumbnail generation.")
+        ThumbnailGenerator(
+            config=self.config,
+            drivers_in_color_order=self.state.drivers_in_color_order,
+            colors=self.state.driver_colors,
+        )
+        if not self.config["dev_settings"]["thumbnail_mode"]:
+            # run setup_world again to reset the world
+            self.setup_world()
+            add_background_grid.main()
+            add_track.main(self.state.track_data)
+            self.add_drivers()
+            self.add_indicators()
+            self.add_camera()
+            self.configure_widgets()
+            add_formula_viz_car.main(
+                self.state.camera_obj, self.config["render"]["is_shorts_output"]
+            )
+            self.trigger_render()
 
 
 class HeadToHeadRenderer(AbstractRenderer):
     """Head to Head render will have a finite number of drivers, designed for 2-4."""
+
+    def load_driver_data(self):
+        """Load and set up driver data for head-to-head comparison."""
+        assert self.state.track_data is not None, "Track data is not loaded"
+        self.state.driver_dfs, self.state.start_finish_line_idx = load_driver_data.main(
+            self.config, self.state.track_data
+        )
+
+        self.state.drivers_in_order = []
+        new_driver_dfs: dict[Driver, pd.DataFrame] = {}
+        for driver_last_name in self.config["drivers"]:
+            for driver_class in self.state.driver_dfs.keys():
+                if driver_last_name == driver_class.last_name:
+                    new_driver_dfs[driver_class] = self.state.driver_dfs[driver_class]
+                    self.state.drivers_in_order.append(driver_class)
+                    break
+        self.state.driver_dfs = new_driver_dfs
+        self.state.drivers_in_color_order = self.state.drivers_in_order
+
+        self.state.focused_driver = self.state.drivers_in_order[0]
+        self.state.driver_colors = get_head_to_head_colors(self.state.drivers_in_order)
 
     def add_drivers(self):
         """Load and set up driver data for head-to-head comparison.
@@ -153,27 +208,21 @@ class HeadToHeadRenderer(AbstractRenderer):
         Creates driver objects with appropriate colors for direct comparison
         between a small number of drivers.
         """
-        self.state.driver_dfs, self.state.start_finish_line_idx = load_driver_data.main(
-            self.config, self.state.track_data
-        )
-        self.state.driver_dfs = {
-            driver: self.state.driver_dfs[driver] for driver in self.config["drivers"]
-        }
-
-        self.state.focused_driver = self.config["drivers"][
-            0
-        ]  # in head to head, focus on the first driver
-
-        self.state.driver_colors = get_head_to_head_colors(*self.config["drivers"])
-
         self.state.driver_objs = add_driver_objects.main(
             self.state.driver_dfs,
-            self.config["drivers"],
+            self.state.drivers_in_order,
             self.state.driver_colors,
             self.config["dev_settings"]["quick_textures_mode"],
         )
 
-        self.state.car_rankings = car_rankings.main(
+        assert self.state.track_data is not None, (
+            "Must load track data before adding car rankings"
+        )
+
+        if self.state.focused_driver is None:
+            raise ValueError("Focused driver is not set.")
+
+        self.state.car_rankings = add_car_rankings.main(
             self.state.track_data,
             self.state.start_finish_line_idx,
             self.state.driver_dfs,
@@ -189,6 +238,9 @@ class HeadToHeadRenderer(AbstractRenderer):
 
         Sets up camera positioning and movement to follow the focused driver.
         """
+        if self.state.focused_driver is None:
+            raise ValueError("Focused driver is not set.")
+
         self.state.camera_obj = add_camera.main(
             self.state.driver_dfs[self.state.focused_driver],
             self.state.driver_objs[self.state.focused_driver],
@@ -202,21 +254,24 @@ class HeadToHeadRenderer(AbstractRenderer):
         Creates and configures widgets like the status track, leaderboard,
         race timer, and outro sequence.
         """
-        status_track.StatusTrack(
+        if self.state.focused_driver is None:
+            raise ValueError("Focused driver is not set.")
+
+        add_status_track.StatusTrack(
             self.state.track_data,
             self.state.camera_obj,
             self.state.start_finish_line_idx,
             self.state.driver_dfs[self.state.focused_driver],
             self.config["render"]["is_shorts_output"],
         )
-        live_leaderboard.LiveLeaderboard(
+        add_live_leaderboard.LiveLeaderboard(
             self.config,
-            list(zip(self.config["drivers"], self.state.driver_colors)),
+            list(zip(self.state.drivers_in_order, self.state.driver_colors)),
             self.state.car_rankings,
             True,
             self.state.camera_obj,
         )
-        race_timer.RaceTimer(
+        add_race_timer.RaceTimer(
             self.config,
             self.state.camera_obj,
             self.state.num_frames,
@@ -230,25 +285,45 @@ class RestOfFieldRenderer(AbstractRenderer):
     The highlighted driver, first in the config list of drivers will be highlighted. The rest of the will be shades of gray / white / black.
     """
 
-    def add_drivers(self):
-        """Load and set up driver data for the entire field.
+    def load_driver_data(self):
+        """Load driver data from the configured source.
 
-        Creates driver objects with the focused driver (first in config) highlighted
-        and all other drivers in grayscale.
+        Decoupled from add_drivers for the sake of generating necessary data needed for thumbnail gen beforehand.
         """
+        assert self.state.track_data is not None, "Track data is not loaded"
         self.state.driver_dfs, self.state.start_finish_line_idx = load_driver_data.main(
             self.config, self.state.track_data
         )
+
         self.state.driver_colors = get_rest_of_field_colors()
 
+        for driver in self.state.driver_dfs.keys():
+            if driver.last_name == self.config["drivers"][0]:
+                self.state.focused_driver = driver
+
+        if not self.state.focused_driver:
+            raise ValueError(
+                "No focused driver found,this indicates that the focused driver was not the first in the array of drivers in config."
+            )
+
         # for now, gold driver is just the first driver listed in drivers
-        self.state.focused_driver = self.config["drivers"][0]
         self.state.drivers_in_color_order = [
             driver
             for driver in self.state.driver_dfs.keys()
             if driver != self.state.focused_driver
         ]
         self.state.drivers_in_color_order.insert(0, self.state.focused_driver)
+
+    def add_drivers(self):
+        """Load and set up driver data for the entire field.
+
+        Creates driver objects with the focused driver (first in config) highlighted
+        and all other drivers in grayscale.
+        """
+        if not self.state.focused_driver:
+            raise ValueError(
+                "No focused driver found,this indicates that the focused driver was not the first in the array of drivers in config."
+            )
 
         self.state.driver_objs = add_driver_objects.main(
             self.state.driver_dfs,
@@ -257,7 +332,10 @@ class RestOfFieldRenderer(AbstractRenderer):
             self.config["dev_settings"]["quick_textures_mode"],
         )
 
-        self.state.car_rankings = car_rankings.main(
+        assert self.state.track_data is not None, (
+            "Must load track data before adding car rankings"
+        )
+        self.state.car_rankings = add_car_rankings.main(
             self.state.track_data,
             self.state.start_finish_line_idx,
             self.state.driver_dfs,
@@ -274,6 +352,9 @@ class RestOfFieldRenderer(AbstractRenderer):
         Sets up camera positioning and movement to follow the focused driver
         (first driver in the config).
         """
+        if self.state.focused_driver is None:
+            raise ValueError("Focused driver is not set.")
+
         self.state.camera_obj = add_camera.main(
             self.state.driver_dfs[self.state.focused_driver],
             self.state.driver_objs[self.state.focused_driver],
@@ -287,19 +368,22 @@ class RestOfFieldRenderer(AbstractRenderer):
         Creates and configures widgets like the status track, leaderboard,
         race timer, driver indicator circle, and outro sequence.
         """
-        status_track.StatusTrack(
+        if self.state.focused_driver is None:
+            raise ValueError("Focused driver is not set.")
+
+        add_status_track.StatusTrack(
             self.state.track_data,
             self.state.camera_obj,
             self.state.start_finish_line_idx,
             self.state.driver_dfs[self.state.focused_driver],
             self.config["render"]["is_shorts_output"],
         )
-        race_timer.RaceTimer(
+        add_race_timer.RaceTimer(
             self.config,
             self.state.camera_obj,
             self.state.num_frames,
         )
-        live_leaderboard.LiveLeaderboard(
+        add_live_leaderboard.LiveLeaderboard(
             self.config,
             list(
                 zip(
@@ -311,7 +395,7 @@ class RestOfFieldRenderer(AbstractRenderer):
             False,
             self.state.camera_obj,
         )
-        driver_circle.DriverCircle(
+        add_driver_circle.DriverCircle(
             self.state.focused_driver,
             self.state.driver_colors[0],
             self.state.driver_objs[self.state.focused_driver],

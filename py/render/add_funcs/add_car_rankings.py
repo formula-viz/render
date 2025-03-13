@@ -1,48 +1,76 @@
+"""Calculate car ranking.
+
+For each frame in the video, return a list of tuples containing the driver and their distance to the reference line.
+"""
+
 import numpy as np
-from numpy._typing import NDArray
+import pandas as pd
+
+from py.render.data_funcs.load_track_data import TrackData
+from py.utils.config import Config
+from py.utils.models import Driver
 
 
 def point_to_line_distance(
-    point: NDArray[np.float64],
-    line_start: NDArray[np.float64],
-    line_end: NDArray[np.float64],
-):
-    point = np.array(point)
-    line_start = np.array(line_start)
-    line_end = np.array(line_end)
+    point: tuple[float, float, float],
+    line_start: tuple[float, float, float],
+    line_end: tuple[float, float, float],
+) -> float:
+    """Calculate the distance from a point to a line segment."""
+    # Convert tuples to numpy arrays for vector operations
+    point_arr = np.array(point, dtype=float)
+    line_start_arr = np.array(line_start, dtype=float)
+    line_end_arr = np.array(line_end, dtype=float)
 
-    line_vec = line_end - line_start
-    line_length = np.linalg.norm(line_vec)
+    # Calculate vector along the line segment
+    line_vec_arr = line_end_arr - line_start_arr
+    line_length = float(np.linalg.norm(line_vec_arr))
 
-    line_vec = line_vec / line_length
-    point_vec = point - line_start
-    projection_length = np.dot(point_vec, line_vec)
+    line_unit_vec = line_vec_arr / line_length
+    point_vec_arr = point_arr - line_start_arr
+    projection_length = float(np.dot(point_vec_arr, line_unit_vec))
 
     # If projection falls before beginning of line segment
     if projection_length < 0:
-        return np.linalg.norm(point - line_start)
+        return float(np.linalg.norm(point_arr - line_start_arr))
     # If projection falls after end of line segment
     if projection_length > line_length:
-        return np.linalg.norm(point - line_end)
+        return float(np.linalg.norm(point_arr - line_end_arr))
 
-    projection = line_start + line_vec * projection_length
-    return np.linalg.norm(point - projection)
+    # Calculate the projection point
+    projection_arr = line_start_arr + line_unit_vec * projection_length
+    return float(np.linalg.norm(point_arr - projection_arr))
 
 
-# the previous_reference_idx is the line from which the previous
-# frame's ranking was calculated
 def find_closest_track_idx(
-    inner_points, outer_points, previous_reference_idx, car_point
-):
+    inner_points: list[tuple[float, float, float]], outer_points: list[tuple[float, float, float]], previous_reference_idx: int, car_point: tuple[float, float, float]
+) -> int:
+    """Find the closest track segment to a car point.
+
+    This function searches for the track segment closest to the car point,
+    starting from the previous reference index. It searches in both positive
+    and negative directions along the track.
+
+    Args:
+        inner_points: List of inner track boundary points
+        outer_points: List of outer track boundary points
+        previous_reference_idx: The index of the line from which the previous
+            frame's ranking was calculated
+        car_point: The position of the car
+
+    Returns:
+        The index of the closest track segment to the car point
+
+    """
     assert len(inner_points) == len(outer_points), (
         "Inner and outer points must have the same length"
     )
     n = len(inner_points)
 
-    def next_pos(idx):
+    def next_pos(idx: int):
         return (idx + 1) % n
 
-    def next_neg(idx):
+    def next_neg(idx: int):
         return (idx - 1) % n
 
     pos = previous_reference_idx
@@ -81,14 +109,16 @@ def find_closest_track_idx(
     return pos if pos_distance < neg_distance else neg
 
 
-# find the point which is furthest from the previous line which was used
-# to calculate the ranking. This will allow us to find the next reference line
 def find_most_distant_closest_point(
-    inner_points: list[NDArray[np.float64]],
-    outer_points: list[NDArray[np.float64]],
+    inner_points: list[tuple[float, float, float]],
+    outer_points: list[tuple[float, float, float]],
     previous_reference_idx: int,
-    car_points: list[NDArray[np.float64]],
+    car_points: list[tuple[float, float, float]],
 ):
+    """Find the point which is furthest from the previous line which was used to calculate the ranking.
+
+    This will allow us to find the next reference line.
+    """
     closest_idxs = [
         find_closest_track_idx(
             inner_points, outer_points, previous_reference_idx, car_point
@@ -108,11 +138,12 @@ def find_most_distant_closest_point(
 
 # the frame here is implicit. All of the car points will be different cars at the same frame
 def ranking_at_frame(
-    inner_points: list[NDArray[np.float64]],
-    outer_points: list[NDArray[np.float64]],
+    inner_points: list[tuple[float, float, float]],
+    outer_points: list[tuple[float, float, float]],
     previous_reference_idx: int,
-    car_points: list[NDArray[np.float64]],
+    car_points: list[tuple[float, float, float]],
 ) -> tuple[list[tuple[int, float]], int]:
+    """Calculate car ranking at one frame."""
     new_reference_idx = find_most_distant_closest_point(
         inner_points, outer_points, previous_reference_idx, car_points
     )
@@ -132,24 +163,30 @@ def ranking_at_frame(
     return (sorted(drivers, key=lambda x: x[1]), new_reference_idx)
 
 
-def main(track_data, start_finish_line_idx, driver_dfs, config, focused_driver):
+def main(
+    track_data: TrackData,
+    start_finish_line_idx: int,
+    driver_dfs: dict[Driver, pd.DataFrame],
+    config: Config,
+    focused_driver: Driver,
+) -> list[list[tuple[Driver, float]]]:
+    """Caclulate car ranking.
+
+    For each frame in the video, return a list of tuples containing the driver and their distance to the reference line.
+    """
     start_buffer_frames = config["render"]["start_buffer_frames"]
     end_buffer_frames = config["render"]["end_buffer_frames"]
 
-    inner_points = [np.array(p) for p in track_data.inner_points]
-    outer_points = [np.array(p) for p in track_data.outer_points]
-
-    indices = {}
-    driver_data = []
+    indices: dict[int, Driver] = {}
+    driver_data: list[list[tuple[float, float, float]]] = []
     for i, (driver, df) in enumerate(driver_dfs.items()):
-        car_points = [
-            np.array([df["X"][i], df["Y"][i], df["Z"][i]]) for i in range(len(df["X"]))
+        car_points: list[tuple[float, float, float]] = [
+            (df["X"][i], df["Y"][i], df["Z"][i]) for i in range(len(df))
         ]
         driver_data.append(car_points)
         indices[i] = driver
 
-    final_rank = []
-
+    final_rank: list[list[tuple[Driver, float]]] = []
     reference_idx = start_finish_line_idx
     for i in range(
         start_buffer_frames, len(driver_dfs[focused_driver]) - end_buffer_frames
@@ -157,7 +194,7 @@ def main(track_data, start_finish_line_idx, driver_dfs, config, focused_driver):
         current_frame_positions = [driver_points[i] for driver_points in driver_data]
 
         rankings, reference_idx = ranking_at_frame(
-            inner_points, outer_points, reference_idx, current_frame_positions
+            track_data.inner_points, track_data.outer_points, reference_idx, current_frame_positions
         )
 
         final_rank.append([(indices[rank[0]], rank[1]) for rank in rankings])

@@ -21,7 +21,7 @@ def main():
     config_file = project_root / "config.json"
     template_file = project_root / "config-template.json"
 
-    def get_config(file):
+    def get_config(file: Path):
         with open(file, "r") as f:
             return json.load(f)
 
@@ -47,10 +47,10 @@ def main():
 
         subprocess.run(cmd, check=True)
 
-        mp4_filepath = post_process(config)
-        yt_url = youtube_upload.main(config, mp4_filepath)
-
-        print(f"Video uploaded to {yt_url}")
+        if not ui_mode:
+            mp4_filepath = post_process(config)
+            yt_url = youtube_upload.main(config, os.path.join("output", mp4_filepath))
+            print(f"Video uploaded to {yt_url}")
 
         return 0
     except subprocess.CalledProcessError as e:

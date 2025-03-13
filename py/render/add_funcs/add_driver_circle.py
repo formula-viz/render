@@ -8,6 +8,7 @@ from mathutils import Vector
 
 from py.utils.colors import hex_to_blender_rgb
 from py.utils.logger import log_info
+from py.utils.models import Driver
 from py.utils.project_structure import DriverDataPS
 
 
@@ -16,19 +17,19 @@ class DriverCircle:
 
     def __init__(
         self,
-        driver_abbrev: str,
+        driver: Driver,
         color: str,  # color will be hex
-        driver_car_obj: Optional[bpy.types.Object],
-        camera_obj: Optional[bpy.types.Object],
+        driver_car_obj: Optional[bpy.types.Object] = None,
+        camera_obj: Optional[bpy.types.Object] = None,
         pre_existing_empty: Optional[bpy.types.Object] = None,
     ):
         """Initialize the DriverCircle object."""
-        self.driver_abbrev = driver_abbrev
+        self.driver = driver
         self.driver_car_obj = driver_car_obj
         self.camera_obj = camera_obj
         self.color = color
 
-        log_info(f"Initializing DriverCircle for {driver_abbrev}...")
+        log_info(f"Initializing DriverCircle for {driver.last_name}...")
 
         if pre_existing_empty:
             parent_empty = pre_existing_empty
@@ -37,7 +38,7 @@ class DriverCircle:
             parent_empty = bpy.context.active_object
             parent_empty.hide_render = True  # pyright: ignore
             parent_empty.hide_viewport = True  # pyright: ignore
-            parent_empty.name = f"{driver_abbrev}CircleParent"  # pyright: ignore
+            parent_empty.name = f"{driver.abbrev}CircleParent"  # pyright: ignore
 
         if not parent_empty:
             raise ValueError("Failed to create parent empty")
@@ -68,7 +69,7 @@ class DriverCircle:
         if not circle_obj:
             raise ValueError("Failed to create circle object")
 
-        circle_obj.name = f"{self.driver_abbrev}CircleFace"
+        circle_obj.name = f"{self.driver.abbrev}CircleFace"
 
         circle_obj.rotation_euler.z = math.radians(-75)
 
@@ -78,7 +79,7 @@ class DriverCircle:
 
         # Create material for the face
         face_mat = bpy.data.materials.new(
-            name=f"{self.driver_abbrev}CircleFaceMaterial"
+            name=f"{self.driver.abbrev}CircleFaceMaterial"
         )
         face_mat.use_nodes = True
         nodes = face_mat.node_tree.nodes  # pyright: ignore
@@ -93,7 +94,7 @@ class DriverCircle:
         node_uvmap = nodes.new("ShaderNodeUVMap")
 
         # Load and assign the image
-        image_path = DriverDataPS.get_driver_image_path(self.driver_abbrev)
+        image_path = DriverDataPS.get_driver_image_path(self.driver)
         image = bpy.data.images.load(str(image_path))
         node_tex.image = image  # pyright: ignore
 
@@ -124,14 +125,14 @@ class DriverCircle:
         bpy.ops.mesh.primitive_torus_add(
             major_radius=1.0,  # Radius of the circle
             minor_radius=0.03,  # Thickness of the outline
-            major_segments=32,  # Segments of the circle
-            minor_segments=8,  # Segments of the tube
+            major_segments=128,  # Segments of the circle
+            minor_segments=32,  # Segments of the tube
         )
         outline = bpy.context.active_object
         if not outline:
             raise ValueError("Failed to create outline object")
 
-        outline.name = f"{self.driver_abbrev}CircleOutline"
+        outline.name = f"{self.driver.abbrev}CircleOutline"
 
         # Disable shadow casting, no shadow on the car
         outline.visible_shadow = False
@@ -139,7 +140,7 @@ class DriverCircle:
 
         # Create material for the outline
         outline_mat = bpy.data.materials.new(
-            name=f"{self.driver_abbrev}CircleOutlineMaterial"
+            name=f"{self.driver.abbrev}CircleOutlineMaterial"
         )
         outline_mat.use_nodes = True
         nodes = outline_mat.node_tree.nodes  # pyright: ignore
@@ -154,7 +155,7 @@ class DriverCircle:
             *hex_to_blender_rgb(self.color),
             1,
         )
-        node_emission.inputs["Strength"].default_value = 0.1  # pyright: ignore
+        node_emission.inputs["Strength"].default_value = 0.4  # pyright: ignore
 
         # Link nodes
         links = outline_mat.node_tree.links  # pyright: ignore

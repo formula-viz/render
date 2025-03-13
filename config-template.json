@@ -2,11 +2,12 @@
   "track": "AUSTRALIA",
   "year": 2024,
   "type": "rest-of-field",
-  "drivers": ["VER"],
+  "drivers": ["Verstappen"],
   "dev_settings": {
     "ui_mode": false,
     "quick_textures_mode": false,
-    "limited_frames_mode": false
+    "limited_frames_mode": false,
+    "thumbnail_mode": false
   },
   "render": {
     "engine": "eevee",

@@ -7,12 +7,13 @@ import bpy
 import mathutils
 import numpy as np
 import pandas as pd
+from pandas import DataFrame, Series
 
 MIN_CAM_DISTANCE = 80
 MAX_CAM_DISTANCE = 80
 
 
-def scale_frames(df_for_cam):
+def scale_frames(df_for_cam: DataFrame):
     """Scales the camera positions based on the input DataFrame.
 
     Args:
@@ -25,18 +26,21 @@ def scale_frames(df_for_cam):
     scale_factor = 0.8
     z_up = 50
 
-    cam_x = df_for_cam["X"] * scale_factor
-    cam_y = df_for_cam["Y"] * scale_factor
+    df_for_cam_x = df_for_cam["X"].astype(float)
+    df_for_cam_y = df_for_cam["Y"].astype(float)
 
-    cam_x = cam_x + df_for_cam["X"].mean() - cam_x.mean()
-    cam_y = cam_y + df_for_cam["Y"].mean() - cam_y.mean()
+    cam_x: Series[float] = df_for_cam_x * scale_factor
+    cam_y: Series[float] = df_for_cam_y * scale_factor
+
+    cam_x = cam_x + df_for_cam_x.mean() - cam_x.mean() # pyright: ignore
+    cam_y = cam_y + df_for_cam_y.mean() - cam_y.mean() # pyright: ignore
 
     cam_z = np.zeros(len(cam_x)) + z_up
 
     return pd.DataFrame({"X": cam_x, "Y": cam_y, "Z": cam_z})
 
 
-def move_with_min_max_distance(cam_df, car_df):
+def move_with_min_max_distance(cam_df: DataFrame, car_df: DataFrame) -> None:
     """Adjust camera position to maintain a distance from the car between min_distance and max_distance.
 
     Args:
@@ -44,39 +48,43 @@ def move_with_min_max_distance(cam_df, car_df):
         car_df (DataFrame): DataFrame containing car position data (X, Y, Z)
 
     """
+    cam_xs = cam_df["X"].astype(float)
+    cam_ys = cam_df["Y"].astype(float)
+    cam_zs = cam_df["Z"].astype(float)
+
+    car_xs = car_df["X"].astype(float)
+    car_ys = car_df["Y"].astype(float)
+    car_zs = car_df["Z"].astype(float)
+
     for i in range(len(cam_df)):
-        cam_point = (cam_df["X"][i], cam_df["Y"][i], cam_df["Z"][i])
-        car_point = (car_df["X"][i], car_df["Y"][i], car_df["Z"][i])
+        cam_x = cam_xs[i]
+        cam_y = cam_ys[i]
+        cam_z = cam_zs[i]
+
+        car_x = car_xs[i]
+        car_y = car_ys[i]
+        car_z = car_zs[i]
+
+        cam_point = (cam_x, cam_y, cam_z)
+        car_point = (car_x, car_y, car_z)
 
         vector = mathutils.Vector(cam_point) - mathutils.Vector(car_point)
 
         # Ensure camera is not too far away
         if vector.length > MAX_CAM_DISTANCE:
-            cam_df.loc[i, "X"] = (
-                car_df["X"][i] + vector.normalized().x * MAX_CAM_DISTANCE
-            )
-            cam_df.loc[i, "Y"] = (
-                car_df["Y"][i] + vector.normalized().y * MAX_CAM_DISTANCE
-            )
-            cam_df.loc[i, "Z"] = (
-                car_df["Z"][i] + vector.normalized().z * MAX_CAM_DISTANCE
-            )
+            cam_df.loc[i, "X"] = float(car_x + vector.normalized().x * MAX_CAM_DISTANCE)
+            cam_df.loc[i, "Y"] = float(car_y + vector.normalized().y * MAX_CAM_DISTANCE)
+            cam_df.loc[i, "Z"] = float(car_z + vector.normalized().z * MAX_CAM_DISTANCE)
 
         # Ensure camera is not too close
         elif vector.length < MIN_CAM_DISTANCE:
-            cam_df.loc[i, "X"] = (
-                car_df["X"][i] + vector.normalized().x * MIN_CAM_DISTANCE
-            )
-            cam_df.loc[i, "Y"] = (
-                car_df["Y"][i] + vector.normalized().y * MIN_CAM_DISTANCE
-            )
-            cam_df.loc[i, "Z"] = (
-                car_df["Z"][i] + vector.normalized().z * MIN_CAM_DISTANCE
-            )
+            cam_df.loc[i, "X"] = float(car_x + vector.normalized().x * MIN_CAM_DISTANCE)
+            cam_df.loc[i, "Y"] = float(car_y + vector.normalized().y * MIN_CAM_DISTANCE)
+            cam_df.loc[i, "Z"] = float(car_z + vector.normalized().z * MIN_CAM_DISTANCE)
 
 
 def add_keyframes(
-    camera_obj, cam_df, driver_df, start_buffer_frames, end_buffer_frames
+    camera_obj: bpy.types.Object, cam_df: DataFrame, driver_df: DataFrame, start_buffer_frames: int, end_buffer_frames: int
 ):
     """Add keyframes to animate a camera following a driver object.
 
@@ -93,54 +101,46 @@ def add_keyframes(
     """
     assert len(cam_df) == len(driver_df)
 
+    cam_xs = cam_df["X"].astype(float)
+    cam_ys = cam_df["Y"].astype(float)
+    cam_zs = cam_df["Z"].astype(float)
+
+    driver_xs = driver_df["X"].astype(float)
+    driver_ys = driver_df["Y"].astype(float)
+    driver_zs = driver_df["Z"].astype(float)
+
     # iterate through rows of df
     for i in range(len(cam_df)):
         frame = i + 1
 
-        camera_point = (cam_df["X"][i], cam_df["Y"][i], cam_df["Z"][i])
+        # Use proper type casting to fix diagnostic errors
+        cam_x = cam_xs.iloc[i]
+        cam_y = cam_ys.iloc[i]
+        cam_z = cam_zs.iloc[i]
+        camera_point = (cam_x, cam_y, cam_z)
 
         if start_buffer_frames <= frame <= len(cam_df) - end_buffer_frames:
-            look_at_point = mathutils.Vector(
-                (
-                    driver_df["X"][i],
-                    driver_df["Y"][i],
-                    driver_df["Z"][i],
-                )
-            )
+            look_at_point = mathutils.Vector((driver_xs.iloc[i], driver_ys.iloc[i], driver_zs.iloc[i]))
         elif frame < start_buffer_frames:
-            look_at_point = mathutils.Vector(
-                (
-                    driver_df["X"][start_buffer_frames - 1],
-                    driver_df["Y"][start_buffer_frames - 1],
-                    driver_df["Z"][start_buffer_frames - 1],
-                )
-            )
+            idx = start_buffer_frames - 1
+            look_at_point = mathutils.Vector((driver_xs.iloc[idx], driver_ys.iloc[idx], driver_zs.iloc[idx]))
         else:  # frame > end_buffer_frames
-            camera_point = (
-                cam_df["X"][len(cam_df) - end_buffer_frames - 1],
-                cam_df["Y"][len(cam_df) - end_buffer_frames - 1],
-                cam_df["Z"][len(cam_df) - end_buffer_frames - 1],
-            )
-            look_at_point = mathutils.Vector(
-                (
-                    driver_df["X"][len(cam_df) - end_buffer_frames - 1],
-                    driver_df["Y"][len(cam_df) - end_buffer_frames - 1],
-                    driver_df["Z"][len(cam_df) - end_buffer_frames - 1],
-                )
-            )
+            idx = len(cam_df) - end_buffer_frames - 1
+            camera_point = (cam_xs.iloc[idx], cam_ys.iloc[idx], cam_zs.iloc[idx])
+            look_at_point = mathutils.Vector((driver_xs.iloc[idx], driver_ys.iloc[idx], driver_zs.iloc[idx]))
 
         camera_obj.location = mathutils.Vector(camera_point)
-        camera_obj.keyframe_insert(data_path="location", frame=frame)
+        camera_obj.keyframe_insert(data_path="location", frame=frame) # pyright: ignore
 
         direction = look_at_point - camera_obj.location
         rot_quat = direction.to_track_quat("-Z", "Y")
 
         camera_obj.rotation_mode = "QUATERNION"
         camera_obj.rotation_quaternion = rot_quat
-        camera_obj.keyframe_insert(data_path="rotation_quaternion", frame=frame)
+        camera_obj.keyframe_insert(data_path="rotation_quaternion", frame=frame) # pyright: ignore
 
 
-def main(df_for_cam, driver_obj, start_buffer_frames, end_buffer_frames):
+def main(df_for_cam: DataFrame, driver_obj: bpy.types.Object, start_buffer_frames: int, end_buffer_frames: int):
     """Create a camera that tracks the driver.
 
     Args:

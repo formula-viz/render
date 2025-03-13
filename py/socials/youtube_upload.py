@@ -8,6 +8,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+from PIL import Image
 
 from py.socials import youtube_metadata
 from py.utils.config import Config, YouTubeConfig
@@ -62,6 +63,30 @@ def get_authenticated_youtube(yt_config: YouTubeConfig):
     return build("youtube", "v3", credentials=credentials)
 
 
+def resize_yt_thumbnail_if_needed(filepath):
+    maxsize = 2097152
+
+    # Check current file size
+    file_size = os.path.getsize(filepath)
+    if file_size <= maxsize:
+        return filepath
+
+    img = Image.open(filepath)
+    width, height = img.size
+    resized_img = img.resize((int(width / 2.2), int(height / 2.2)), Image.LANCZOS)
+
+    # Save with current quality
+    output_path = "output/thumbnail-yt-resized.png"
+    resized_img.save(output_path, optimize=True)
+    file_size = os.path.getsize(output_path)
+    if file_size > maxsize:
+        raise ValueError(
+            f"Could not reduce image below {maxsize} bytes. Current size: {file_size} bytes"
+        )
+
+    return output_path
+
+
 def main(config: Config, mp4_filepath: str):
     """Upload a video to YouTube using the provided configuration and file path.
 
@@ -83,6 +108,7 @@ def main(config: Config, mp4_filepath: str):
     youtube = get_authenticated_youtube(yt_config)
     body = youtube_metadata.main(config)
 
+    # Upload the video first
     media = MediaFileUpload(mp4_filepath, mimetype="video/mp4", resumable=True)
     request = youtube.videos().insert(
         part=",".join(body.keys()), body=body, media_body=media
@@ -95,5 +121,12 @@ def main(config: Config, mp4_filepath: str):
 
     video_id = response["id"]
     video_url = f"https://www.youtube.com/watch?v={video_id}"
+
+    if not config["render"]["is_shorts_output"]:
+        thumbnail_path = resize_yt_thumbnail_if_needed("output/thumbnail.png")
+        youtube.thumbnails().set(
+            videoId=video_id,
+            media_body=MediaFileUpload(thumbnail_path, mimetype="image/png"),
+        ).execute()
 
     return video_url

@@ -9,6 +9,7 @@ class DevelopmentConfig(TypedDict):
     ui_mode: bool
     quick_textures_mode: bool
     limited_frames_mode: bool
+    thumbnail_mode: bool
 
 
 class RenderConfig(TypedDict):

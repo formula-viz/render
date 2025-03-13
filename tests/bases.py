@@ -5,7 +5,7 @@ import logging
 import os
 import unittest
 
-from py.render.render_funcs import load_driver_data, load_track_data
+from py.render.data_funcs import load_driver_data, load_track_data
 from py.utils.config import Config
 
 

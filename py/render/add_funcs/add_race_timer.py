@@ -24,7 +24,7 @@ class RaceTimer:
 
         # Create a collection to store all timer text objects
         self.timer_collection = bpy.data.collections.new("Timer_Frames")
-        bpy.context.scene.collection.children.link(self.timer_collection)
+        bpy.context.scene.collection.children.link(self.timer_collection)  # pyright: ignore
 
         self._create_all_frame_timers(self.parent_empty)
 
@@ -55,21 +55,24 @@ class RaceTimer:
             name=f"Timer_{frame_num}", object_data=timer_curve
         )
         self.timer_collection.objects.link(timer_obj)
+        text_curve = timer_obj.data
+        if not isinstance(text_curve, bpy.types.TextCurve):
+            raise TypeError("Expected TextCurve, got {}".format(type(text_curve)))
 
-        timer_obj.data.body = text
-        timer_obj.data.align_x = "LEFT"
-        timer_obj.data.align_y = "CENTER"
-        timer_obj.data.font = bpy.data.fonts.load(str(Resources.get_main_font()))
-        timer_obj.data.size = 0.03
+        text_curve.body = text
+        text_curve.align_x = "LEFT"
+        text_curve.align_y = "CENTER"
+        text_curve.font = bpy.data.fonts.load(str(Resources.get_main_font()))
+        text_curve.size = 0.03
 
         # Create white material
         mat = bpy.data.materials.new(name=f"TimerMaterial_{frame_num}")
         mat.use_nodes = True
-        nodes = mat.node_tree.nodes
-        nodes["Principled BSDF"].inputs["Base Color"].default_value = (1, 1, 1, 1)
+        nodes = mat.node_tree.nodes  # pyright: ignore
+        nodes["Principled BSDF"].inputs["Base Color"].default_value = (1, 1, 1, 1)  # pyright: ignore
 
         # Assign material to text
-        timer_obj.data.materials.append(mat)
+        text_curve.materials.append(mat)
 
         return timer_obj
 

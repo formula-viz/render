@@ -1,27 +1,30 @@
 {
-  "track": "SIN",
+  "track": "SINGAPORE",
   "year": 2024,
-  "_type": "rest-of-field",
-  "type": "head-to-head",
-  "drivers": ["NOR", "VER"],
+  "type": "rest-of-field",
+  "drivers": ["Norris", "Verstappen"],
   "dev_settings": {
-    "ui_mode": true,
+    "ui_mode": false,
     "quick_textures_mode": false,
-    "limited_frames_mode": false
+    "limited_frames_mode": false,
+    "thumbnail_mode": false
   },
   "render": {
     "engine": "eevee",
     "fps": 30,
     "samples": 32,
-    "is_shorts_output": true,
-    "output": "output.mp4",
-    "max_cam_distance": 70,
+    "is_shorts_output": false,
+    "output": "render-output.mp4",
     "start_buffer_frames": 45,
     "end_buffer_frames": 70
   },
+  "post_process": {
+    "output": "post-process-output.mp4"
+  },
   "socials": {
     "youtube": {
-      "client_secret_path": "youtube-api-client-secret.json"
+      "service_account_path": "formula-viz-981f62016605.json",
+      "visibility": "unlisted"
     }
   }
 }

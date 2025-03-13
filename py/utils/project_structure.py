@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from py.utils.config import Config
+from py.utils.models import Driver
 
 # Get project root directory
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -30,6 +31,7 @@ BACKGROUND_MUSIC_PATH = RESOURCES_DIR / "audio/lofi-hiphop-background.m4a"
 BACKGROUND_IMAGE_PATH = RESOURCES_DIR / "backgrounds/background1.jpeg"
 MAIN_FONT = RESOURCES_DIR / "fonts/Formula1-Regular.ttf"
 BOLD_FONT = RESOURCES_DIR / "fonts/Formula1-Bold.ttf"
+IMPACT_FONT = RESOURCES_DIR / "fonts/Impact.ttf"
 
 # Output directories
 FRAMES_DIR = TEMPORARY_DIR / "frames"
@@ -62,16 +64,19 @@ class DriverDataPS:
         return CAR_DATA_DIR / f"{year}_{track}_{fps}"
 
     @staticmethod
-    def get_car_data_path(year: str, track: str, fps: str, driver: str) -> Path:
-        return DriverDataPS.get_car_data_dir(year, track, fps) / f"{driver}.csv"
+    def get_car_data_path(year: str, track: str, fps: str, driver: Driver) -> Path:
+        return (
+            DriverDataPS.get_car_data_dir(year, track, fps)
+            / f"{driver.abbrev}-{driver.last_name}.csv"
+        )
 
     @staticmethod
     def get_driver_times_path(year: str, track: str) -> Path:
         return DRIVER_TIMES_DIR / f"{year}_{track}.json"
 
     @staticmethod
-    def get_driver_image_path(driver_abbrev: str) -> Path:
-        return DRIVER_IMAGES_DIR / f"{driver_abbrev}.png"
+    def get_driver_image_path(driver: Driver) -> Path:
+        return DRIVER_IMAGES_DIR / f"{driver.abbrev}-{driver.last_name}.png"
 
 
 class TrackDataPS:

@@ -2,6 +2,7 @@ fastf1
 numpy
 pyyaml
 pandas
+pandas-stubs
 scipy
 logger
 colormath

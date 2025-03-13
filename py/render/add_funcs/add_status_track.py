@@ -1,11 +1,18 @@
+"""A class for creating and managing a status track visualization in Blender.
+
+The status track is a miniature representation of the track that displays
+the current position of a driver as a dot. It is positioned relative to the camera
+and scales appropriately based on the output mode (shorts or landscape).
+"""
+
 from typing import Tuple, cast
 
 import bpy
 from mathutils import Vector
 
-from py.render.render_funcs.add_start_finish_line import add_start_finish_line
-from py.render.render_funcs.add_track import create_material, create_planes
-from py.render.render_funcs.load_track_data import TrackData
+from py.render.add_funcs.add_start_finish_line import add_start_finish_line
+from py.render.add_funcs.add_track import create_material, create_planes
+from py.render.data_funcs.load_track_data import TrackData
 from py.utils.colors import hex_to_blender_rgb
 from py.utils.logger import log_info
 
@@ -24,9 +31,26 @@ EDGE_BUFFER = 0.01
 
 
 class StatusTrack:
+    """A class for creating and managing a status track visualization in Blender.
+
+    The status track is a miniature representation of the track that displays
+    the current position of a driver as a dot. It is positioned relative to the camera
+    and scales appropriately based on the output mode (shorts or landscape).
+    """
+
     def __init__(
         self, track_data, camera_obj, start_finish_line_idx, driver_df, is_shorts_output
     ):
+        """Initialize the StatusTrack with track data and positioning parameters.
+
+        Args:
+            track_data: The track data containing inner and outer track points
+            camera_obj: The camera object to parent the status track to
+            start_finish_line_idx: Index of the start/finish line point
+            driver_df: DataFrame containing driver position data over time
+            is_shorts_output: Boolean indicating if output is for shorts format (vertical)
+
+        """
         self.track_data = track_data
         self.camera_obj = camera_obj
         self.start_finish_line_idx = start_finish_line_idx
@@ -275,16 +299,16 @@ class StatusTrack:
         node_output = nodes.new("ShaderNodeOutputMaterial")
 
         # Set emission color and strength
-        node_emission.inputs["Color"].default_value = (
+        node_emission.inputs["Color"].default_value = (  # pyright: ignore
             *hex_to_blender_rgb("#00FFFF"),
             1,
         )
-        node_emission.inputs["Strength"].default_value = 2.0
+        node_emission.inputs["Strength"].default_value = 2.0  # pyright: ignore
 
         # Link nodes
         links = node_tree.links
         links.new(node_emission.outputs[0], node_output.inputs[0])
 
-        dot.data.materials.append(dot_mat)
+        dot.data.materials.append(dot_mat)  # pyright: ignore
 
         return dot
