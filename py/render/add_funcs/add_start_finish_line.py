@@ -8,12 +8,12 @@ from py.utils.colors import StartFinishLineColor
 
 
 def add_start_finish_line(
-    inner_points,
-    outer_points,
-    start_finish_line_idx,
-    name,
-    line_width=3,
-):
+    inner_points: list[tuple[float, float, float]],
+    outer_points: list[tuple[float, float, float]],
+    start_finish_line_idx: int,
+    name: str,
+    line_width: int = 3,
+) -> bpy.types.Object:
     """Create a start/finish line between inner and outer track points.
 
     Uses the index of inner_points and outer_points that defines the start/finish line
@@ -34,7 +34,7 @@ def add_start_finish_line(
 
     """
     z_offset = 0.02
-    points = []
+    points: list[tuple[float, float, float]] = []
     for i in range(0, line_width):
         points.append(inner_points[(start_finish_line_idx - i) % len(inner_points)])
 
@@ -53,11 +53,11 @@ def add_start_finish_line(
     for point in points:
         bm.verts.new(point)
 
-    bm.verts.ensure_lookup_table()
+    bm.verts.ensure_lookup_table() # pyright: ignore
     bm.faces.new(bm.verts)  # pyright: ignore
-    bm.to_mesh(mesh)
-    bm.free()
-    mesh.update()
+    bm.to_mesh(mesh) # pyright: ignore
+    bm.free() # pyright: ignore
+    mesh.update() # pyright: ignore
 
     mat = create_material(
         StartFinishLineColor.get_scene_rgb(), "StartFinishLineMaterial"

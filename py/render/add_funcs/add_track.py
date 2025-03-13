@@ -3,11 +3,12 @@
 import bmesh
 import bpy
 from py.render.data_funcs.load_track_data import TrackData
+from typing import Optional
 
 from py.utils.colors import CurbColor, MainTrackColor
 
 
-def create_planes(inner_points: list[tuple[float, float, float]], outer_points: list[tuple[float, float, float]], name: str, material=None):
+def create_planes(inner_points: list[tuple[float, float, float]], outer_points: list[tuple[float, float, float]], name: str, material: Optional[bpy.types.Material]=None):
     """Create a mesh plane between two sets of points.
 
     Args:
@@ -29,7 +30,7 @@ def create_planes(inner_points: list[tuple[float, float, float]], outer_points: 
     inner_verts = [bm.verts.new(coord) for coord in inner_points]
     outer_verts = [bm.verts.new(coord) for coord in outer_points]
 
-    bm.verts.ensure_lookup_table()
+    bm.verts.ensure_lookup_table() # pyright: ignore
 
     for i in range(len(inner_points) - 1):
         bm.faces.new(
@@ -38,8 +39,8 @@ def create_planes(inner_points: list[tuple[float, float, float]], outer_points: 
     if len(inner_points) > 2:
         bm.faces.new([inner_verts[-1], inner_verts[0], outer_verts[0], outer_verts[-1]])
 
-    bm.to_mesh(mesh)
-    bm.free()
+    bm.to_mesh(mesh) # pyright: ignore
+    bm.free() # pyright: ignore
 
     if material:
         obj.data.materials.append(material)  # pyright: ignore

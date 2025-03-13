@@ -4,6 +4,7 @@ import bpy
 from mathutils import Vector
 
 from py.render.add_funcs.add_driver_circle import DriverCircle
+from py.utils.config import Config
 from py.utils.logger import log_info
 from py.utils.models import Driver
 from py.utils.project_structure import Resources
@@ -14,7 +15,7 @@ class LiveLeaderboard:
 
     def __init__(
         self,
-        config,
+        config: Config,
         drivers_and_colors: list[tuple[Driver, str]],
         car_rankings: list[list[tuple[Driver, float]]],
         is_fancy_mode: bool,
@@ -36,7 +37,7 @@ class LiveLeaderboard:
         self.drivers_and_colors = drivers_and_colors
         self.car_rankings = car_rankings
         self.is_fancy_mode = is_fancy_mode
-        self.driver_objects = {}  # Store references to driver objects
+        self.driver_objects: dict[Driver, bpy.types.Object] = {}  # Store references to driver objects
         self.camera_obj = camera_obj
 
         if self.is_fancy_mode:
@@ -49,10 +50,10 @@ class LiveLeaderboard:
         scene = bpy.context.scene
         if not scene:
             raise ValueError("No active scene found")
-        scene.collection.children.link(self.collection)
+        scene.collection.children.link(self.collection) # pyright: ignore
 
         # Create empty parent object for camera-relative positioning
-        bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))
+        bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0)) # pyright: ignore
         parent_empty = bpy.context.active_object
         if not parent_empty:
             raise ValueError("Failed to create parent empty object")
@@ -77,14 +78,11 @@ class LiveLeaderboard:
                 continue
 
             true_frame = frame + start_buffer_frames
-
             new_order = [x[0] for x in ranking]
-
             for idx, driver in enumerate(new_order):
                 empty_parent_obj = self.driver_objects[driver]
-
                 empty_parent_obj.location = self.position_offsets[idx + 1]
-                empty_parent_obj.keyframe_insert(data_path="location", frame=true_frame)
+                empty_parent_obj.keyframe_insert(data_path="location", frame=true_frame) # pyright: ignore
 
     def _parent_to_camera(self) -> None:
         """Parent the leaderboard to the camera."""
@@ -107,11 +105,8 @@ class LiveLeaderboard:
         """Create initial objects for each driver in the leaderboard."""
         for idx, (driver, color) in enumerate(self.drivers_and_colors):
             position = idx + 1
-
             empty_obj = self._create_element_obj(driver, color)
-
             empty_obj.location = self.position_offsets[position]
-
             self.driver_objects[driver] = empty_obj
 
     def _create_element_obj(self, driver: Driver, color: str) -> bpy.types.Object:
@@ -126,7 +121,7 @@ class LiveLeaderboard:
 
         """
         # Create empty parent for text
-        bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))
+        bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0)) # pyright: ignore
         empty_obj = bpy.context.active_object
         if not empty_obj:
             raise ValueError("Failed to create empty object")
@@ -153,7 +148,7 @@ class LiveLeaderboard:
         else:
             text_loc = (0, 0, 0)
 
-        bpy.ops.object.text_add(location=text_loc)
+        bpy.ops.object.text_add(location=text_loc) # pyright: ignore
         text_obj = bpy.context.active_object
         if not text_obj:
             raise ValueError("Failed to create text object")
@@ -184,8 +179,8 @@ class LiveLeaderboard:
         # Link both objects to the main collection
         for obj in [empty_obj, text_obj]:
             for col in obj.users_collection:
-                col.objects.unlink(obj)
-            self.collection.objects.link(obj)
+                col.objects.unlink(obj) # pyright: ignore
+            self.collection.objects.link(obj) # pyright: ignore
 
         return empty_obj
 
@@ -197,13 +192,11 @@ class LiveLeaderboard:
 
         """
         num_drivers = len(self.drivers_and_colors)
-        offsets = {}
-
+        offsets: dict[int, Vector] = {}
         for position in range(1, num_drivers + 1):
             # Calculate vertical offset (top to bottom)
             y_offset = -(position - 1) * self.spacing
             offsets[position] = Vector((0, y_offset, 0))
-
         return offsets
 
     @staticmethod

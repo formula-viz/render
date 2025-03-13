@@ -4,6 +4,7 @@ import math
 
 import bpy
 from mathutils import Vector
+from py.utils.config import Config
 
 from py.utils.logger import log_info
 from py.utils.project_structure import (
@@ -18,7 +19,7 @@ from py.utils.project_structure import (
 class Outro:
     """Add social media links and other outro elements at the end of the video."""
 
-    def __init__(self, config, camera_obj, num_frames):
+    def __init__(self, config: Config, camera_obj: bpy.types.Object, num_frames: int):
         """Add social media links and other outro elements at the end of the video."""
         log_info("Initializing Outro...")
         self.config = config
@@ -31,7 +32,7 @@ class Outro:
 
         # Create parent empty object
         self.parent_empty = bpy.data.objects.new("Outro_Parent", None)
-        self.outro_collection.objects.link(self.parent_empty)
+        self.outro_collection.objects.link(self.parent_empty) # pyright: ignore
         self.parent_empty.hide_viewport = True
         self.parent_empty.hide_render = True
         self._parent_to_camera(self.camera_obj, self.parent_empty)
@@ -59,21 +60,21 @@ class Outro:
     ):
         """Create a social media element with platform icon and username."""
         # Enable import images as planes addon
-        bpy.ops.preferences.addon_enable(module="io_import_images_as_planes")
+        bpy.ops.preferences.addon_enable(module="io_import_images_as_planes") # pyright: ignore
 
         # Import image as plane
         bpy.ops.import_image.to_plane(files=[{"name": image_path}])  # pyright: ignore
         icon_plane = bpy.context.selected_objects[0]
         icon_plane.name = f"Icon_{platform}"
         # set rotation in degrees
-        icon_plane.rotation_euler = Vector(
+        icon_plane.rotation_euler = Vector( # pyright: ignore
             (math.radians(180), math.radians(180), math.radians(180))
         )  # pyright: ignore
 
         # Create text for username/handle
         text_curve = bpy.data.curves.new(name=f"Text_{platform}", type="FONT")
         text_obj = bpy.data.objects.new(name=f"Text_{platform}", object_data=text_curve)
-        self.outro_collection.objects.link(text_obj)
+        self.outro_collection.objects.link(text_obj) # pyright: ignore
 
         text_obj.data.body = title  # pyright: ignore
         text_obj.data.align_x = "LEFT"  # pyright: ignore
@@ -86,7 +87,7 @@ class Outro:
 
         # Create empty to group icon and text
         group_empty = bpy.data.objects.new(f"Social_{platform}", None)
-        self.outro_collection.objects.link(group_empty)
+        self.outro_collection.objects.link(group_empty) # pyright: ignore
         group_empty.hide_viewport = True
         group_empty.hide_render = True
 
@@ -106,7 +107,7 @@ class Outro:
 
     def _create_background_plane(self):
         """Create a semi-transparent black background plane."""
-        bpy.ops.mesh.primitive_plane_add(size=10.0)
+        bpy.ops.mesh.primitive_plane_add(size=10.0) # pyright: ignore
         bg_plane = bpy.context.active_object
         bg_plane.name = "Outro_Background"  # pyright: ignore
 
@@ -116,7 +117,7 @@ class Outro:
         bg_mat.blend_method = "BLEND"  # Enable transparency
         nodes = bg_mat.node_tree.nodes  # pyright: ignore
         links = bg_mat.node_tree.links  # pyright: ignore
-        nodes.clear()
+        nodes.clear() # pyright: ignore
 
         # Set up principled shader with transparency
         principled = nodes.new("ShaderNodeBsdfPrincipled")
@@ -138,7 +139,7 @@ class Outro:
         """Create bottom text element."""
         text_curve = bpy.data.curves.new(name="Bottom_Text", type="FONT")
         text_obj = bpy.data.objects.new("Bottom_Text", object_data=text_curve)
-        self.outro_collection.objects.link(text_obj)
+        self.outro_collection.objects.link(text_obj) # pyright: ignore
 
         text_obj.data.body = "Uploading every F1 qualifying"  # pyright: ignore
         text_obj.data.align_x = "CENTER"  # pyright: ignore
@@ -184,7 +185,7 @@ class Outro:
             cur_loc, str(YOUTUBE_ICON_PATH), "youtube.com/formula-viz", "youtube"
         )
 
-    def _parent_to_camera(self, camera_obj: bpy.types.Object, element_obj) -> None:
+    def _parent_to_camera(self, camera_obj: bpy.types.Object, element_obj: bpy.types.Object) -> None:
         """Parent the outro element to the camera."""
         element_obj.parent = camera_obj
         end_buffer = self.config["render"]["end_buffer_frames"]
@@ -199,15 +200,15 @@ class Outro:
 
         # Set initial position
         element_obj.location = Vector(start_position)
-        element_obj.keyframe_insert(data_path="location", frame=0)
+        element_obj.keyframe_insert(data_path="location", frame=0) # pyright: ignore
 
-        element_obj.keyframe_insert(
+        element_obj.keyframe_insert( # pyright: ignore
             data_path="location", frame=self.num_frames - end_buffer
         )
 
         # Animate to final position
         element_obj.location = Vector(final_position)
-        element_obj.keyframe_insert(
+        element_obj.keyframe_insert( # pyright: ignore
             data_path="location", frame=self.num_frames - end_buffer + 40
         )
 

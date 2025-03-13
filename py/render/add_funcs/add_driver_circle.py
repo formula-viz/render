@@ -34,7 +34,7 @@ class DriverCircle:
         if pre_existing_empty:
             parent_empty = pre_existing_empty
         else:
-            bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))
+            bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0)) # pyright: ignore
             parent_empty = bpy.context.active_object
             parent_empty.hide_render = True  # pyright: ignore
             parent_empty.hide_viewport = True  # pyright: ignore
@@ -64,7 +64,7 @@ class DriverCircle:
 
     def _create_circle_face(self) -> bpy.types.Object:
         # Create circular face for the image
-        bpy.ops.mesh.primitive_circle_add(radius=1.0, vertices=32, fill_type="NGON")
+        bpy.ops.mesh.primitive_circle_add(radius=1.0, vertices=32, fill_type="NGON") # pyright: ignore
         circle_obj = bpy.context.active_object
         if not circle_obj:
             raise ValueError("Failed to create circle object")
@@ -83,7 +83,7 @@ class DriverCircle:
         )
         face_mat.use_nodes = True
         nodes = face_mat.node_tree.nodes  # pyright: ignore
-        nodes.clear()
+        nodes.clear() # pyright: ignore
 
         # Create nodes for image texture
         node_emission = nodes.new("ShaderNodeEmission")
@@ -114,15 +114,15 @@ class DriverCircle:
 
         # Ensure proper UV mapping
         bpy.context.view_layer.objects.active = circle_obj  # pyright: ignore
-        bpy.ops.object.mode_set(mode="EDIT")
-        bpy.ops.uv.unwrap(method="ANGLE_BASED", margin=0.001)
-        bpy.ops.object.mode_set(mode="OBJECT")
+        bpy.ops.object.mode_set(mode="EDIT") # pyright: ignore
+        bpy.ops.uv.unwrap(method="ANGLE_BASED", margin=0.001) # pyright: ignore
+        bpy.ops.object.mode_set(mode="OBJECT") # pyright: ignore
 
         return circle_obj
 
     def _create_outline(self) -> bpy.types.Object:
         # Create torus for the outline
-        bpy.ops.mesh.primitive_torus_add(
+        bpy.ops.mesh.primitive_torus_add( # pyright: ignore
             major_radius=1.0,  # Radius of the circle
             minor_radius=0.03,  # Thickness of the outline
             major_segments=128,  # Segments of the circle
@@ -144,7 +144,7 @@ class DriverCircle:
         )
         outline_mat.use_nodes = True
         nodes = outline_mat.node_tree.nodes  # pyright: ignore
-        nodes.clear()
+        nodes.clear() # pyright: ignore
 
         # Create emission node
         node_emission = nodes.new("ShaderNodeEmission")

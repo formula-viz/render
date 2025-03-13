@@ -3,6 +3,7 @@
 Mimic the default viewport blender background grid but improved and visible during the render.
 """
 
+from typing import Optional
 import bpy
 
 from py.utils.logger import log_info
@@ -12,8 +13,8 @@ def create_grid_curves(
     index: int = 0,
     size: int = 1000,
     spacing: float = 1.0,
-    offset: tuple = (0, 0, 0),
-    collection=None,
+    offset: tuple[float, float, float] = (0, 0, 0),
+    collection: Optional[bpy.types.Collection]=None,
 ):
     """Create grid using curves instead of mesh."""
     curve_data = bpy.data.curves.new("GridCurve", type="CURVE")
@@ -26,7 +27,7 @@ def create_grid_curves(
     for i in range(-size // 2, size // 2 + 1):
         # X direction
         spline = curve_data.splines.new("POLY")
-        spline.points.add(1)  # Add second point
+        spline.points.add(1)  # pyright: ignore
         pos = i * spacing
         spline.points[0].co = (
             -size * spacing / 2 + offset[0],
@@ -43,7 +44,7 @@ def create_grid_curves(
 
         # Y direction
         spline = curve_data.splines.new("POLY")
-        spline.points.add(1)
+        spline.points.add(1)  # pyright: ignore
         spline.points[0].co = (
             pos + offset[0],
             -size * spacing / 2 + offset[1],
@@ -62,21 +63,21 @@ def create_grid_curves(
 
     # Add to collection if specified, otherwise to scene collection
     if collection:
-        collection.objects.link(grid_obj)
+        collection.objects.link(grid_obj) # pyright: ignore
     else:
         bpy.context.scene.collection.objects.link(grid_obj)  # pyright: ignore
 
     return grid_obj
 
 
-def create_grid_material(rgb=(0.1, 0.2, 0.2, 1)):
+def create_grid_material(rgb: tuple[float, float, float, float] = (0.1, 0.2, 0.2, 1)):
     """Create an emission material for the grid."""
     material = bpy.data.materials.new(name="GridMaterial")
     material.use_nodes = True
     nodes = material.node_tree.nodes  # pyright: ignore
     links = material.node_tree.links  # pyright: ignore
 
-    nodes.clear()
+    nodes.clear() # pyright: ignore
 
     emission = nodes.new(type="ShaderNodeEmission")
     output = nodes.new(type="ShaderNodeOutputMaterial")

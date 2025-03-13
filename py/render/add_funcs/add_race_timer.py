@@ -1,9 +1,8 @@
 """Add a timer to the bottom right, showing the time elapsed since the start."""
 
-from typing import cast
-
 import bpy
 from mathutils import Vector
+from py.utils.config import Config
 
 from py.utils.logger import log_info
 from py.utils.project_structure import Resources
@@ -12,7 +11,7 @@ from py.utils.project_structure import Resources
 class RaceTimer:
     """Add a timer to the bottom right, showing the time elapsed since the start."""
 
-    def __init__(self, config, camera_obj, num_frames):
+    def __init__(self, config: Config, camera_obj: bpy.types.Object, num_frames: int):
         """Add a timer to the bottom right, showing the time elapsed since the start."""
         log_info("Initializing RaceTimer...")
         self.config = config
@@ -27,34 +26,32 @@ class RaceTimer:
         bpy.context.scene.collection.children.link(self.timer_collection)  # pyright: ignore
 
         self._create_all_frame_timers(self.parent_empty)
-
         self._parent_to_camera(self.camera_obj, self.parent_empty)
 
     def _create_parent_empty(self):
         # Create empty parent object for camera-relative positioning
-        bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))
+        bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0)) # pyright: ignore
         active_obj = bpy.context.active_object
-        if not active_obj or not isinstance(active_obj, bpy.types.Object):
+        if not active_obj:
             raise TypeError(
                 "Failed to create parent empty: Active object is not a valid Blender Object"
             )
 
-        # Explicitly cast to the correct type to make pyright happy
-        self.parent_empty = cast(bpy.types.Object, active_obj)
+        self.parent_empty = active_obj
 
         # ensure the parent empty is not rendered and invisible in viewport
         self.parent_empty.hide_render = True
         self.parent_empty.hide_viewport = True
         self.parent_empty.name = "TimerParent"
 
-    def _create_timer(self, frame_num, text):
+    def _create_timer(self, frame_num: int, text: str):
         """Create a text object to display the race timer."""
         # Create text object
         timer_curve = bpy.data.curves.new(name=f"Timer_{frame_num}", type="FONT")
         timer_obj = bpy.data.objects.new(
             name=f"Timer_{frame_num}", object_data=timer_curve
         )
-        self.timer_collection.objects.link(timer_obj)
+        self.timer_collection.objects.link(timer_obj)  # pyright: ignore
         text_curve = timer_obj.data
         if not isinstance(text_curve, bpy.types.TextCurve):
             raise TypeError("Expected TextCurve, got {}".format(type(text_curve)))
@@ -72,11 +69,11 @@ class RaceTimer:
         nodes["Principled BSDF"].inputs["Base Color"].default_value = (1, 1, 1, 1)  # pyright: ignore
 
         # Assign material to text
-        text_curve.materials.append(mat)
+        text_curve.materials.append(mat) # pyright: ignore
 
         return timer_obj
 
-    def _create_all_frame_timers(self, parent_empty):
+    def _create_all_frame_timers(self, parent_empty: bpy.types.Object):
         """Create a text object for each frame with visibility animation."""
         for frame in range(0, self.num_frames + 1):
             # Calculate time text for current frame
@@ -99,20 +96,20 @@ class RaceTimer:
             # Set visibility keyframes
             timer_obj.hide_viewport = True
             timer_obj.hide_render = True
-            timer_obj.keyframe_insert(data_path="hide_viewport", frame=0)
-            timer_obj.keyframe_insert(data_path="hide_render", frame=0)
+            timer_obj.keyframe_insert(data_path="hide_viewport", frame=0) # pyright: ignore
+            timer_obj.keyframe_insert(data_path="hide_render", frame=0) # pyright: ignore
 
             timer_obj.hide_viewport = False
             timer_obj.hide_render = False
-            timer_obj.keyframe_insert(data_path="hide_viewport", frame=frame)
-            timer_obj.keyframe_insert(data_path="hide_render", frame=frame)
+            timer_obj.keyframe_insert(data_path="hide_viewport", frame=frame) # pyright: ignore
+            timer_obj.keyframe_insert(data_path="hide_render", frame=frame) # pyright: ignore
 
             timer_obj.hide_viewport = True
             timer_obj.hide_render = True
-            timer_obj.keyframe_insert(data_path="hide_viewport", frame=frame + 1)
-            timer_obj.keyframe_insert(data_path="hide_render", frame=frame + 1)
+            timer_obj.keyframe_insert(data_path="hide_viewport", frame=frame + 1) # pyright: ignore
+            timer_obj.keyframe_insert(data_path="hide_render", frame=frame + 1) # pyright: ignore
 
-    def _parent_to_camera(self, camera_obj: bpy.types.Object, timer_obj) -> None:
+    def _parent_to_camera(self, camera_obj: bpy.types.Object, timer_obj: bpy.types.Object) -> None:
         """Parent the leaderboard to the camera."""
         timer_obj.parent = camera_obj
 

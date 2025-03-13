@@ -5,10 +5,11 @@ the current position of a driver as a dot. It is positioned relative to the came
 and scales appropriately based on the output mode (shorts or landscape).
 """
 
-from typing import Tuple, cast
+from typing import Tuple
 
 import bpy
 from mathutils import Vector
+from pandas import DataFrame
 
 from py.render.add_funcs.add_start_finish_line import add_start_finish_line
 from py.render.add_funcs.add_track import create_material, create_planes
@@ -39,7 +40,7 @@ class StatusTrack:
     """
 
     def __init__(
-        self, track_data, camera_obj, start_finish_line_idx, driver_df, is_shorts_output
+        self, track_data: TrackData, camera_obj: bpy.types.Object, start_finish_line_idx: int, driver_df: DataFrame, is_shorts_output: bool
     ):
         """Initialize the StatusTrack with track data and positioning parameters.
 
@@ -65,15 +66,15 @@ class StatusTrack:
 
     def _create_parent_empty(self):
         # Create empty parent object for camera-relative positioning
-        bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))
+        bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0)) # pyright: ignore
         active_obj = bpy.context.active_object
-        if not active_obj or not isinstance(active_obj, bpy.types.Object):
-            raise TypeError(
+        if not active_obj:
+            raise ValueError(
                 "Failed to create parent empty: Active object is not a valid Blender Object"
             )
 
         # Explicitly cast to the correct type to make pyright happy
-        self.parent_empty = cast(bpy.types.Object, active_obj)
+        self.parent_empty = active_obj
 
         # ensure the parent empty is not rendered and invisible in viewport
         self.parent_empty.hide_render = True
@@ -81,9 +82,6 @@ class StatusTrack:
         self.parent_empty.name = "StatusTrackParent"
 
     def _setup(self) -> Tuple[float, float]:
-        if self.parent_empty is None:
-            raise ValueError("Parent empty has not been initialized")
-
         new_track_data, new_driver_df = self._center(self.track_data, self.driver_df)
 
         track_width, track_height = self._get_track_dimensions(new_track_data)
@@ -133,7 +131,7 @@ class StatusTrack:
         scaled_track_height: float,
     ) -> None:
         """Parent the leaderboard to the camera."""
-        if self.parent_empty is None:
+        if not self.parent_empty:
             raise ValueError("Parent empty has not been initialized")
 
         self.parent_empty.parent = camera_obj
@@ -210,7 +208,7 @@ class StatusTrack:
         status_track_obj.scale.y = optimal_scale
         status_track_obj.scale.z = optimal_scale
 
-    def _center(self, new_track_data: TrackData, new_driver_df):
+    def _center(self, new_track_data: TrackData, driver_df: DataFrame) -> tuple[TrackData, DataFrame]:
         new_inner_points = []
         new_outer_points = []
         new_inner_curb_points = []
@@ -248,7 +246,7 @@ class StatusTrack:
             for x, y, z in new_track_data.outer_curb_points
         ]
 
-        new_driver_df = new_driver_df.copy()
+        new_driver_df = driver_df.copy()
         new_driver_df["X"] = new_driver_df["X"] + offset_x
         new_driver_df["Y"] = new_driver_df["Y"] + offset_y
         new_driver_df["Z"] = new_driver_df["Z"] + offset_z
@@ -262,29 +260,27 @@ class StatusTrack:
 
         return new_track_data, new_driver_df
 
-    def _add_indicator_dot(self, new_driver_df) -> bpy.types.Object:
+    def _add_indicator_dot(self, new_driver_df: DataFrame) -> bpy.types.Object:
         dot = self._create_indicator_dot()
 
-        for i in range(len(new_driver_df)):
-            frame = i + 1
+        x_vals = new_driver_df["X"].astype(float)
+        y_vals = new_driver_df["Y"].astype(float)
 
-            dot.location = (new_driver_df["X"].iloc[i], new_driver_df["Y"].iloc[i], 0)
-            dot.keyframe_insert(data_path="location", frame=frame)
+        for i in range(len(x_vals)):
+            frame = i + 1
+            dot.location = (x_vals[i], y_vals[i], 0)
+            dot.keyframe_insert(data_path="location", frame=frame) # pyright: ignore
 
         return dot
 
     def _create_indicator_dot(self) -> bpy.types.Object:
-        bpy.ops.mesh.primitive_uv_sphere_add(radius=17, segments=64, ring_count=64)
-        active_obj = bpy.context.active_object
-        if not active_obj or not isinstance(active_obj, bpy.types.Object):
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=17, segments=64, ring_count=64) # pyright: ignore
+        dot = bpy.context.active_object
+        if not dot:
             raise ValueError("Failed to create indicator dot")
-
-        dot = cast(bpy.types.Object, active_obj)
 
         # Create material with emission
         dot_mat = bpy.data.materials.new(name="IndicatorDot")
-        if not isinstance(dot_mat, bpy.types.Material):
-            raise ValueError("Failed to create material")
 
         dot_mat.use_nodes = True
         node_tree = dot_mat.node_tree
@@ -292,7 +288,7 @@ class StatusTrack:
             raise ValueError("Failed to get node tree")
 
         nodes = node_tree.nodes
-        nodes.clear()
+        nodes.clear() # pyright: ignore
 
         # Create emission node
         node_emission = nodes.new("ShaderNodeEmission")
