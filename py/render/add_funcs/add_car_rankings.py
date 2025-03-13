@@ -5,7 +5,6 @@ For each frame in the video, return a list of tuples containing the driver and t
 
 import numpy as np
 import pandas as pd
-from numpy._typing import NDArray
 
 from py.render.data_funcs.load_track_data import TrackData
 from py.utils.config import Config
@@ -13,35 +12,38 @@ from py.utils.models import Driver
 
 
 def point_to_line_distance(
-    point: NDArray[np.float64],
-    line_start: NDArray[np.float64],
-    line_end: NDArray[np.float64],
+    point: tuple[float, float, float],
+    line_start: tuple[float, float, float],
+    line_end: tuple[float, float, float],
 ) -> float:
     """Calculate the distance from a point to a line segment."""
-    point = np.array(point)
-    line_start = np.array(line_start)
-    line_end = np.array(line_end)
+    # Convert tuples to numpy arrays for vector operations
+    point_arr = np.array(point, dtype=float)
+    line_start_arr = np.array(line_start, dtype=float)
+    line_end_arr = np.array(line_end, dtype=float)
 
-    line_vec = line_end - line_start
-    line_length = np.linalg.norm(line_vec)
+    # Calculate vector along the line segment
+    line_vec_arr = line_end_arr - line_start_arr
+    line_length = float(np.linalg.norm(line_vec_arr))
 
-    line_vec = line_vec / line_length
-    point_vec = point - line_start
-    projection_length = np.dot(point_vec, line_vec)
+    line_unit_vec = line_vec_arr / line_length
+    point_vec_arr = point_arr - line_start_arr
+    projection_length = float(np.dot(point_vec_arr, line_unit_vec))
 
     # If projection falls before beginning of line segment
     if projection_length < 0:
-        return float(np.linalg.norm(point - line_start))
+        return float(np.linalg.norm(point_arr - line_start_arr))
     # If projection falls after end of line segment
     if projection_length > line_length:
-        return float(np.linalg.norm(point - line_end))
+        return float(np.linalg.norm(point_arr - line_end_arr))
 
-    projection = line_start + line_vec * projection_length
-    return float(np.linalg.norm(point - projection))
+    # Calculate the projection point
+    projection_arr = line_start_arr + line_unit_vec * projection_length
+    return float(np.linalg.norm(point_arr - projection_arr))
 
 
 def find_closest_track_idx(
-    inner_points: list[tuple[float, float, float]], outer_points: list[tuple[float, float, float]], previous_reference_idx: int, car_point
+    inner_points: list[tuple[float, float, float]], outer_points: list[tuple[float, float, float]], previous_reference_idx: int, car_point: tuple[float, float, float]
 ) -> int:
     """Find the closest track segment to a car point.
 
@@ -65,10 +67,10 @@ def find_closest_track_idx(
     )
     n = len(inner_points)
 
-    def next_pos(idx):
+    def next_pos(idx: int):
         return (idx + 1) % n
 
-    def next_neg(idx):
+    def next_neg(idx: int):
         return (idx - 1) % n
 
     pos = previous_reference_idx
@@ -175,14 +177,11 @@ def main(
     start_buffer_frames = config["render"]["start_buffer_frames"]
     end_buffer_frames = config["render"]["end_buffer_frames"]
 
-    inner_points = [np.array(p) for p in track_data.inner_points]
-    outer_points = [np.array(p) for p in track_data.outer_points]
-
     indices: dict[int, Driver] = {}
-    driver_data = []
+    driver_data: list[list[tuple[float, float, float]]] = []
     for i, (driver, df) in enumerate(driver_dfs.items()):
-        car_points = [
-            np.array([df["X"][i], df["Y"][i], df["Z"][i]]) for i in range(len(df["X"]))
+        car_points: list[tuple[float, float, float]] = [
+            (df["X"][i], df["Y"][i], df["Z"][i]) for i in range(len(df))
         ]
         driver_data.append(car_points)
         indices[i] = driver
@@ -195,7 +194,7 @@ def main(
         current_frame_positions = [driver_points[i] for driver_points in driver_data]
 
         rankings, reference_idx = ranking_at_frame(
-            inner_points, outer_points, reference_idx, current_frame_positions
+            track_data.inner_points, track_data.outer_points, reference_idx, current_frame_positions
         )
 
         final_rank.append([(indices[rank[0]], rank[1]) for rank in rankings])

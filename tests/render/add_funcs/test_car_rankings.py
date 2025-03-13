@@ -7,8 +7,6 @@ determination.
 
 import unittest
 
-import numpy as np
-
 from py.render.add_funcs.add_car_rankings import (
     find_closest_track_idx,
     find_most_distant_closest_point,
@@ -16,8 +14,6 @@ from py.render.add_funcs.add_car_rankings import (
     point_to_line_distance,
     ranking_at_frame,
 )
-from py.utils.logger import log_info
-from py.utils.models import Driver
 from tests.bases import SetupAlpha
 
 
@@ -34,11 +30,11 @@ class TestPointToLineDistance(unittest.TestCase):
         Creates a vertical line and tests that points at different x-coordinates
         have the expected perpendicular distances to the line.
         """
-        point_a = np.array([5, 0, 0])
-        point_b = np.array([10, 0, 0])
+        point_a = (5, 0, 0)
+        point_b = (10, 0, 0)
 
-        line_start = np.array([0, -5, 0])
-        line_end = np.array([0, 5, 0])
+        line_start = (0, -5, 0)
+        line_end = (0, 5, 0)
 
         distance_a = point_to_line_distance(point_a, line_start, line_end)
         distance_b = point_to_line_distance(point_b, line_start, line_end)
@@ -52,16 +48,16 @@ class TestPointToLineDistance(unittest.TestCase):
         Verifies that the distance calculation is consistent when the same
         point is provided multiple times.
         """
-        point_a = np.array([5, 0, 0])
-        point_b = np.array([5, 0, 0])
+        point_a = (5.0, 0.0, 0.0)
+        point_b = (5.0, 0.0, 0.0)
 
-        line_start = np.array([0, -5, 0])
-        line_end = np.array([0, 5, 0])
+        line_start = (0.0, -5.0, 0.0)
+        line_end = (0.0, 5.0, 0.0)
 
         distance_a = point_to_line_distance(point_a, line_start, line_end)
         distance_b = point_to_line_distance(point_b, line_start, line_end)
 
-        self.assertAlmostEqual(distance_a, distance_b)
+        self.assertAlmostEqual(float(distance_a), float(distance_b))
 
 
 class TestFindClosestTrackIdx(SetupAlpha):
@@ -77,10 +73,10 @@ class TestFindClosestTrackIdx(SetupAlpha):
         Verifies that when starting from index 0, the function correctly
         identifies index 1 as closest to the test point.
         """
-        inner_points = [(0, 0, 0), (1, 0, 0), (2, 0, 0)]
-        outer_points = [(0, 1, 0), (1, 1, 0), (2, 1, 0)]
+        inner_points = [(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (2.0, 0.0, 0.0)]
+        outer_points = [(0.0, 1.0, 0.0), (1.0, 1.0, 0.0), (2.0, 1.0, 0.0)]
 
-        point = np.array([1, 0.5, 0])
+        point = (1.0, 0.5, 0.0)
 
         closest_idx = find_closest_track_idx(inner_points, outer_points, 0, point)
         self.assertEqual(closest_idx, 1)
@@ -91,10 +87,10 @@ class TestFindClosestTrackIdx(SetupAlpha):
         Verifies that when starting from index 2, the function correctly
         identifies index 1 as closest to the test point.
         """
-        inner_points = [(0, 0, 0), (1, 0, 0), (2, 0, 0)]
-        outer_points = [(0, 1, 0), (1, 1, 0), (2, 1, 0)]
+        inner_points = [(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (2.0, 0.0, 0.0)]
+        outer_points = [(0.0, 1.0, 0.0), (1.0, 1.0, 0.0), (2.0, 1.0, 0.0)]
 
-        point = np.array([1, 0.5, 0])
+        point = (1.0, 0.5, 0.0)
 
         closest_idx = find_closest_track_idx(inner_points, outer_points, 2, point)
         self.assertEqual(closest_idx, 1)
@@ -105,10 +101,10 @@ class TestFindClosestTrackIdx(SetupAlpha):
         Verifies correct handling of edge cases when a point is closest to
         the first track segment when looking from near the end.
         """
-        inner_points = [(3, 0, 0), (1, 0, 0), (2, 0, 0)]
-        outer_points = [(3, 1, 0), (1, 1, 0), (2, 1, 0)]
+        inner_points = [(3.0, 0.0, 0.0), (1.0, 0.0, 0.0), (2.0, 0.0, 0.0)]
+        outer_points = [(3.0, 1.0, 0.0), (1.0, 1.0, 0.0), (2.0, 1.0, 0.0)]
 
-        point = np.array([3, 0.5, 0])
+        point = (3.0, 0.5, 0.0)
 
         closest_idx = find_closest_track_idx(inner_points, outer_points, 2, point)
         self.assertEqual(closest_idx, 0)
@@ -119,10 +115,10 @@ class TestFindClosestTrackIdx(SetupAlpha):
         Verifies correct handling of edge cases when a point is closest to
         the last track segment when looking from the beginning.
         """
-        inner_points = [(3, 0, 0), (1, 0, 0), (2, 0, 0)]
-        outer_points = [(3, 1, 0), (1, 1, 0), (2, 1, 0)]
+        inner_points = [(3.0, 0.0, 0.0), (1.0, 0.0, 0.0), (2.0, 0.0, 0.0)]
+        outer_points = [(3.0, 1.0, 0.0), (1.0, 1.0, 0.0), (2.0, 1.0, 0.0)]
 
-        point = np.array([2, 0.5, 0])
+        point = (2.0, 0.5, 0.0)
 
         closest_idx = find_closest_track_idx(inner_points, outer_points, 0, point)
         self.assertEqual(closest_idx, 2)
@@ -142,12 +138,12 @@ class TestFindMostDistantClosestPoint(SetupAlpha):
         function correctly identifies the most advanced track segment.
         """
         inner_points = [
-            np.array(p) for p in [(0, 0, 0), (1, 0, 0), (2, 0, 0), (3, 0, 0)]
+            (0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (2.0, 0.0, 0.0), (3.0, 0.0, 0.0)
         ]
         outer_points = [
-            np.array(p) for p in [(0, 1, 0), (1, 1, 0), (2, 1, 0), (3, 1, 0)]
+            (0.0, 1.0, 0.0), (1.0, 1.0, 0.0), (2.0, 1.0, 0.0), (3.0, 1.0, 0.0)
         ]
-        car_points = [np.array(p) for p in [(1, 0.5, 0), (0, 0.5, 0), (0, 0.5, 0)]]
+        car_points = [(1.0, 0.5, 0.0), (0.0, 0.5, 0.0), (0.0, 0.5, 0.0)]
         # if the previous reference point is 0, then the closest points are 1, 0, 0
         # and the point index 1 is furthest from the line so it should be chosen
         # then 1 is added, the new reference line is idx 2
@@ -158,14 +154,14 @@ class TestFindMostDistantClosestPoint(SetupAlpha):
         self.assertEqual(closest_idx, 2)
 
         # say ref point is now 2, the closest is still 1, we should get 2 again
-        car_points = [np.array(p) for p in [(1, 0.5, 0), (1, 0.5, 0), (1, 0.5, 0)]]
+        car_points = [(1.0, 0.5, 0.0), (1.0, 0.5, 0.0), (1.0, 0.5, 0.0)]
         closest_idx = find_most_distant_closest_point(
             inner_points, outer_points, 2, car_points
         )
         self.assertEqual(closest_idx, 2)
 
         # now move the cars up to the next, next line, now we should get 3
-        car_points = [np.array(p) for p in [(3, 0.8, 0), (3, 0.2, 0), (3, 0.7, 0)]]
+        car_points = [(3.0, 0.8, 0.0), (3.0, 0.2, 0.0), (3.0, 0.7, 0.0)]
         closest_idx = find_most_distant_closest_point(
             inner_points, outer_points, 2, car_points
         )
@@ -183,15 +179,15 @@ class TestFindMostDistantClosestPoint(SetupAlpha):
         # cars will be 1 unit infront of the last point.
         # the other car will be far behind
         inner_points = [
-            np.array(p)
-            for p in [(0, 0, 0), (1, 0, 0), (2, 0, 0), (3, 0, 0), (4, 0, 0), (5, 0, 0)]
+            (0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (2.0, 0.0, 0.0),
+            (3.0, 0.0, 0.0), (4.0, 0.0, 0.0), (5.0, 0.0, 0.0)
         ]
         outer_points = [
-            np.array(p)
-            for p in [(0, 1, 0), (1, 1, 0), (2, 1, 0), (3, 1, 0), (4, 1, 0), (5, 1, 0)]
+            (0.0, 1.0, 0.0), (1.0, 1.0, 0.0), (2.0, 1.0, 0.0),
+            (3.0, 1.0, 0.0), (4.0, 1.0, 0.0), (5.0, 1.0, 0.0)
         ]
 
-        car_points = [np.array(p) for p in [(4, 0.5, 0), (4, 0.5, 0), (0, 0.5, 0)]]
+        car_points = [(4.0, 0.5, 0.0), (4.0, 0.5, 0.0), (0.0, 0.5, 0.0)]
 
         closest_idx = find_most_distant_closest_point(
             inner_points, outer_points, 3, car_points
@@ -216,12 +212,12 @@ class TestRankingAtFrame(SetupAlpha):
         track segments, with appropriate handling of ambiguous cases.
         """
         inner_points = [
-            np.array(p) for p in [(0, 0, 0), (1, 0, 0), (2, 0, 0), (3, 0, 0)]
+            (0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (2.0, 0.0, 0.0), (3.0, 0.0, 0.0)
         ]
         outer_points = [
-            np.array(p) for p in [(0, 1, 0), (1, 1, 0), (2, 1, 0), (3, 1, 0)]
+            (0.0, 1.0, 0.0), (1.0, 1.0, 0.0), (2.0, 1.0, 0.0), (3.0, 1.0, 0.0)
         ]
-        car_points = [np.array(p) for p in [(1, 0.5, 0), (0, 0.5, 0), (0, 0.5, 0)]]
+        car_points = [(1.0, 0.5, 0.0), (0.0, 0.5, 0.0), (0.0, 0.5, 0.0)]
 
         # we know that the reference point will be index 2, so the rank should be
         # either 0, 1, 2 or 0, 2, 1
@@ -230,7 +226,7 @@ class TestRankingAtFrame(SetupAlpha):
         self.assertIn(rank_indices, [[0, 1, 2], [0, 2, 1]])
 
         # now reshuffle the car points
-        car_points = [np.array(p) for p in [(1, 0.5, 0), (2, 0.5, 0), (0, 0.5, 0)]]
+        car_points = [(1.0, 0.5, 0.0), (2.0, 0.5, 0.0), (0.0, 0.5, 0.0)]
         rank = ranking_at_frame(inner_points, outer_points, 1, car_points)
         rank_indices = [driver_idx for driver_idx, _ in rank[0]]
         self.assertEqual(rank_indices, [1, 0, 2])

@@ -46,9 +46,9 @@ class TestStartFinishSyncOfInitialTel(SetupAlpha):
             z_points = tel["Z"].astype(float)
 
             # Assert there are no NaN or null values in the coordinates
-            assert x_points.notna().all(), "X coordinates contain NaN/null values"
-            assert y_points.notna().all(), "Y coordinates contain NaN/null values"
-            assert z_points.notna().all(), "Z coordinates contain NaN/null values"
+            assert x_points.notna().all(), "X coordinates contain NaN/null values" # pyright: ignore
+            assert y_points.notna().all(), "Y coordinates contain NaN/null values" # pyright: ignore
+            assert z_points.notna().all(), "Z coordinates contain NaN/null values" # pyright: ignore
 
             start_point = (x_points.iloc[0], y_points.iloc[0], z_points.iloc[0])
             end_point = (x_points.iloc[-1], y_points.iloc[-1], z_points.iloc[-1])
