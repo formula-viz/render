@@ -1,6 +1,6 @@
 """Given necessary data and setup, will setup the scene, generate the thumbnail, then reset the scene."""
 
-import math
+from typing import Optional
 
 import bpy
 
@@ -12,11 +12,15 @@ from py.render.add_funcs.add_driver_objects import (
 )
 from py.render.add_funcs.add_track import create_material, create_planes
 from py.render.render_animation import setup_ui_mode_viewport
+from py.render.thumbnail.thumbnail_layouts.abstract_layout import LayoutConfigurer
+from py.render.thumbnail.thumbnail_layouts.landscape import LandscapeConfigurer
+from py.render.thumbnail.thumbnail_layouts.shorts import ShortsConfigurer
 from py.utils.colors import CurbColor, MainTrackColor, hex_to_blender_rgb
 from py.utils.config import Config
 from py.utils.models import Driver
 from py.utils.project_structure import DriverDataPS
 from py.utils.logger import log_info
+
 
 
 class ThumbnailGenerator:
@@ -36,9 +40,6 @@ class ThumbnailGenerator:
             Currently, thumbnail generation for shorts output is not implemented.
 
         """
-        if config["render"]["is_shorts_output"]:
-            return
-
         self.config: Config = config
         self.drivers_in_color_order: list[Driver] = drivers_in_color_order
         self.colors: list[str] = colors
@@ -46,13 +47,37 @@ class ThumbnailGenerator:
         self.dy = 1.5
         self.dx = -3
 
+        layout_configurer: Optional[LayoutConfigurer] = None
+        if config["render"]["is_shorts_output"]:
+            layout_configurer = ShortsConfigurer()
+        else:
+            layout_configurer = LandscapeConfigurer()
+
         self.camera = self._add_thumbnail_camera()
-        self._add_cars()
-        self._add_formula_viz_car()
+        layout_configurer.position_camera(self.camera)
+
+        self.cars = self._add_cars()
+        layout_configurer.position_cars(self.cars)
+
+        self.formula_viz_car = self._add_formula_viz_car()
+        layout_configurer.position_formula_viz_car(self.formula_viz_car)
+
         self._add_sample_track()
 
-        self._add_driver_image()
+        self.driver_plane = self._add_driver_image()
+        layout_configurer.position_driver_image(self.driver_plane)
+
         self._add_color_background()
+
+        scene = bpy.context.scene
+        if not scene:
+            raise ValueError("No active scene found")
+        if self.config["render"]["is_shorts_output"]:
+            scene.render.resolution_x = 1080
+            scene.render.resolution_y = 1920
+        else:
+            scene.render.resolution_x = 3840
+            scene.render.resolution_y = 2160
 
         self._setup_render()
         if config["dev_settings"]["thumbnail_mode"]:
@@ -71,13 +96,10 @@ class ThumbnailGenerator:
         scene.render.image_settings.file_format = "PNG"
         scene.render.filepath = "output/thumbnail.png"
 
-        # Set render resolution
-        scene.render.resolution_x = 3840
-        scene.render.resolution_y = 2160
         scene.render.resolution_percentage = 100
 
         # Render the image
-        bpy.ops.render.render(write_still=True)
+        bpy.ops.render.render(write_still=True) # pyright: ignore
 
     def _setup_render(self):
         scene = bpy.context.scene
@@ -89,7 +111,7 @@ class ThumbnailGenerator:
         scene.view_settings.look = "AgX - Very High Contrast"  # type: ignore
         scene.view_settings.gamma = 1.3
 
-    def _add_driver_image(self):
+    def _add_driver_image(self) -> bpy.types.Object:
         # Enable import images as planes addon
         bpy.ops.preferences.addon_enable(module="io_import_images_as_planes")
         image_path = str(
@@ -106,9 +128,8 @@ class ThumbnailGenerator:
         driver_plane.name = "Driver Image"
 
         driver_plane.parent = self.camera
-        driver_plane.location = (0.18, -0.04, -0.9)
-        driver_plane.rotation_euler = (0, 0, 0)
-        driver_plane.scale = (0.45, 0.45, 0.45)
+
+        return driver_plane
 
     def _add_sample_track(self):
         """Add a track element for the thumbnail based on the necessary width."""
@@ -149,22 +170,11 @@ class ThumbnailGenerator:
         camera_obj = bpy.data.objects.new("ThumbnailCamera", camera_data)
         bpy.context.scene.collection.objects.link(camera_obj)  # pyright: ignore
 
-        camera_obj.location = (-7.08, 23.16, 9.08)
-        camera_obj.rotation_euler = (
-            math.radians(73),
-            math.radians(0),
-            math.radians(-177),
-        )
-
         bpy.context.scene.camera = camera_obj  # pyright: ignore
         return camera_obj
 
-    def _add_formula_viz_car(self):
+    def _add_formula_viz_car(self) -> bpy.types.Object:
         formula_viz_car_obj = add_formula_viz_car.import_car_collections()
-
-        formula_viz_car_obj.location = (-0.3, 0.13, -1)
-        formula_viz_car_obj.scale = (0.01, 0.01, 0.01)
-        formula_viz_car_obj.rotation_euler = (math.radians(-80), 0, 0)
 
         # for child in formula_viz_car_obj.children_recursive:
         #     if child.type == "MESH" and child.data.materials:
@@ -178,8 +188,8 @@ class ThumbnailGenerator:
         #                         *hex_to_blender_rgb(self.colors[0]),
         #                         1.0,
         #                     )
-
         formula_viz_car_obj.parent = self.camera
+        return formula_viz_car_obj
 
     def _add_color_background(self):
         """Add a colored background plane for the thumbnail."""
@@ -198,7 +208,7 @@ class ThumbnailGenerator:
         nodes = node_tree.nodes
 
         # Clear existing nodes and create new emission shader
-        nodes.clear()
+        nodes.clear() # pyright: ignore
         emission_node = nodes.new(type="ShaderNodeEmission")
         output_node = nodes.new(type="ShaderNodeOutputMaterial")
 
@@ -224,50 +234,21 @@ class ThumbnailGenerator:
         if not isinstance(mesh_data, Mesh):
             raise TypeError(f"Expected Mesh type, got {type(mesh_data).__name__}")
 
-        mesh_data.materials.append(mat)
+        mesh_data.materials.append(mat) # pyright: ignore
 
         # Set as child of camera and position
         color_plane.parent = self.camera  # pyright: ignore
-        color_plane.location = (1, 0, -100)  # pyright: ignore
+        color_plane.location = (1, 0, -500)  # pyright: ignore
         color_plane.scale = (1001, 1000, 1000)  # pyright: ignore
 
-    def _add_cars(self):
+    def _add_cars(self) -> list[bpy.types.Object]:
         base_empty_obj = create_base_driver_obj()
 
-        two_car_positions = [
-            (-6.52, 14.27, 6.56),
-            (-4.82, 11.7, 4.97),
-        ]
-        two_car_rotations = [
-            (math.radians(0), math.radians(21), math.radians(-185)),
-            (math.radians(2), math.radians(-27), math.radians(-167)),
-        ]
-
-        three_car_positions = [
-            (-4.34, 11.77, 4.42),
-            (-6.52, 13.1, 5.27),
-            (-6, 12.35, 6.6),
-        ]
-        three_car_rotations = [
-            (math.radians(3), math.radians(-9), math.radians(-183)),
-            (0, math.radians(21), math.radians(-185)),
-            (math.radians(-5), math.radians(-14), math.radians(-169)),
-        ]
-
-        cars = []
+        cars: list[bpy.types.Object] = []
         for driver, color in zip(self.drivers_in_color_order, self.colors):
             if len(cars) == 3:
                 break
             driver_obj = create_driver_from_base(driver.last_name, base_empty_obj)
             set_color(driver_obj, color, driver.abbrev)
             cars.append(driver_obj)
-
-        # Set positions and rotations based on number of cars
-        if len(cars) == 2:
-            for i, car in enumerate(cars):
-                car.location = two_car_positions[i]
-                car.rotation_euler = two_car_rotations[i]
-        else:
-            for i, car in enumerate(cars):
-                car.location = three_car_positions[i]
-                car.rotation_euler = three_car_rotations[i]
+        return cars
