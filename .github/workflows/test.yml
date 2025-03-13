@@ -20,6 +20,10 @@ jobs:
           token: ${{ secrets.GH_PAT }}
           submodules: "recursive"
 
+      - name: Update submodules to latest version
+        run: |
+          git submodule update --remote --recursive
+
       - name: Install Blender 4.0.2
         run: |
           wget https://download.blender.org/release/Blender4.0/blender-4.0.2-linux-x64.tar.xz
