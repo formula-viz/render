@@ -9,16 +9,18 @@ The processed data can be used to create an accurate track representation.
 import os
 import sys
 from dataclasses import dataclass
+import math
 
 import numpy as np
 import pandas as pd
+from pandas import DataFrame
 from scipy.interpolate import splev, splprep
 
 from py.utils.logger import log_err, log_info
 from py.utils.project_structure import TrackDataPS
 
 
-def load_raw_data(year: int, track: str, use_latest_year: bool = True):
+def load_raw_data(year: int, track: str, use_latest_year: bool = True) -> DataFrame:
     """Load raw track data from CSV files.
 
     Searches for track data files matching the specified track name and loads
@@ -36,7 +38,6 @@ def load_raw_data(year: int, track: str, use_latest_year: bool = True):
 
     """
     track_data_dir = TrackDataPS.get_track_data_dir()
-    log_info(f"Track data dir: {track_data_dir}")
     # iterate through contents of track_data, finding all files containing track
     # then, we find the file with the latest year
     # if use_latest_year is false, we use the year given
@@ -68,7 +69,7 @@ def load_raw_data(year: int, track: str, use_latest_year: bool = True):
             )
 
     track_data_path = os.path.join(track_data_dir, track_data_file)
-    track_data = pd.read_csv(track_data_path)
+    track_data: DataFrame = pd.read_csv(track_data_path) # pyright: ignore
 
     return track_data
 
@@ -156,7 +157,7 @@ def linearly_interpolate_z_vals(z_vals, num_new_points):
     return new_z_vals
 
 
-def smooth_points(track_points: pd.DataFrame):
+def smooth_points(track_points: DataFrame) -> DataFrame:
     """Smooths track boundary points and ensures consistent track width.
 
     This function processes raw track boundary points to create a smoother representation
@@ -174,32 +175,32 @@ def smooth_points(track_points: pd.DataFrame):
                      and 'rights_Z'
 
     """
-
-    def smooth_closed_loop(points, num_points=10000, smoothing=100):
-        # Ensure points is a numpy array
-        points = np.asarray(points)
-        # Separate x and y coordinates
-        x, y = points.T
-        # Fit a periodic spline
+    def smooth_closed_loop(x: list[float], y: list[float], num_points: int = 10000, smoothing: float = 100) -> tuple[list[float], list[float]]:
         tck, _ = splprep([x, y], s=smoothing, per=True)
-        # Generate smooth points
         u_new = np.linspace(0, 1, num_points)
         smooth_x, smooth_y = splev(u_new, tck)
-
         return smooth_x, smooth_y
 
-    lefts = np.array(track_points[["lefts_X", "lefts_Y"]])
-    rights = np.array(track_points[["rights_X", "rights_Y"]])
+    lefts_x: list[float] = track_points["lefts_X"].tolist()
+    lefts_y: list[float] = track_points["lefts_Y"].tolist()
 
-    lefts = np.roll(lefts, len(lefts) // 2, axis=0)
-    rights = np.roll(rights, len(rights) // 2, axis=0)
+    rights_x: list[float] = track_points["rights_X"].tolist()
+    rights_y: list[float] = track_points["rights_Y"].tolist()
 
-    lefts_x, lefts_y = smooth_closed_loop(lefts)
+    # Perform circular shift equivalent to np.roll
+    shift_amount = len(lefts_x) // 3
+    lefts_x = lefts_x[shift_amount:] + lefts_x[:shift_amount]
+    lefts_y = lefts_y[shift_amount:] + lefts_y[:shift_amount]
+    origi_rights_x = rights_x[shift_amount:] + rights_x[:shift_amount]
+    origi_rights_y = rights_y[shift_amount:] + rights_y[:shift_amount]
+
+    lefts_x, lefts_y = smooth_closed_loop(lefts_x, lefts_y)
     # instead of generating a spline for both lefts and rights, we generate a spline for just the lefts
     # this is because around corners, the lines end up overlapping due to the fact that the
     # distances are shorter around the two curves, this way we can ensure that they do not
     # overlap and also make the width more constant around the track.
-    rights_x, rights_y = [], []
+    rights_x: list[float] = []
+    rights_y: list[float] = []
     track_width = 12  # this is hardcoded from how we generate the track
     for i in range(len(lefts_x)):
         next_idx = i + 1 if i + 1 < len(lefts_x) else 0
@@ -230,9 +231,9 @@ def smooth_points(track_points: pd.DataFrame):
         # between a and b, then choose the one which is further from the closest point
         min_dist_a = 1000
         min_dist_b = 1000
-        for right in rights:
-            dist_a = ((right[0] - a_x) ** 2 + (right[1] - a_y) ** 2) ** 0.5
-            dist_b = ((right[0] - b_x) ** 2 + (right[1] - b_y) ** 2) ** 0.5
+        for x, y in zip(origi_rights_x, origi_rights_y):
+            dist_a = ((x - a_x) ** 2 + (y - a_y) ** 2) ** 0.5
+            dist_b = ((x - b_x) ** 2 + (y - b_y) ** 2) ** 0.5
             min_dist_a = min(min_dist_a, dist_a)
             min_dist_b = min(min_dist_b, dist_b)
 
@@ -257,7 +258,7 @@ def smooth_points(track_points: pd.DataFrame):
     return new_track_points
 
 
-def assign_inner_outer(track_points):
+def assign_inner_outer(track_points: DataFrame) -> tuple[list[tuple[float, float, float]], list[tuple[float, float, float]]]:
     """Determine inner and outer track boundaries from left and right points.
 
     The track data API provides left and right points, but doesn't specify which is inner vs outer.
@@ -273,14 +274,21 @@ def assign_inner_outer(track_points):
         tuple: (inner_points, outer_points) where each is a list of (x,y,z) coordinate tuples
 
     """
-    # grab inner points, the 0th index of each tuple of track_points
-    lefts = [
-        (row["lefts_X"], row["lefts_Y"], row["lefts_Z"])
-        for _, row in track_points.iterrows()
+    # Extract coordinates directly from DataFrame to avoid type issues with iterrows
+    lefts_x: list[float] = track_points["lefts_X"].tolist()
+    lefts_y: list[float] = track_points["lefts_Y"].tolist()
+    lefts_z: list[float] = track_points["lefts_Z"].tolist()
+
+    rights_x: list[float] = track_points["rights_X"].tolist()
+    rights_y: list[float] = track_points["rights_Y"].tolist()
+    rights_z: list[float] = track_points["rights_Z"].tolist()
+
+    # Create coordinate tuples
+    lefts: list[tuple[float, float, float]] = [
+        (x, y, z) for x, y, z in zip(lefts_x, lefts_y, lefts_z)
     ]
-    rights = [
-        (row["rights_X"], row["rights_Y"], row["rights_Z"])
-        for _, row in track_points.iterrows()
+    rights: list[tuple[float, float, float]] = [
+        (x, y, z) for x, y, z in zip(rights_x, rights_y, rights_z)
     ]
 
     # we want to assume the inner points as the shorter distnace, the outer points as the longer distance
@@ -296,16 +304,16 @@ def assign_inner_outer(track_points):
         ) ** 0.5
 
     if left_dist <= right_dist:
-        outer_points = lefts
-        inner_points = rights
+        outer_points = rights
+        inner_points = lefts
     else:
-        inner_points = rights
-        outer_points = lefts
+        inner_points = lefts
+        outer_points = rights
 
     return inner_points, outer_points
 
 
-def curb(cur, other, curb_width):
+def curb(cur: list[tuple[float, float, float]], other: list[tuple[float, float, float]], curb_width: float) -> list[tuple[float, float, float]]:
     """Calculate curb points perpendicular to the track boundary.
 
     Takes the line which is perpendicular to the current point and the next point,
@@ -320,7 +328,7 @@ def curb(cur, other, curb_width):
         List of curb points
 
     """
-    curb = []
+    curb: list[tuple[float, float, float]] = []
     for i in range(len(cur)):
         next_idx = i + 1
         if next_idx == len(cur):
@@ -328,8 +336,9 @@ def curb(cur, other, curb_width):
             next_idx = i - 1
 
         cur_vec = (cur[next_idx][0] - cur[i][0], cur[next_idx][1] - cur[i][1])
-        perp_vec = (cur_vec[1], -cur_vec[0])
-        mag = (perp_vec[0] ** 2 + perp_vec[1] ** 2) ** 0.5
+        perp_vec = (-cur_vec[1], cur_vec[0])
+        mag = math.sqrt(perp_vec[0] ** 2 + perp_vec[1] ** 2)
+
         unit_perp_vec = (perp_vec[0] / mag, perp_vec[1] / mag)
 
         curb_vec = (unit_perp_vec[0] * curb_width, unit_perp_vec[1] * curb_width)
@@ -364,10 +373,10 @@ def curb(cur, other, curb_width):
 class TrackData:
     """Track data containing inner, outer, and curb points."""
 
-    inner_points: list
-    outer_points: list
-    inner_curb_points: list
-    outer_curb_points: list
+    inner_points: list[tuple[float, float, float]]
+    outer_points: list[tuple[float, float, float]]
+    inner_curb_points: list[tuple[float, float, float]]
+    outer_curb_points: list[tuple[float, float, float]]
 
 
 def main(year: int, track: str):

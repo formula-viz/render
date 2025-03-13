@@ -18,6 +18,7 @@ The processed data can be used to create 3D visualizations of qualifying laps.
 
 import concurrent
 import concurrent.futures
+from datetime import timedelta
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor
@@ -26,14 +27,18 @@ import fastf1 as ff1
 import mathutils
 import numpy as np
 import pandas as pd
+from pandas import Series
 import requests
 from fastf1.core import Laps, Telemetry
 from fastf1.plotting import get_driver_name
 from scipy.interpolate import UnivariateSpline
+from py.render.data_funcs.load_track_data import TrackData
+from py.utils.config import Config
 
 from py.utils.logger import log_info, log_warn
 from py.utils.models import Driver
 from py.utils.project_structure import DriverDataPS
+from typing import Optional
 
 
 def load_driver_headshots(drivers: list[Driver], headshot_urls) -> None:
@@ -133,9 +138,9 @@ def load_from_fastf1(year: int, track: str):
         tel = tel[tel["Source"].isin(["pos", "interpolation"])]  # pyright: ignore
         tel.reset_index(drop=True)
 
-        tel["X"] = tel["X"].apply(lambda x: x / 10)
-        tel["Y"] = tel["Y"].apply(lambda y: y / 10)
-        tel["Z"] = tel["Z"].apply(lambda z: z / 10)
+        tel.loc[:, "X"] = tel["X"] / 10
+        tel.loc[:, "Y"] = tel["Y"] / 10
+        tel.loc[:, "Z"] = tel["Z"] / 10
 
         total_time = str(tel["Time"].iloc[-1])
         # this is a time_delta, we want format: 1:23.342
@@ -169,7 +174,7 @@ def load_from_fastf1(year: int, track: str):
 
 
 def process_grouped_driver_tels(
-    driver_tels: dict[Driver, Telemetry], inner_points, outer_points
+    driver_tels: dict[Driver, Telemetry], inner_points: list[tuple[float, float, float]], outer_points: list[tuple[float, float, float]]
 ):
     """Process telemetry data to standardize start/finish lines.
 
@@ -189,7 +194,7 @@ def process_grouped_driver_tels(
 
     """
 
-    def get_average_start_end():
+    def get_average_start_end() -> tuple[float, float]:
         start_points = np.array(
             [
                 [driver_tels[k]["X"].iloc[0], driver_tels[k]["Y"].iloc[0]]
@@ -203,11 +208,13 @@ def process_grouped_driver_tels(
             ]
         )
         all_points = np.vstack((start_points, end_points))
-        return np.mean(all_points, axis=0)
+        mean_of_all = np.mean(all_points, axis=0)
+
+        return mean_of_all[0], mean_of_all[1]
 
     # using inner_points, outer_points find the idx which is closest to our start/finish line
     # we know that len(inner_points) == len(outer_points)
-    def get_line(inner_points, outer_points, start_end_point):
+    def get_line(inner_points: list[tuple[float, float, float]], outer_points: list[tuple[float, float, float]], start_end_point: tuple[float, float]):
         closest_idx = 0
         closest_dist = float("inf")
         for i, (inner_point, outer_point) in enumerate(zip(inner_points, outer_points)):
@@ -229,43 +236,25 @@ def process_grouped_driver_tels(
 
         return closest_idx, (inner_points[closest_idx], outer_points[closest_idx])
 
-    # using point_a, point_b, we want to set the start and end points of each driver to be the
-    # point on the line between point_a and point_b which is closest to the actual start/end point
-    def set_as_closest_to_line(driver_tels, point_a, point_b):
-        for _, driver_tel in driver_tels.items():
-            original_start = (driver_tel["X"].iloc[0], driver_tel["Y"].iloc[0])
-            original_end = (driver_tel["X"].iloc[-1], driver_tel["Y"].iloc[-1])
-
-            def get_closest_point_on_line(point_a, point_b, point):
-                # the line is defined by the equation y = mx + b
-                m = (point_b[1] - point_a[1]) / (point_b[0] - point_a[0])
-                b = point_a[1] - m * point_a[0]
-
-                # the line perpendicular to this line is y = -1/m * x + b2
-                m_perp = -1 / m
-                b2 = point[1] - m_perp * point[0]
-
-                # now we want to solve for the intersection of these two lines
-                x = (b2 - b) / (m - m_perp)
-                y = m * x + b
-
-                return (x, y)
-
-            driver_tel.loc[0, ["X", "Y"]] = get_closest_point_on_line(
-                point_a, point_b, original_start
-            )
-            driver_tel.loc[driver_tel.index[-1], ["X", "Y"]] = (
-                get_closest_point_on_line(point_a, point_b, original_end)
-            )
-
     start_end_point = get_average_start_end()
     line_idx, (point_a, point_b) = get_line(inner_points, outer_points, start_end_point)
-    set_as_closest_to_line(driver_tels, point_a, point_b)
+
+    for key in driver_tels:
+        # Use .loc for proper DataFrame row/column access
+        first_idx = driver_tels[key].index[0]
+        last_idx = driver_tels[key].index[-1]
+
+        driver_tels[key].loc[first_idx, "X"] = start_end_point[0]
+        driver_tels[key].loc[first_idx, "Y"] = start_end_point[1]
+        driver_tels[key].loc[first_idx, "Z"] = 0
+        driver_tels[key].loc[last_idx, "X"] = start_end_point[0]
+        driver_tels[key].loc[last_idx, "Y"] = start_end_point[1]
+        driver_tels[key].loc[last_idx, "Z"] = 0
 
     return line_idx
 
 
-def get_driver_df(tel, s_divisor: int, frames_per_second: int):
+def get_driver_df(tel: Telemetry, s_divisor: int, frames_per_second: int):
     """Generate a driver's position and speed DataFrame from telemetry.
 
     Processes raw telemetry data to create a DataFrame with X, Y, Z coordinates
@@ -279,39 +268,48 @@ def get_driver_df(tel, s_divisor: int, frames_per_second: int):
 
     Returns:
         DataFrame with X, Y, Z, and Speed columns at specified frame rate
-
     """
     total_distance = 0
     distances = [0.0]
-    for i in range(1, len(tel)):
-        point_a = (tel["X"][i - 1], tel["Y"][i - 1])
-        point_b = (tel["X"][i], tel["Y"][i])
 
-        distance = (
-            (point_a[0] - point_b[0]) ** 2 + (point_a[1] - point_b[1]) ** 2
-        ) ** 0.5
-        total_distance += distance
-        distances.append(total_distance)
+    prev_x: Optional[float] = None
+    prev_y: Optional[float] = None
+
+    x_vals: Series[float] = tel["X"]
+    y_vals: Series[float] = tel["Y"]
+    for cur_x, cur_y in zip(x_vals, y_vals):
+        if prev_x is not None and prev_y is not None:
+            distance = (
+                (prev_x - cur_x) ** 2 + (prev_y - cur_y) ** 2
+            ) ** 0.5
+            total_distance += distance
+            distances.append(total_distance)
+        prev_x = cur_x
+        prev_y = cur_y
 
     displacements = [a / total_distance for a in distances]
-
     # we want to set weights such that the spline is forced to go through the start and end points
     weights = np.ones(len(displacements))
     weights[0] = 1000
     weights[-1] = 1000
 
     spl_x = UnivariateSpline(
-        displacements, tel["X"], w=weights, s=len(displacements) // s_divisor
+        displacements, x_vals, w=weights, s=len(displacements) // s_divisor
     )
     spl_y = UnivariateSpline(
-        displacements, tel["Y"], w=weights, s=len(displacements) // s_divisor
+        displacements, y_vals, w=weights, s=len(displacements) // s_divisor
     )
 
-    # we want to first smooth the speed data using a spline again
-    time_floats = tel["Time"].apply(lambda t: t.total_seconds())
-    std_time_floats = time_floats / time_floats.max()
+    # Extract time and speed data together, ensuring they're properly aligned
+    mask = tel["Time"].notna()
+    time_deltas: Series[timedelta] = tel["Time"][mask]
+    speeds: Series[float] = tel["Speed"][mask]
 
-    speed_spline = UnivariateSpline(std_time_floats, tel["Speed"], s=len(time_floats))
+    # Convert time deltas to seconds
+    time_floats: Series[float] = time_deltas.apply(lambda t: t.total_seconds())
+    std_time_floats: Series[float] = time_floats / time_floats.max()
+
+    speed_spline = UnivariateSpline(std_time_floats, speeds, s=len(time_floats))
 
     frame_count = int(time_floats.max() * frames_per_second)
 
@@ -705,13 +703,13 @@ def optimize_smoothness_concurrent(
 # in order to run this function, we need to already have the track data for this track and year
 # because this will be necessary to ensure that we have the correct smoothness so the movement
 # looks natural but also so that we are within track limits
-def main(config, track_data):
-    is_done, driver_dfs, start_finish_line_idx = already_done(
-        str(config["year"]), config["track"], str(config["render"]["fps"])
-    )
-    if is_done:
-        log_info("Already fetched this car data, don't need to load...")
-        return driver_dfs, start_finish_line_idx
+def main(config: Config, track_data: TrackData) -> tuple[dict[Driver, pd.DataFrame], int]:
+    # is_done, driver_dfs, start_finish_line_idx = already_done(
+    #     str(config["year"]), config["track"], str(config["render"]["fps"])
+    # )
+    # if is_done:
+    #     log_info("Already fetched this car data, don't need to load...")
+    #     return driver_dfs, start_finish_line_idx
     log_info("Fetching and processing car data")
 
     driver_tels = load_from_fastf1(config["year"], config["track"])

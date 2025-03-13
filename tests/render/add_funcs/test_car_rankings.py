@@ -16,6 +16,7 @@ from py.render.add_funcs.add_car_rankings import (
     point_to_line_distance,
     ranking_at_frame,
 )
+from py.utils.logger import log_info
 from py.utils.models import Driver
 from tests.bases import SetupAlpha
 
@@ -253,8 +254,12 @@ class TestCarRankingsMain(SetupAlpha):
         driver_dfs = self.driver_dfs
         start_finish_line_idx = self.start_finish_line_idx
         config = self.config
-        focused_driver: Driver = Driver("Norris", "NOR")
+        focused_driver = None
+        for key in driver_dfs.keys():
+            if key.last_name == "Norris":
+                focused_driver = key
 
+        assert focused_driver is not None, "Norris driver not found"
         rankings = main(
             track_data, start_finish_line_idx, driver_dfs, config, focused_driver
         )
@@ -262,14 +267,17 @@ class TestCarRankingsMain(SetupAlpha):
         start_buffer_frames = config["render"]["start_buffer_frames"]
         # rankings returns starting at the actual start of the race not video
 
-        def get_first(abs_frame):
-            return rankings[abs_frame - start_buffer_frames][0][0]
+        def get_first(abs_frame: int) -> str:
+            driver = rankings[abs_frame - start_buffer_frames][0][0]
+            return driver.abbrev
 
-        def get_second(abs_frame):
-            return rankings[abs_frame - start_buffer_frames][1][0]
+        def get_second(abs_frame: int) -> str:
+            driver = rankings[abs_frame - start_buffer_frames][1][0]
+            return driver.abbrev
 
-        def get_last(abs_frame):
-            return rankings[abs_frame - start_buffer_frames][-1][0]
+        def get_last(abs_frame: int) -> str:
+            driver = rankings[abs_frame - start_buffer_frames][-1][0]
+            return driver.abbrev
 
         self.assertEqual(get_first(84), "NOR")
         self.assertEqual(get_first(104), "NOR")

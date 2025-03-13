@@ -16,6 +16,7 @@ from py.utils.colors import CurbColor, MainTrackColor, hex_to_blender_rgb
 from py.utils.config import Config
 from py.utils.models import Driver
 from py.utils.project_structure import DriverDataPS
+from py.utils.logger import log_info
 
 
 class ThumbnailGenerator:
@@ -61,6 +62,7 @@ class ThumbnailGenerator:
 
     def _render(self):
         """Render the thumbnail image using Eevee and save it to output/thumbnail.png."""
+        log_info("Rendering thumbnail and saving to output/thumbnail.png")
         scene = bpy.context.scene
         if not scene:
             raise ValueError("No active scene found")

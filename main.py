@@ -21,7 +21,7 @@ def main():
     config_file = project_root / "config.json"
     template_file = project_root / "config-template.json"
 
-    def get_config(file):
+    def get_config(file: Path):
         with open(file, "r") as f:
             return json.load(f)
 

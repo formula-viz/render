@@ -68,7 +68,7 @@ def add_start_finish_line(
 
 
 # where at_start is the index of the point where the car is at the start/finish line
-def main(inner_curb_points, outer_curb_points, start_finish_line_idx, name):
+def main(inner_curb_points: list[tuple[float, float, float]], outer_curb_points: list[tuple[float, float, float]], start_finish_line_idx: int, name: str):
     """Add start/finish line."""
     indicators_collection = bpy.data.collections.new(name="IndicatorsCollection")
     bpy.context.scene.collection.children.link(indicators_collection)  # pyright: ignore

@@ -41,7 +41,7 @@ def point_to_line_distance(
 
 
 def find_closest_track_idx(
-    inner_points, outer_points, previous_reference_idx, car_point
+    inner_points: list[tuple[float, float, float]], outer_points: list[tuple[float, float, float]], previous_reference_idx: int, car_point
 ) -> int:
     """Find the closest track segment to a car point.
 
@@ -108,10 +108,10 @@ def find_closest_track_idx(
 
 
 def find_most_distant_closest_point(
-    inner_points: list[NDArray[np.float64]],
-    outer_points: list[NDArray[np.float64]],
+    inner_points: list[tuple[float, float, float]],
+    outer_points: list[tuple[float, float, float]],
     previous_reference_idx: int,
-    car_points: list[NDArray[np.float64]],
+    car_points: list[tuple[float, float, float]],
 ):
     """Find the point which is furthest from the previous line which was used to calculate the ranking.
 
@@ -136,10 +136,10 @@ def find_most_distant_closest_point(
 
 # the frame here is implicit. All of the car points will be different cars at the same frame
 def ranking_at_frame(
-    inner_points: list[NDArray[np.float64]],
-    outer_points: list[NDArray[np.float64]],
+    inner_points: list[tuple[float, float, float]],
+    outer_points: list[tuple[float, float, float]],
     previous_reference_idx: int,
-    car_points: list[NDArray[np.float64]],
+    car_points: list[tuple[float, float, float]],
 ) -> tuple[list[tuple[int, float]], int]:
     """Calculate car ranking at one frame."""
     new_reference_idx = find_most_distant_closest_point(

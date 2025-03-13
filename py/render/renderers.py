@@ -113,20 +113,13 @@ class AbstractRenderer(ABC):
         """
         # Clear all collections
         for collection in bpy.data.collections:
-            bpy.data.collections.remove(collection, do_unlink=True)
+            bpy.data.collections.remove(collection, do_unlink=True)  # type: ignore
 
         # Clear all objects
         for obj in bpy.data.objects:
-            bpy.data.objects.remove(obj, do_unlink=True)
+            bpy.data.objects.remove(obj, do_unlink=True)  # type: ignore
 
         add_sun.main()
-
-    def setup_track(self):
-        """Initialize the racetrack."""
-        self.state.track_data = load_track_data.main(
-            self.config["year"], self.config["track"]
-        )
-        add_track.main(self.state.track_data)
 
     def trigger_render(self):
         """Start the rendering process.
@@ -158,9 +151,13 @@ class AbstractRenderer(ABC):
         Main process that coordinates the setup and rendering steps in the proper sequence.
         The order of the setup functions is significant because some create dependencies.
         """
-        # thumbnail generator needs these two
+        # thumbnail generator needs these
         self.setup_world()
+        self.state.track_data = load_track_data.main(
+            self.config["year"], self.config["track"]
+        )
         self.load_driver_data()
+        log_info("Before thumbnail generation.")
         ThumbnailGenerator(
             config=self.config,
             drivers_in_color_order=self.state.drivers_in_color_order,
@@ -170,7 +167,7 @@ class AbstractRenderer(ABC):
             # run setup_world again to reset the world
             self.setup_world()
             add_background_grid.main()
-            self.setup_track()
+            add_track.main(self.state.track_data)
             self.add_drivers()
             self.add_indicators()
             self.add_camera()
@@ -186,6 +183,7 @@ class HeadToHeadRenderer(AbstractRenderer):
 
     def load_driver_data(self):
         """Load and set up driver data for head-to-head comparison."""
+        assert self.state.track_data is not None, "Track data is not loaded"
         self.state.driver_dfs, self.state.start_finish_line_idx = load_driver_data.main(
             self.config, self.state.track_data
         )
@@ -292,6 +290,7 @@ class RestOfFieldRenderer(AbstractRenderer):
 
         Decoupled from add_drivers for the sake of generating necessary data needed for thumbnail gen beforehand.
         """
+        assert self.state.track_data is not None, "Track data is not loaded"
         self.state.driver_dfs, self.state.start_finish_line_idx = load_driver_data.main(
             self.config, self.state.track_data
         )

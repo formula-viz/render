@@ -2,11 +2,12 @@
 
 import bmesh
 import bpy
+from py.render.data_funcs.load_track_data import TrackData
 
 from py.utils.colors import CurbColor, MainTrackColor
 
 
-def create_planes(inner_points, outer_points, name, material=None):
+def create_planes(inner_points: list[tuple[float, float, float]], outer_points: list[tuple[float, float, float]], name: str, material=None):
     """Create a mesh plane between two sets of points.
 
     Args:
@@ -46,7 +47,7 @@ def create_planes(inner_points, outer_points, name, material=None):
     return obj
 
 
-def create_material(color, name):
+def create_material(color: tuple[float, float, float], name: str):
     """Create a Blender material with the specified color.
 
     Args:
@@ -64,7 +65,7 @@ def create_material(color, name):
     return mat
 
 
-def main(track_data):
+def main(track_data: TrackData) -> None:
     """Create the complete track with main surfaces and curbs.
 
     Args:
