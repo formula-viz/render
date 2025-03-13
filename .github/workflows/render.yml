@@ -80,6 +80,7 @@ jobs:
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: render-output
           path: output/post-process-output.mp4
