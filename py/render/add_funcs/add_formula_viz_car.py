@@ -4,6 +4,9 @@ import math
 
 import bpy
 
+import colorsys
+from py.utils.logger import log_info
+
 from py.utils.project_structure import (
     FORMULA_VIZ_CAR_PATH,
     Resources,
@@ -35,20 +38,11 @@ def import_car_collections():
             "Could not find the FORMULA VIZ CAR object in the imported file"
         )
 
-
     for child in car_obj.children_recursive:
         if child.type == "MESH" and child.data.materials:
             for material in child.data.materials:
                 if material.name == "CAR BASE COLOR" and material.use_nodes:
-                    principled_bsdf = material.node_tree.nodes.get(
-                        "Principled BSDF"
-                    )
-                    if principled_bsdf:
-                        principled_bsdf.inputs["Base Color"].default_value = (0,
-                            1.0,
-                            1.0,
-                            1.0
-                        )
+                    add_color_animation(material)
 
     car_obj.location = (-0.02, 0, 0)
     car_obj.scale = (0.003, 0.003, 0.003)
@@ -102,12 +96,7 @@ def create_text_object():
     mat = bpy.data.materials.new(name="FormulaVizCarMaterial")
     mat.use_nodes = True
     nodes = mat.node_tree.nodes  # pyright: ignore
-    nodes["Principled BSDF"].inputs["Base Color"].default_value = (  # pyright: ignore
-        0,
-        1.0,
-        1.0,
-        1.0
-    )
+    add_color_animation(mat)
     text_obj.data.materials.append(mat) # pyright: ignore
 
     return text_obj
@@ -136,6 +125,7 @@ def setup_car_animation(car_obj: bpy.types.Object):
     car_obj.rotation_euler = (math.radians(-86), start_y_rotation, 0)
     car_obj.keyframe_insert(data_path="rotation_euler", frame=final_frame)
 
+
     # Make the animation cycle by setting up a modifier
     if car_obj.animation_data and car_obj.animation_data.action:
         action = car_obj.animation_data.action
@@ -159,6 +149,32 @@ def setup_car_animation(car_obj: bpy.types.Object):
     car_obj.rotation_euler = (math.radians(-86), start_y_rotation, 0)
 
 
+def add_color_animation(material: bpy.types.Material):
+    principled_bsdf = material.node_tree.nodes.get("Principled BSDF")
+    if principled_bsdf:
+        # Get the Base Color input
+        base_color_input = principled_bsdf.inputs["Base Color"]
+
+        # Set keyframes for color cycling - use a shorter cycle for color
+        color_cycle_length = 240  # Complete color cycle in 240 frames
+        max_expected_frames = 3000
+
+        # Create a series of keyframes for color cycling
+        for frame in range(1, max_expected_frames, 30):
+            # Calculate hue value based on frame (0-1 range)
+            # Using a different cycle length than rotation for visual interest
+            hue = ((frame - 1) % color_cycle_length) / color_cycle_length
+
+            r, g, b = colorsys.hsv_to_rgb(hue, 1.0, 1.0)
+
+            # Set current frame
+            bpy.context.scene.frame_set(frame)
+
+            # Set color and create keyframe
+            base_color_input.default_value = (r, g, b, 1.0)
+            base_color_input.keyframe_insert("default_value", frame=frame)
+
+
 def main(camera_obj: bpy.types.Object, is_shorts_output: bool):
     """Import formula-viz car from blend file and position it in front of the camera.
 
@@ -170,6 +186,8 @@ def main(camera_obj: bpy.types.Object, is_shorts_output: bool):
         The imported car object
 
     """
+    log_info("Adding formula viz car watermark.")
+
     empty_parent = create_parent_empty(camera_obj, is_shorts_output)
     car_obj = import_car_collections()
     text_obj = create_text_object()
