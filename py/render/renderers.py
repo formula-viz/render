@@ -22,6 +22,7 @@ from py.render.add_funcs import (
     add_sun,
     add_track,
 )
+from py.render.add_funcs.add_camera_plane import add_camera_plane
 from py.render.data_funcs import (
     load_driver_data,
     load_track_data,
@@ -179,6 +180,7 @@ class AbstractRenderer(ABC):
             add_formula_viz_car.main(
                 self.state.camera_obj, self.config["render"]["is_shorts_output"]
             )
+            add_camera_plane(self.config, self.state.camera_obj)
             self.trigger_render()
 
 

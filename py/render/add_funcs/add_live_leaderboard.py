@@ -43,7 +43,7 @@ class LiveLeaderboard:
         if self.is_fancy_mode:
             self.spacing = 0.035
         else:
-            self.spacing = 0.015 # Vertical spacing between elements
+            self.spacing = 0.0175 # Vertical spacing between elements
 
         # Create main collection
         self.collection = bpy.data.collections.new("LiveLeaderboard")
@@ -162,7 +162,7 @@ class LiveLeaderboard:
         text_obj.parent = empty_obj
 
         text_curve.font = bpy.data.fonts.load(str(IMPACT_FONT))
-        text_curve.size = 0.025
+        text_curve.size = 0.03
         text_curve.align_x = "LEFT"
 
         # Create material for text
