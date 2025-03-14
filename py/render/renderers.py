@@ -119,6 +119,10 @@ class AbstractRenderer(ABC):
         for obj in bpy.data.objects:
             bpy.data.objects.remove(obj, do_unlink=True)  # type: ignore
 
+        # Clear all materials
+        for material in bpy.data.materials:
+            bpy.data.materials.remove(material, do_unlink=True)  # type: ignore
+
         add_sun.main()
 
     def trigger_render(self):

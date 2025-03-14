@@ -80,7 +80,7 @@ class ThumbnailGenerator:
             scene.render.resolution_y = 2160
 
         self._setup_render()
-        if config["dev_settings"]["thumbnail_mode"]:
+        if config["dev_settings"]["ui_mode"]:
             setup_ui_mode_viewport(config)
         else:
             self._render()

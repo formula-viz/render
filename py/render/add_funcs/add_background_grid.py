@@ -21,7 +21,7 @@ def create_grid_curves(
     curve_data.dimensions = "3D"
 
     curve_data.resolution_u = 1
-    curve_data.bevel_depth = 0.01  # Line thickness
+    curve_data.bevel_depth = 0.02  # Line thickness
 
     # Create grid lines
     for i in range(-size // 2, size // 2 + 1):

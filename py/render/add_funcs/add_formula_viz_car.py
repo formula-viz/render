@@ -35,6 +35,21 @@ def import_car_collections():
             "Could not find the FORMULA VIZ CAR object in the imported file"
         )
 
+
+    for child in car_obj.children_recursive:
+        if child.type == "MESH" and child.data.materials:
+            for material in child.data.materials:
+                if material.name == "CAR BASE COLOR" and material.use_nodes:
+                    principled_bsdf = material.node_tree.nodes.get(
+                        "Principled BSDF"
+                    )
+                    if principled_bsdf:
+                        principled_bsdf.inputs["Base Color"].default_value = (0,
+                            1.0,
+                            1.0,
+                            1.0
+                        )
+
     car_obj.location = (-0.02, 0, 0)
     car_obj.scale = (0.003, 0.003, 0.003)
 
@@ -83,6 +98,17 @@ def create_text_object():
     text_data.body = "formula-viz"
     text_data.font = bpy.data.fonts.load(str(Resources.get_main_font()))
     text_data.size = 0.03
+
+    mat = bpy.data.materials.new(name="FormulaVizCarMaterial")
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes  # pyright: ignore
+    nodes["Principled BSDF"].inputs["Base Color"].default_value = (  # pyright: ignore
+        0,
+        1.0,
+        1.0,
+        1.0
+    )
+    text_obj.data.materials.append(mat) # pyright: ignore
 
     return text_obj
 
