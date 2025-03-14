@@ -5,10 +5,16 @@ import bpy
 from py.render.data_funcs.load_track_data import TrackData
 from typing import Optional
 
-from py.utils.colors import CurbColor, MainTrackColor
+from py.utils.colors import AlternateCurbColor, CurbColor, MainTrackColor
 
 
-def create_planes(inner_points: list[tuple[float, float, float]], outer_points: list[tuple[float, float, float]], name: str, material: Optional[bpy.types.Material]=None):
+def create_planes(inner_points: list[tuple[float, float, float]],
+    outer_points: list[tuple[float, float, float]],
+    name: str,
+    material: Optional[bpy.types.Material]=None,
+    alternate_material: Optional[bpy.types.Material]=None,
+    is_curb: bool=False
+):
     """Create a mesh plane between two sets of points.
 
     Args:
@@ -42,8 +48,20 @@ def create_planes(inner_points: list[tuple[float, float, float]], outer_points: 
     bm.to_mesh(mesh) # pyright: ignore
     bm.free() # pyright: ignore
 
+    pattern_size = 10
     if material:
         obj.data.materials.append(material)  # pyright: ignore
+
+        # Create alternating pattern for curbs
+        if is_curb and alternate_material:
+            obj.data.materials.append(alternate_material)  # pyright: ignore
+
+            # Assign material indices to faces
+            for i, poly in enumerate(obj.data.polygons):
+                # Integer division to determine which material to use
+                # e.g., with pattern_size=3: 0,1,2 get mat1, 3,4,5 get mat2, etc.
+                material_index = (i // pattern_size) % 2
+                poly.material_index = material_index
 
     return obj
 
@@ -85,11 +103,12 @@ def main(track_data: TrackData) -> None:
 
     track_mat = create_material(MainTrackColor.get_scene_rgb(), "Main")
     curb_mat = create_material(CurbColor.get_scene_rgb(), "Curb")
+    alternate_curb_mat = create_material(AlternateCurbColor.get_scene_rgb(), "AlternateCurb")
 
     create_planes(track_data.inner_points, track_data.outer_points, "Main", track_mat)
     create_planes(
-        track_data.outer_points, track_data.outer_curb_points, "CurbOuter", curb_mat
+        track_data.outer_points, track_data.outer_curb_points, "CurbOuter", curb_mat, alternate_curb_mat, True
     )
     create_planes(
-        track_data.inner_points, track_data.inner_curb_points, "CurbInner", curb_mat
+        track_data.inner_points, track_data.inner_curb_points, "CurbInner", curb_mat, alternate_curb_mat, True
     )

@@ -2,6 +2,7 @@
 
 import math
 
+import time
 import bpy
 
 import colorsys
@@ -187,6 +188,7 @@ def main(camera_obj: bpy.types.Object, is_shorts_output: bool):
 
     """
     log_info("Adding formula viz car watermark.")
+    start_time = time.time()
 
     empty_parent = create_parent_empty(camera_obj, is_shorts_output)
     car_obj = import_car_collections()
@@ -197,4 +199,5 @@ def main(camera_obj: bpy.types.Object, is_shorts_output: bool):
 
     setup_car_animation(car_obj)
 
+    log_info(f"Formula viz car watermark added in {time.time() - start_time:.2f} seconds")
     return car_obj

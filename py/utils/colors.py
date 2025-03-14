@@ -13,6 +13,7 @@ GOLD_RGB = (255, 215, 0)
 MAIN_TRACK_COLOR = "#2d2e2e"
 CURB_COLOR = "#0f0f0f"
 SCENE_BG_COLOR = "#171717"
+ALTERNATE_CURB_COLOR = "#202020"
 
 
 def hex_to_blender_rgb(hex_color: str) -> tuple[float, float, float]:
@@ -118,6 +119,11 @@ class CurbColor:
     @staticmethod
     def get_scene_rgb() -> tuple[float, float, float]:
         return blender_rgb_to_linear(hex_to_blender_rgb(CURB_COLOR))
+
+class AlternateCurbColor:
+    @staticmethod
+    def get_scene_rgb() -> tuple[float, float, float]:
+        return blender_rgb_to_linear(hex_to_blender_rgb(ALTERNATE_CURB_COLOR))
 
 
 class MainTrackColor:
