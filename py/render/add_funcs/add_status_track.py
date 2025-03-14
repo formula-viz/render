@@ -28,7 +28,8 @@ SHORTS_MODE_TOP_EDGE = 0.36
 LANDSCAPE_MODE_RIGHT_EDGE = 0.36
 LANDSCAPE_MODE_TOP_EDGE = 0.2
 
-EDGE_BUFFER = 0.01
+LANDSCAPE_EDGE_BUFFER = 0.01
+SHORTS_MODE_EDGE_BUFFER = 0.05
 
 
 class StatusTrack:
@@ -141,14 +142,14 @@ class StatusTrack:
 
         if self.is_shorts_output:
             position = (
-                SHORTS_MODE_RIGHT_EDGE - right_x - EDGE_BUFFER,
-                SHORTS_MODE_TOP_EDGE - up_y - EDGE_BUFFER,
+                SHORTS_MODE_RIGHT_EDGE - right_x - SHORTS_MODE_EDGE_BUFFER,
+                SHORTS_MODE_TOP_EDGE - up_y - SHORTS_MODE_EDGE_BUFFER,
                 -1,
             )
         else:
             position = (
-                LANDSCAPE_MODE_RIGHT_EDGE - right_x - EDGE_BUFFER,
-                LANDSCAPE_MODE_TOP_EDGE - up_y - EDGE_BUFFER,
+                LANDSCAPE_MODE_RIGHT_EDGE - right_x - LANDSCAPE_EDGE_BUFFER,
+                LANDSCAPE_MODE_TOP_EDGE - up_y - LANDSCAPE_EDGE_BUFFER,
                 -1,
             )
 

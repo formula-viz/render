@@ -90,9 +90,9 @@ class LiveLeaderboard:
 
         if self.config["render"]["is_shorts_output"]:
             if self.is_fancy_mode:
-                position = (-0.17, 0.32, -1)
+                position = (-0.15, 0.29, -1)
             else:
-                position = (-0.19, 0.32, -1)
+                position = (-0.17, 0.29, -1)
         elif self.is_fancy_mode:
             position = (-0.33, 0.17, -1)
         else:

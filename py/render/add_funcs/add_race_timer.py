@@ -114,7 +114,7 @@ class RaceTimer:
         timer_obj.parent = camera_obj
 
         if self.config["render"]["is_shorts_output"]:
-            position = (0.06, -0.33, -1)
+            position = (-0.07, -0.15, -1)
         else:
             position = (0.22, -0.18, -1)
 
