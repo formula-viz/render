@@ -7,7 +7,7 @@ from py.render.add_funcs.add_driver_circle import DriverCircle
 from py.utils.config import Config
 from py.utils.logger import log_info
 from py.utils.models import Driver
-from py.utils.project_structure import Resources
+from py.utils.project_structure import IMPACT_FONT
 
 
 class LiveLeaderboard:
@@ -43,7 +43,7 @@ class LiveLeaderboard:
         if self.is_fancy_mode:
             self.spacing = 0.035
         else:
-            self.spacing = 0.015  # Vertical spacing between elements
+            self.spacing = 0.015 # Vertical spacing between elements
 
         # Create main collection
         self.collection = bpy.data.collections.new("LiveLeaderboard")
@@ -158,11 +158,11 @@ class LiveLeaderboard:
         if not isinstance(text_curve, bpy.types.TextCurve):
             raise TypeError("Expected text_obj.data to be of type bpy.types.TextCurve")
 
-        text_curve.body = driver.abbrev
+        text_curve.body = driver.abbrev.title()
         text_obj.parent = empty_obj
 
-        text_curve.font = bpy.data.fonts.load(str(Resources.get_bold_font()))
-        text_curve.size = 0.02
+        text_curve.font = bpy.data.fonts.load(str(IMPACT_FONT))
+        text_curve.size = 0.025
         text_curve.align_x = "LEFT"
 
         # Create material for text

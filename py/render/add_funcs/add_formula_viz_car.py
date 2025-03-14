@@ -3,6 +3,7 @@
 import math
 
 import time
+from typing import Optional
 import bpy
 
 import colorsys
@@ -10,11 +11,11 @@ from py.utils.logger import log_info
 
 from py.utils.project_structure import (
     FORMULA_VIZ_CAR_PATH,
-    Resources,
+    IMPACT_FONT,
 )
 
 
-def import_car_collections():
+def import_car_collections(animated_color_mat: Optional[bpy.types.Material]):
     """Import car collections from the external blend file."""
     with bpy.data.libraries.load(str(FORMULA_VIZ_CAR_PATH)) as (data_from, data_to):
         data_to.collections = ["FORMULA VIZ CAR BODY", "FORMULA VIZ CAR DETAILS"]
@@ -39,11 +40,14 @@ def import_car_collections():
             "Could not find the FORMULA VIZ CAR object in the imported file"
         )
 
-    for child in car_obj.children_recursive:
-        if child.type == "MESH" and child.data.materials:
-            for material in child.data.materials:
-                if material.name == "CAR BASE COLOR" and material.use_nodes:
-                    add_color_animation(material)
+    if animated_color_mat:
+        car_obj.data.materials[0] = animated_color_mat # pyright: ignore
+
+        wing1 = bpy.data.objects.get("WING 1")
+        wing1.data.materials[0] = animated_color_mat # pyright: ignore
+
+        wing2 = bpy.data.objects.get("WING 2")
+        wing2.data.materials[0] = animated_color_mat # pyright: ignore
 
     car_obj.location = (-0.02, 0, 0)
     car_obj.scale = (0.003, 0.003, 0.003)
@@ -77,7 +81,7 @@ def create_parent_empty(
     return empty_parent
 
 
-def create_text_object():
+def create_text_object(animated_color_mat: bpy.types.Material):
     """Create and configure text object for the scene."""
     bpy.ops.object.text_add(location=(0.015, 0, 0))
     text_obj = bpy.context.active_object
@@ -91,14 +95,10 @@ def create_text_object():
         raise ValueError("Failed to create text object: data is not a TextCurve")
 
     text_data.body = "formula-viz"
-    text_data.font = bpy.data.fonts.load(str(Resources.get_main_font()))
-    text_data.size = 0.03
+    text_data.font = bpy.data.fonts.load(str(IMPACT_FONT))
+    text_data.size = 0.05
 
-    mat = bpy.data.materials.new(name="FormulaVizCarMaterial")
-    mat.use_nodes = True
-    nodes = mat.node_tree.nodes  # pyright: ignore
-    add_color_animation(mat)
-    text_obj.data.materials.append(mat) # pyright: ignore
+    text_obj.data.materials.append(animated_color_mat) # pyright: ignore
 
     return text_obj
 
@@ -150,7 +150,10 @@ def setup_car_animation(car_obj: bpy.types.Object):
     car_obj.rotation_euler = (math.radians(-86), start_y_rotation, 0)
 
 
-def add_color_animation(material: bpy.types.Material):
+def create_animated_color() -> bpy.types.Material:
+    material = bpy.data.materials.new(name="AnimatedColorMaterial")
+    material.use_nodes = True
+
     principled_bsdf = material.node_tree.nodes.get("Principled BSDF")
     if principled_bsdf:
         # Get the Base Color input
@@ -175,6 +178,8 @@ def add_color_animation(material: bpy.types.Material):
             base_color_input.default_value = (r, g, b, 1.0)
             base_color_input.keyframe_insert("default_value", frame=frame)
 
+    return material
+
 
 def main(camera_obj: bpy.types.Object, is_shorts_output: bool):
     """Import formula-viz car from blend file and position it in front of the camera.
@@ -191,8 +196,10 @@ def main(camera_obj: bpy.types.Object, is_shorts_output: bool):
     start_time = time.time()
 
     empty_parent = create_parent_empty(camera_obj, is_shorts_output)
-    car_obj = import_car_collections()
-    text_obj = create_text_object()
+
+    animated_color_mat = create_animated_color()
+    car_obj = import_car_collections(animated_color_mat)
+    text_obj = create_text_object(animated_color_mat)
 
     car_obj.parent = empty_parent
     text_obj.parent = empty_parent

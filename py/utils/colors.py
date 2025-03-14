@@ -10,7 +10,7 @@ from py.render.data_funcs.load_driver_data import Driver
 from py.utils.logger import log_warn
 
 GOLD_RGB = (255, 215, 0)
-MAIN_TRACK_COLOR = "#2d2e2e"
+MAIN_TRACK_COLOR = "#444545"
 CURB_COLOR = "#0f0f0f"
 SCENE_BG_COLOR = "#171717"
 ALTERNATE_CURB_COLOR = "#202020"

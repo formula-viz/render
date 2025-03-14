@@ -174,7 +174,7 @@ class ThumbnailGenerator:
         return camera_obj
 
     def _add_formula_viz_car(self) -> bpy.types.Object:
-        formula_viz_car_obj = add_formula_viz_car.import_car_collections()
+        formula_viz_car_obj = add_formula_viz_car.import_car_collections(None)
 
         # for child in formula_viz_car_obj.children_recursive:
         #     if child.type == "MESH" and child.data.materials:

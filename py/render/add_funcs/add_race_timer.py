@@ -5,7 +5,7 @@ from mathutils import Vector
 from py.utils.config import Config
 
 from py.utils.logger import log_info
-from py.utils.project_structure import Resources
+from py.utils.project_structure import IMPACT_FONT
 
 
 class RaceTimer:
@@ -59,7 +59,7 @@ class RaceTimer:
         text_curve.body = text
         text_curve.align_x = "LEFT"
         text_curve.align_y = "CENTER"
-        text_curve.font = bpy.data.fonts.load(str(Resources.get_main_font()))
+        text_curve.font = bpy.data.fonts.load(str(IMPACT_FONT))
         text_curve.size = 0.03
 
         # Create white material

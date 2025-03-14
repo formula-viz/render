@@ -5,7 +5,7 @@ import bpy
 from py.render.data_funcs.load_track_data import TrackData
 from typing import Optional
 
-from py.utils.colors import AlternateCurbColor, CurbColor, MainTrackColor
+from py.utils.colors import CurbColor, MainTrackColor
 
 
 def create_planes(inner_points: list[tuple[float, float, float]],
@@ -48,7 +48,7 @@ def create_planes(inner_points: list[tuple[float, float, float]],
     bm.to_mesh(mesh) # pyright: ignore
     bm.free() # pyright: ignore
 
-    pattern_size = 10
+    pattern_size = 4
     if material:
         obj.data.materials.append(material)  # pyright: ignore
 
@@ -57,7 +57,7 @@ def create_planes(inner_points: list[tuple[float, float, float]],
             obj.data.materials.append(alternate_material)  # pyright: ignore
 
             # Assign material indices to faces
-            for i, poly in enumerate(obj.data.polygons):
+            for i, poly in enumerate(obj.data.polygons): # pyright: ignore
                 # Integer division to determine which material to use
                 # e.g., with pattern_size=3: 0,1,2 get mat1, 3,4,5 get mat2, etc.
                 material_index = (i // pattern_size) % 2
@@ -103,12 +103,12 @@ def main(track_data: TrackData) -> None:
 
     track_mat = create_material(MainTrackColor.get_scene_rgb(), "Main")
     curb_mat = create_material(CurbColor.get_scene_rgb(), "Curb")
-    alternate_curb_mat = create_material(AlternateCurbColor.get_scene_rgb(), "AlternateCurb")
+    # alternate_curb_mat = create_material(AlternateCurbColor.get_scene_rgb(), "AlternateCurb")
 
     create_planes(track_data.inner_points, track_data.outer_points, "Main", track_mat)
     create_planes(
-        track_data.outer_points, track_data.outer_curb_points, "CurbOuter", curb_mat, alternate_curb_mat, True
+        track_data.outer_points, track_data.outer_curb_points, "CurbOuter", curb_mat
     )
     create_planes(
-        track_data.inner_points, track_data.inner_curb_points, "CurbInner", curb_mat, alternate_curb_mat, True
+        track_data.inner_points, track_data.inner_curb_points, "CurbInner", curb_mat
     )

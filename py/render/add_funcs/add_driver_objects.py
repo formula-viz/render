@@ -44,6 +44,7 @@ def create_driver_from_base(driver_abbrev: str, base_empty_obj: bpy.types.Object
     # Create a copy of the master empty
     new_empty = base_empty_obj.copy()
     new_empty.name = f"{driver_abbrev.title()}MasterEmpty"
+    new_empty.scale = (1.4, 1.4, 1.4)
     driver_collection.objects.link(new_empty)
 
     # Copy all children objects

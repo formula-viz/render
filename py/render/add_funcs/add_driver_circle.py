@@ -64,7 +64,7 @@ class DriverCircle:
 
     def _create_circle_face(self) -> bpy.types.Object:
         # Create circular face for the image
-        bpy.ops.mesh.primitive_circle_add(radius=1.0, vertices=32, fill_type="NGON") # pyright: ignore
+        bpy.ops.mesh.primitive_circle_add(radius=1.5, vertices=32, fill_type="NGON") # pyright: ignore
         circle_obj = bpy.context.active_object
         if not circle_obj:
             raise ValueError("Failed to create circle object")
@@ -83,6 +83,7 @@ class DriverCircle:
         )
         face_mat.use_nodes = True
         nodes = face_mat.node_tree.nodes  # pyright: ignore
+        face_mat.shadow_method = 'NONE' # pyright: ignore
         nodes.clear() # pyright: ignore
 
         # Create nodes for image texture
@@ -123,7 +124,7 @@ class DriverCircle:
     def _create_outline(self) -> bpy.types.Object:
         # Create torus for the outline
         bpy.ops.mesh.primitive_torus_add( # pyright: ignore
-            major_radius=1.0,  # Radius of the circle
+            major_radius=1.5,  # Radius of the circle
             minor_radius=0.03,  # Thickness of the outline
             major_segments=128,  # Segments of the circle
             minor_segments=32,  # Segments of the tube
@@ -144,6 +145,7 @@ class DriverCircle:
         )
         outline_mat.use_nodes = True
         nodes = outline_mat.node_tree.nodes  # pyright: ignore
+        outline_mat.shadow_method = 'NONE' # pyright: ignore
         nodes.clear() # pyright: ignore
 
         # Create emission node
@@ -167,7 +169,7 @@ class DriverCircle:
     def _parent_to_car(self, parent_empty: bpy.types.Object) -> None:
         """Parent the circle to the car and position it above."""
         parent_empty.parent = self.driver_car_obj
-        parent_empty.location = Vector((0, 0, 2.5))
+        parent_empty.location = Vector((0, 0, 3.5))
 
     def _add_camera_tracking(self, parent_empty: bpy.types.Object) -> None:
         """Add constraint to make circle face camera."""

@@ -92,7 +92,7 @@ def eevee_render(config: Config, num_frames: int, is_ui_mode: bool):
     # Color Management, this is very important for aesthetics
     scene.display_settings.display_device = "sRGB"  # type: ignore
     scene.view_settings.view_transform = "AgX"  # type: ignore
-    scene.view_settings.look = "AgX - Base Contrast"  # type: ignore
+    scene.view_settings.look = "AgX - Medium High Contrast"  # type: ignore
     scene.view_settings.gamma = 0.95 # pyright: ignore
 
     if not is_ui_mode:

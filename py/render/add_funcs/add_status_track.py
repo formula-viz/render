@@ -82,9 +82,93 @@ class StatusTrack:
         self.parent_empty.hide_viewport = True
         self.parent_empty.name = "StatusTrackParent"
 
+    def _widen_track(self, new_track_data: TrackData) -> TrackData:
+        """Widen track by moving inner and outer points 5 meters each outward.
+
+        Args:
+            new_track_data: Track data containing points to widen
+
+        Returns:
+            TrackData with widened track points
+        """
+        new_inner_points: list[tuple[float, float, float]] = []
+        new_outer_points: list[tuple[float, float, float]] = []
+        new_inner_curb_points: list[tuple[float, float, float]] = []
+        new_outer_curb_points: list[tuple[float, float, float]] = []
+
+        for inner_point, outer_point in zip(new_track_data.inner_curb_points, new_track_data.outer_curb_points):
+            # Calculate vector from inner to outer point
+            vector_x = outer_point[0] - inner_point[0]
+            vector_y = outer_point[1] - inner_point[1]
+            vector_z = outer_point[2] - inner_point[2]
+
+            # Calculate vector length
+            length = (vector_x**2 + vector_y**2 + vector_z**2)**0.5
+
+            norm_x = vector_x / length
+            norm_y = vector_y / length
+            norm_z = vector_z / length
+
+            # Widen by 5 meters in each direction
+            widen_distance = 5.0
+
+            # Move inner point further inward
+            new_inner_x = inner_point[0] - widen_distance * norm_x
+            new_inner_y = inner_point[1] - widen_distance * norm_y
+            new_inner_z = inner_point[2] - widen_distance * norm_z
+            new_inner_curb_points.append((new_inner_x, new_inner_y, new_inner_z))
+
+            # Move outer point further outward
+            new_outer_x = outer_point[0] + widen_distance * norm_x
+            new_outer_y = outer_point[1] + widen_distance * norm_y
+            new_outer_z = outer_point[2] + widen_distance * norm_z
+            new_outer_curb_points.append((new_outer_x, new_outer_y, new_outer_z))
+
+        # Process inner and outer points (not curb points)
+        for inner_point, outer_point in zip(new_track_data.inner_points, new_track_data.outer_points):
+            # Calculate vector from inner to outer point
+            vector_x = outer_point[0] - inner_point[0]
+            vector_y = outer_point[1] - inner_point[1]
+            vector_z = outer_point[2] - inner_point[2]
+
+            # Calculate vector length
+            length = (vector_x**2 + vector_y**2 + vector_z**2)**0.5
+
+            # Normalize the vector
+            if length > 0:
+                norm_x = vector_x / length
+                norm_y = vector_y / length
+                norm_z = vector_z / length
+            else:
+                # Handle case where points are the same
+                norm_x, norm_y, norm_z = 0, 0, 1
+
+            # Widen by 5 meters in each direction
+            widen_distance = 5.0
+
+            # Move inner point further inward
+            new_inner_x = inner_point[0] - widen_distance * norm_x
+            new_inner_y = inner_point[1] - widen_distance * norm_y
+            new_inner_z = inner_point[2] - widen_distance * norm_z
+            new_inner_points.append((new_inner_x, new_inner_y, new_inner_z))
+
+            # Move outer point further outward
+            new_outer_x = outer_point[0] + widen_distance * norm_x
+            new_outer_y = outer_point[1] + widen_distance * norm_y
+            new_outer_z = outer_point[2] + widen_distance * norm_z
+            new_outer_points.append((new_outer_x, new_outer_y, new_outer_z))
+
+        return TrackData(
+            new_inner_points,
+            new_outer_points,
+            new_inner_curb_points,
+            new_outer_curb_points
+        )
+
     def _setup(self) -> Tuple[float, float]:
         new_track_data, new_driver_df = self._center(self.track_data, self.driver_df)
 
+        new_track_data = self._widen_track(new_track_data)
         track_width, track_height = self._get_track_dimensions(new_track_data)
         optimal_scale = self._calculate_optimal_scale(
             track_width, track_height, self.camera_obj, self.is_shorts_output
@@ -275,7 +359,7 @@ class StatusTrack:
         return dot
 
     def _create_indicator_dot(self) -> bpy.types.Object:
-        bpy.ops.mesh.primitive_uv_sphere_add(radius=17, segments=64, ring_count=64) # pyright: ignore
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=45, segments=64, ring_count=64) # pyright: ignore
         dot = bpy.context.active_object
         if not dot:
             raise ValueError("Failed to create indicator dot")
