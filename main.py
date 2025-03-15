@@ -1,5 +1,4 @@
 """Start Formula Viz rendering and publishing process."""
-
 import json
 import os
 import subprocess

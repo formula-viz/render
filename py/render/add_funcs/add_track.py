@@ -1,19 +1,21 @@
 """Generate track surfaces and curbs with appropriate materials."""
 
-import bmesh
-import bpy
-from py.render.data_funcs.load_track_data import TrackData
 from typing import Optional
 
+import bmesh
+import bpy
+
+from py.render.data_funcs.load_track_data import TrackData
 from py.utils.colors import CurbColor, MainTrackColor
 
 
-def create_planes(inner_points: list[tuple[float, float, float]],
+def create_planes(
+    inner_points: list[tuple[float, float, float]],
     outer_points: list[tuple[float, float, float]],
     name: str,
-    material: Optional[bpy.types.Material]=None,
-    alternate_material: Optional[bpy.types.Material]=None,
-    is_curb: bool=False
+    material: Optional[bpy.types.Material] = None,
+    alternate_material: Optional[bpy.types.Material] = None,
+    is_curb: bool = False,
 ):
     """Create a mesh plane between two sets of points.
 
@@ -36,7 +38,7 @@ def create_planes(inner_points: list[tuple[float, float, float]],
     inner_verts = [bm.verts.new(coord) for coord in inner_points]
     outer_verts = [bm.verts.new(coord) for coord in outer_points]
 
-    bm.verts.ensure_lookup_table() # pyright: ignore
+    bm.verts.ensure_lookup_table()  # pyright: ignore
 
     for i in range(len(inner_points) - 1):
         bm.faces.new(
@@ -45,8 +47,8 @@ def create_planes(inner_points: list[tuple[float, float, float]],
     if len(inner_points) > 2:
         bm.faces.new([inner_verts[-1], inner_verts[0], outer_verts[0], outer_verts[-1]])
 
-    bm.to_mesh(mesh) # pyright: ignore
-    bm.free() # pyright: ignore
+    bm.to_mesh(mesh)  # pyright: ignore
+    bm.free()  # pyright: ignore
 
     pattern_size = 4
     if material:
@@ -57,7 +59,7 @@ def create_planes(inner_points: list[tuple[float, float, float]],
             obj.data.materials.append(alternate_material)  # pyright: ignore
 
             # Assign material indices to faces
-            for i, poly in enumerate(obj.data.polygons): # pyright: ignore
+            for i, poly in enumerate(obj.data.polygons):  # pyright: ignore
                 # Integer division to determine which material to use
                 # e.g., with pattern_size=3: 0,1,2 get mat1, 3,4,5 get mat2, etc.
                 material_index = (i // pattern_size) % 2

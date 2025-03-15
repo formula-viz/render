@@ -2,8 +2,8 @@
 
 import bpy
 from mathutils import Vector
-from py.utils.config import Config
 
+from py.utils.config import Config
 from py.utils.logger import log_info
 from py.utils.project_structure import IMPACT_FONT
 
@@ -30,7 +30,7 @@ class RaceTimer:
 
     def _create_parent_empty(self):
         # Create empty parent object for camera-relative positioning
-        bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0)) # pyright: ignore
+        bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))  # pyright: ignore
         active_obj = bpy.context.active_object
         if not active_obj:
             raise TypeError(
@@ -60,7 +60,7 @@ class RaceTimer:
         text_curve.align_x = "LEFT"
         text_curve.align_y = "CENTER"
         text_curve.font = bpy.data.fonts.load(str(IMPACT_FONT))
-        text_curve.size = 0.03
+        text_curve.size = 0.04
 
         # Create white material
         mat = bpy.data.materials.new(name=f"TimerMaterial_{frame_num}")
@@ -69,7 +69,7 @@ class RaceTimer:
         nodes["Principled BSDF"].inputs["Base Color"].default_value = (1, 1, 1, 1)  # pyright: ignore
 
         # Assign material to text
-        text_curve.materials.append(mat) # pyright: ignore
+        text_curve.materials.append(mat)  # pyright: ignore
 
         return timer_obj
 
@@ -96,25 +96,27 @@ class RaceTimer:
             # Set visibility keyframes
             timer_obj.hide_viewport = True
             timer_obj.hide_render = True
-            timer_obj.keyframe_insert(data_path="hide_viewport", frame=0) # pyright: ignore
-            timer_obj.keyframe_insert(data_path="hide_render", frame=0) # pyright: ignore
+            timer_obj.keyframe_insert(data_path="hide_viewport", frame=0)  # pyright: ignore
+            timer_obj.keyframe_insert(data_path="hide_render", frame=0)  # pyright: ignore
 
             timer_obj.hide_viewport = False
             timer_obj.hide_render = False
-            timer_obj.keyframe_insert(data_path="hide_viewport", frame=frame) # pyright: ignore
-            timer_obj.keyframe_insert(data_path="hide_render", frame=frame) # pyright: ignore
+            timer_obj.keyframe_insert(data_path="hide_viewport", frame=frame)  # pyright: ignore
+            timer_obj.keyframe_insert(data_path="hide_render", frame=frame)  # pyright: ignore
 
             timer_obj.hide_viewport = True
             timer_obj.hide_render = True
-            timer_obj.keyframe_insert(data_path="hide_viewport", frame=frame + 1) # pyright: ignore
-            timer_obj.keyframe_insert(data_path="hide_render", frame=frame + 1) # pyright: ignore
+            timer_obj.keyframe_insert(data_path="hide_viewport", frame=frame + 1)  # pyright: ignore
+            timer_obj.keyframe_insert(data_path="hide_render", frame=frame + 1)  # pyright: ignore
 
-    def _parent_to_camera(self, camera_obj: bpy.types.Object, timer_obj: bpy.types.Object) -> None:
+    def _parent_to_camera(
+        self, camera_obj: bpy.types.Object, timer_obj: bpy.types.Object
+    ) -> None:
         """Parent the leaderboard to the camera."""
         timer_obj.parent = camera_obj
 
         if self.config["render"]["is_shorts_output"]:
-            position = (-0.07, -0.15, -1)
+            position = (-0.04, -0.15, -1)
         else:
             position = (0.22, -0.18, -1)
 

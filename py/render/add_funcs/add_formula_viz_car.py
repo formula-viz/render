@@ -1,14 +1,13 @@
 """Places the formula-viz channel car in the scene as a watermark."""
 
+import colorsys
 import math
-
 import time
 from typing import Optional
+
 import bpy
 
-import colorsys
 from py.utils.logger import log_info
-
 from py.utils.project_structure import (
     FORMULA_VIZ_CAR_PATH,
     IMPACT_FONT,
@@ -41,13 +40,13 @@ def import_car_collections(animated_color_mat: Optional[bpy.types.Material]):
         )
 
     if animated_color_mat:
-        car_obj.data.materials[0] = animated_color_mat # pyright: ignore
+        car_obj.data.materials[0] = animated_color_mat  # pyright: ignore
 
         wing1 = bpy.data.objects.get("WING 1")
-        wing1.data.materials[0] = animated_color_mat # pyright: ignore
+        wing1.data.materials[0] = animated_color_mat  # pyright: ignore
 
         wing2 = bpy.data.objects.get("WING 2")
-        wing2.data.materials[0] = animated_color_mat # pyright: ignore
+        wing2.data.materials[0] = animated_color_mat  # pyright: ignore
 
     car_obj.location = (-0.02, 0, 0)
     car_obj.scale = (0.003, 0.003, 0.003)
@@ -98,7 +97,7 @@ def create_text_object(animated_color_mat: bpy.types.Material):
     text_data.font = bpy.data.fonts.load(str(IMPACT_FONT))
     text_data.size = 0.05
 
-    text_obj.data.materials.append(animated_color_mat) # pyright: ignore
+    text_obj.data.materials.append(animated_color_mat)  # pyright: ignore
 
     return text_obj
 
@@ -125,7 +124,6 @@ def setup_car_animation(car_obj: bpy.types.Object):
     final_frame = start_frame + (4 * cycle_length)
     car_obj.rotation_euler = (math.radians(-86), start_y_rotation, 0)
     car_obj.keyframe_insert(data_path="rotation_euler", frame=final_frame)
-
 
     # Make the animation cycle by setting up a modifier
     if car_obj.animation_data and car_obj.animation_data.action:
@@ -206,5 +204,7 @@ def main(camera_obj: bpy.types.Object, is_shorts_output: bool):
 
     setup_car_animation(car_obj)
 
-    log_info(f"Formula viz car watermark added in {time.time() - start_time:.2f} seconds")
+    log_info(
+        f"Formula viz car watermark added in {time.time() - start_time:.2f} seconds"
+    )
     return car_obj

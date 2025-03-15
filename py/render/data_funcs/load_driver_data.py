@@ -24,6 +24,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 
 import fastf1 as ff1
+ff1.ergast.interface.BASE_URL = "https://api.jolpi.ca/ergast/f1"
 import mathutils
 import numpy as np
 import pandas as pd
@@ -113,8 +114,7 @@ def load_from_fastf1(year: int, track: str):
     driver_last_names = []
     for d in drivers:
         abbrev = str(d["Abbreviation"])
-
-        last_name = get_driver_name(abbrev, session).split(" ")[-1]
+        last_name = str(d["LastName"])
 
         driver_classes.append(Driver(last_name, abbrev))
         driver_abbrevs.append(abbrev)
