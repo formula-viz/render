@@ -7,7 +7,7 @@ from py.render.add_funcs.add_driver_circle import DriverCircle
 from py.utils.config import Config
 from py.utils.logger import log_info
 from py.utils.models import Driver
-from py.utils.project_structure import IMPACT_FONT
+from py.utils.project_structure import Resources
 
 
 class LiveLeaderboard:
@@ -37,23 +37,25 @@ class LiveLeaderboard:
         self.drivers_and_colors = drivers_and_colors
         self.car_rankings = car_rankings
         self.is_fancy_mode = is_fancy_mode
-        self.driver_objects: dict[Driver, bpy.types.Object] = {}  # Store references to driver objects
+        self.driver_objects: dict[
+            Driver, bpy.types.Object
+        ] = {}  # Store references to driver objects
         self.camera_obj = camera_obj
 
         if self.is_fancy_mode:
             self.spacing = 0.035
         else:
-            self.spacing = 0.0175 # Vertical spacing between elements
+            self.spacing = 0.015  # Vertical spacing between elements
 
         # Create main collection
         self.collection = bpy.data.collections.new("LiveLeaderboard")
         scene = bpy.context.scene
         if not scene:
             raise ValueError("No active scene found")
-        scene.collection.children.link(self.collection) # pyright: ignore
+        scene.collection.children.link(self.collection)  # pyright: ignore
 
         # Create empty parent object for camera-relative positioning
-        bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0)) # pyright: ignore
+        bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))  # pyright: ignore
         parent_empty = bpy.context.active_object
         if not parent_empty:
             raise ValueError("Failed to create parent empty object")
@@ -82,7 +84,7 @@ class LiveLeaderboard:
             for idx, driver in enumerate(new_order):
                 empty_parent_obj = self.driver_objects[driver]
                 empty_parent_obj.location = self.position_offsets[idx + 1]
-                empty_parent_obj.keyframe_insert(data_path="location", frame=true_frame) # pyright: ignore
+                empty_parent_obj.keyframe_insert(data_path="location", frame=true_frame)  # pyright: ignore
 
     def _parent_to_camera(self) -> None:
         """Parent the leaderboard to the camera."""
@@ -121,7 +123,7 @@ class LiveLeaderboard:
 
         """
         # Create empty parent for text
-        bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0)) # pyright: ignore
+        bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))  # pyright: ignore
         empty_obj = bpy.context.active_object
         if not empty_obj:
             raise ValueError("Failed to create empty object")
@@ -148,7 +150,7 @@ class LiveLeaderboard:
         else:
             text_loc = (0, 0, 0)
 
-        bpy.ops.object.text_add(location=text_loc) # pyright: ignore
+        bpy.ops.object.text_add(location=text_loc)  # pyright: ignore
         text_obj = bpy.context.active_object
         if not text_obj:
             raise ValueError("Failed to create text object")
@@ -158,11 +160,11 @@ class LiveLeaderboard:
         if not isinstance(text_curve, bpy.types.TextCurve):
             raise TypeError("Expected text_obj.data to be of type bpy.types.TextCurve")
 
-        text_curve.body = driver.abbrev.title()
+        text_curve.body = driver.abbrev
         text_obj.parent = empty_obj
 
-        text_curve.font = bpy.data.fonts.load(str(IMPACT_FONT))
-        text_curve.size = 0.03
+        text_curve.font = bpy.data.fonts.load(str(Resources.get_bold_font()))
+        text_curve.size = 0.02
         text_curve.align_x = "LEFT"
 
         # Create material for text
@@ -172,6 +174,11 @@ class LiveLeaderboard:
         nodes["Principled BSDF"].inputs["Base Color"].default_value = self._hex_to_rgba(  # pyright: ignore
             color
         )
+        # 26 and 27 are emission
+        nodes["Principled BSDF"].inputs[26].default_value = self._hex_to_rgba(  # pyright: ignore
+            color
+        )
+        nodes["Principled BSDF"].inputs[27].default_value = 0.1  # pyright: ignore
 
         # Assign material to text
         text_obj.data.materials.append(mat)  # pyright: ignore
@@ -179,8 +186,8 @@ class LiveLeaderboard:
         # Link both objects to the main collection
         for obj in [empty_obj, text_obj]:
             for col in obj.users_collection:
-                col.objects.unlink(obj) # pyright: ignore
-            self.collection.objects.link(obj) # pyright: ignore
+                col.objects.unlink(obj)  # pyright: ignore
+            self.collection.objects.link(obj)  # pyright: ignore
 
         return empty_obj
 

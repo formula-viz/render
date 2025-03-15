@@ -156,6 +156,8 @@ def create_animated_color() -> bpy.types.Material:
     if principled_bsdf:
         # Get the Base Color input
         base_color_input = principled_bsdf.inputs["Base Color"]
+        emission = principled_bsdf.inputs[26]
+        principled_bsdf.inputs[27].default_value = 0.3  # pyright: ignore
 
         # Set keyframes for color cycling - use a shorter cycle for color
         color_cycle_length = 240  # Complete color cycle in 240 frames
@@ -174,6 +176,7 @@ def create_animated_color() -> bpy.types.Material:
 
             # Set color and create keyframe
             base_color_input.default_value = (r, g, b, 1.0)
+            emission.default_value = (r, g, b, 1.0)
             base_color_input.keyframe_insert("default_value", frame=frame)
 
     return material

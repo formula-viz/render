@@ -62,11 +62,15 @@ class RaceTimer:
         text_curve.font = bpy.data.fonts.load(str(IMPACT_FONT))
         text_curve.size = 0.04
 
-        # Create white material
+        # Create bright white material
         mat = bpy.data.materials.new(name=f"TimerMaterial_{frame_num}")
         mat.use_nodes = True
         nodes = mat.node_tree.nodes  # pyright: ignore
+        # Set to pure white with emission for extra brightness
         nodes["Principled BSDF"].inputs["Base Color"].default_value = (1, 1, 1, 1)  # pyright: ignore
+        # 26 and 27 are emission
+        nodes["Principled BSDF"].inputs[26].default_value = (1, 1, 1, 1)  # pyright: ignore
+        nodes["Principled BSDF"].inputs[27].default_value = 0.5  # pyright: ignore
 
         # Assign material to text
         text_curve.materials.append(mat)  # pyright: ignore
