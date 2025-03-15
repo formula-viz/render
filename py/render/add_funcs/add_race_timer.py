@@ -122,7 +122,7 @@ class RaceTimer:
         if self.config["render"]["is_shorts_output"]:
             position = (-0.04, -0.15, -1)
         else:
-            position = (0.22, -0.18, -1)
+            position = (0.25, -0.18, -1)
 
         timer_obj.location = Vector(position)
         timer_obj.rotation_euler = camera_obj.rotation_euler

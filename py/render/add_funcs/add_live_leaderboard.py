@@ -43,7 +43,7 @@ class LiveLeaderboard:
         self.camera_obj = camera_obj
 
         if self.is_fancy_mode:
-            self.spacing = 0.035
+            self.spacing = 0.055
         else:
             self.spacing = 0.015  # Vertical spacing between elements
 
@@ -146,7 +146,7 @@ class LiveLeaderboard:
 
         # Create text object
         if self.is_fancy_mode:
-            text_loc = (0.02, -0.005, 0)
+            text_loc = (0.03, -0.009, 0)
         else:
             text_loc = (0, 0, 0)
 
@@ -160,12 +160,18 @@ class LiveLeaderboard:
         if not isinstance(text_curve, bpy.types.TextCurve):
             raise TypeError("Expected text_obj.data to be of type bpy.types.TextCurve")
 
-        text_curve.body = driver.abbrev
         text_obj.parent = empty_obj
 
         text_curve.font = bpy.data.fonts.load(str(Resources.get_bold_font()))
-        text_curve.size = 0.02
+
         text_curve.align_x = "LEFT"
+
+        if self.is_fancy_mode:
+            text_curve.body = driver.last_name.title()
+            text_curve.size = 0.03
+        else:
+            text_curve.body = driver.abbrev
+            text_curve.size = 0.02
 
         # Create material for text
         mat = bpy.data.materials.new(name=f"Material_{driver.abbrev}")
