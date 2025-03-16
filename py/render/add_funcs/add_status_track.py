@@ -41,7 +41,12 @@ class StatusTrack:
     """
 
     def __init__(
-        self, track_data: TrackData, camera_obj: bpy.types.Object, start_finish_line_idx: int, driver_df: DataFrame, is_shorts_output: bool
+        self,
+        track_data: TrackData,
+        camera_obj: bpy.types.Object,
+        start_finish_line_idx: int,
+        driver_df: DataFrame,
+        is_shorts_output: bool,
     ):
         """Initialize the StatusTrack with track data and positioning parameters.
 
@@ -67,7 +72,7 @@ class StatusTrack:
 
     def _create_parent_empty(self):
         # Create empty parent object for camera-relative positioning
-        bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0)) # pyright: ignore
+        bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))  # pyright: ignore
         active_obj = bpy.context.active_object
         if not active_obj:
             raise ValueError(
@@ -82,7 +87,7 @@ class StatusTrack:
         self.parent_empty.hide_viewport = True
         self.parent_empty.name = "StatusTrackParent"
 
-    def _widen_track(self, new_track_data: TrackData) -> TrackData:
+    def _widen_track(self, new_track_data: TrackData, total_widen: int) -> TrackData:
         """Widen track by moving inner and outer points 5 meters each outward.
 
         Args:
@@ -90,27 +95,30 @@ class StatusTrack:
 
         Returns:
             TrackData with widened track points
+
         """
         new_inner_points: list[tuple[float, float, float]] = []
         new_outer_points: list[tuple[float, float, float]] = []
         new_inner_curb_points: list[tuple[float, float, float]] = []
         new_outer_curb_points: list[tuple[float, float, float]] = []
 
-        for inner_point, outer_point in zip(new_track_data.inner_curb_points, new_track_data.outer_curb_points):
+        for inner_point, outer_point in zip(
+            new_track_data.inner_curb_points, new_track_data.outer_curb_points
+        ):
             # Calculate vector from inner to outer point
             vector_x = outer_point[0] - inner_point[0]
             vector_y = outer_point[1] - inner_point[1]
             vector_z = outer_point[2] - inner_point[2]
 
             # Calculate vector length
-            length = (vector_x**2 + vector_y**2 + vector_z**2)**0.5
+            length = (vector_x**2 + vector_y**2 + vector_z**2) ** 0.5
 
             norm_x = vector_x / length
             norm_y = vector_y / length
             norm_z = vector_z / length
 
             # Widen by 5 meters in each direction
-            widen_distance = 5.0
+            widen_distance = total_widen / 2
 
             # Move inner point further inward
             new_inner_x = inner_point[0] - widen_distance * norm_x
@@ -125,14 +133,16 @@ class StatusTrack:
             new_outer_curb_points.append((new_outer_x, new_outer_y, new_outer_z))
 
         # Process inner and outer points (not curb points)
-        for inner_point, outer_point in zip(new_track_data.inner_points, new_track_data.outer_points):
+        for inner_point, outer_point in zip(
+            new_track_data.inner_points, new_track_data.outer_points
+        ):
             # Calculate vector from inner to outer point
             vector_x = outer_point[0] - inner_point[0]
             vector_y = outer_point[1] - inner_point[1]
             vector_z = outer_point[2] - inner_point[2]
 
             # Calculate vector length
-            length = (vector_x**2 + vector_y**2 + vector_z**2)**0.5
+            length = (vector_x**2 + vector_y**2 + vector_z**2) ** 0.5
 
             # Normalize the vector
             if length > 0:
@@ -144,7 +154,7 @@ class StatusTrack:
                 norm_x, norm_y, norm_z = 0, 0, 1
 
             # Widen by 5 meters in each direction
-            widen_distance = 5.0
+            widen_distance = total_widen / 2
 
             # Move inner point further inward
             new_inner_x = inner_point[0] - widen_distance * norm_x
@@ -162,13 +172,13 @@ class StatusTrack:
             new_inner_points,
             new_outer_points,
             new_inner_curb_points,
-            new_outer_curb_points
+            new_outer_curb_points,
         )
 
     def _setup(self) -> Tuple[float, float]:
         new_track_data, new_driver_df = self._center(self.track_data, self.driver_df)
 
-        new_track_data = self._widen_track(new_track_data)
+        new_track_data = self._widen_track(new_track_data, 10)
         track_width, track_height = self._get_track_dimensions(new_track_data)
         optimal_scale = self._calculate_optimal_scale(
             track_width, track_height, self.camera_obj, self.is_shorts_output
@@ -185,13 +195,18 @@ class StatusTrack:
             "Status",
             track_mat,
         )
+
+        # in order to setup the start finish line, we want it to be long, essentially forming a cross,
+        # we do this by widening the track again by a
+        new_track_data = self._widen_track(new_track_data, 60)
         status_start_finish_line = add_start_finish_line(
             new_track_data.inner_points,
             new_track_data.outer_points,
             self.start_finish_line_idx,
             "StatusStartFinishLine",
-            line_width=20,
+            line_width=50,
         )
+        status_start_finish_line.data.materials[0] = track_mat
 
         self._scale(optimal_scale, status_track_obj)
         indicator_dot = self._add_indicator_dot(new_driver_df)
@@ -293,7 +308,9 @@ class StatusTrack:
         status_track_obj.scale.y = optimal_scale
         status_track_obj.scale.z = optimal_scale
 
-    def _center(self, new_track_data: TrackData, driver_df: DataFrame) -> tuple[TrackData, DataFrame]:
+    def _center(
+        self, new_track_data: TrackData, driver_df: DataFrame
+    ) -> tuple[TrackData, DataFrame]:
         new_inner_points = []
         new_outer_points = []
         new_inner_curb_points = []
@@ -354,12 +371,12 @@ class StatusTrack:
         for i in range(len(x_vals)):
             frame = i + 1
             dot.location = (x_vals[i], y_vals[i], 0)
-            dot.keyframe_insert(data_path="location", frame=frame) # pyright: ignore
+            dot.keyframe_insert(data_path="location", frame=frame)  # pyright: ignore
 
         return dot
 
     def _create_indicator_dot(self) -> bpy.types.Object:
-        bpy.ops.mesh.primitive_uv_sphere_add(radius=45, segments=64, ring_count=64) # pyright: ignore
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=45, segments=64, ring_count=64)  # pyright: ignore
         dot = bpy.context.active_object
         if not dot:
             raise ValueError("Failed to create indicator dot")
@@ -373,7 +390,7 @@ class StatusTrack:
             raise ValueError("Failed to get node tree")
 
         nodes = node_tree.nodes
-        nodes.clear() # pyright: ignore
+        nodes.clear()  # pyright: ignore
 
         # Create emission node
         node_emission = nodes.new("ShaderNodeEmission")

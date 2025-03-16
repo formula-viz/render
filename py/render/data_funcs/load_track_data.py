@@ -274,7 +274,6 @@ def smooth_points(track_points: DataFrame) -> DataFrame:
                 (prev_point[0] - cur_point[0]) ** 2
                 + (prev_point[1] - cur_point[1]) ** 2
             )
-            log_info(f"Distance: {distance}")
             assert distance < 1.5, (
                 f"Distance between right points {i} and {i + 1} out of {len(rights_x)} is {distance}"
             )
