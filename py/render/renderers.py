@@ -125,6 +125,9 @@ class AbstractRenderer(ABC):
             bpy.data.materials.remove(material, do_unlink=True)  # type: ignore
 
         add_sun.main()
+        bpy.data.worlds["World"].node_tree.nodes["Background"].inputs[
+            0
+        ].default_value = (0.045, 0.046, 0.051, 1)
 
     def trigger_render(self):
         """Start the rendering process.
