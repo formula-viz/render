@@ -23,7 +23,7 @@ class SetupAlpha(unittest.TestCase):
         with open(config_path, "r") as f:
             self.config: Config = json.load(f)
 
-        self.track_data = load_track_data.main(
+        self.track_data: load_track_data.TrackData = load_track_data.main(
             self.config["year"], self.config["track"]
         )
         self.driver_dfs, self.start_finish_line_idx = load_driver_data.main(

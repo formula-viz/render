@@ -18,28 +18,29 @@ The processed data can be used to create 3D visualizations of qualifying laps.
 
 import concurrent
 import concurrent.futures
-from datetime import timedelta
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
 
 import fastf1 as ff1
+
 ff1.ergast.interface.BASE_URL = "https://api.jolpi.ca/ergast/f1"
+from typing import Optional
+
 import mathutils
 import numpy as np
 import pandas as pd
-from pandas import Series
 import requests
 from fastf1.core import Laps, Telemetry
-from fastf1.plotting import get_driver_name
+from pandas import Series
 from scipy.interpolate import UnivariateSpline
+
 from py.render.data_funcs.load_track_data import TrackData
 from py.utils.config import Config
-
 from py.utils.logger import log_info, log_warn
 from py.utils.models import Driver
 from py.utils.project_structure import DriverDataPS
-from typing import Optional
 
 
 def load_driver_headshots(drivers: list[Driver], headshot_urls) -> None:
@@ -128,15 +129,20 @@ def load_from_fastf1(year: int, track: str):
 
     def process_tel(q: Laps, driver: Driver):
         try:
-            tel: Telemetry = (
-                q.pick_not_deleted().pick_fastest().get_telemetry(frequency="original")
-            )
+            fastest = q.pick_not_deleted().pick_fastest()
+            if fastest is None:
+                log_warn(f"Couldn't find fastest lap for {driver}")
+                return
+
+            tel: Telemetry = fastest.get_telemetry(frequency="original")
         except Exception as e:
             log_warn(f"Couldn't get proper telemetry for {driver}: {e}")
             return
 
         tel = tel[tel["Source"].isin(["pos", "interpolation"])]  # pyright: ignore
         tel.reset_index(drop=True)
+
+        tel = tel.astype({"X": float, "Y": float, "Z": float})
 
         tel.loc[:, "X"] = tel["X"] / 10
         tel.loc[:, "Y"] = tel["Y"] / 10
@@ -158,7 +164,13 @@ def load_from_fastf1(year: int, track: str):
     driver_times: dict[Driver, str] = {}
     driver_tels: dict[Driver, Telemetry] = {}
     for driver in driver_classes:
-        q1, q2, q3 = laps.pick_drivers(driver.abbrev).split_qualifying_sessions()
+        # Safely handle the case where driver might not have any lap data
+        driver_laps = laps.pick_drivers(driver.abbrev)
+        if driver_laps is None or len(driver_laps) == 0:
+            log_warn(f"No lap data found for driver {driver.abbrev}")
+            continue
+
+        q1, q2, q3 = driver_laps.split_qualifying_sessions()
         # we want to get the fastest lap for the highest qualifying session which the driver reached
 
         if q3 is not None:
@@ -174,7 +186,9 @@ def load_from_fastf1(year: int, track: str):
 
 
 def process_grouped_driver_tels(
-    driver_tels: dict[Driver, Telemetry], inner_points: list[tuple[float, float, float]], outer_points: list[tuple[float, float, float]]
+    driver_tels: dict[Driver, Telemetry],
+    inner_points: list[tuple[float, float, float]],
+    outer_points: list[tuple[float, float, float]],
 ):
     """Process telemetry data to standardize start/finish lines.
 
@@ -214,7 +228,11 @@ def process_grouped_driver_tels(
 
     # using inner_points, outer_points find the idx which is closest to our start/finish line
     # we know that len(inner_points) == len(outer_points)
-    def get_line(inner_points: list[tuple[float, float, float]], outer_points: list[tuple[float, float, float]], start_end_point: tuple[float, float]):
+    def get_line(
+        inner_points: list[tuple[float, float, float]],
+        outer_points: list[tuple[float, float, float]],
+        start_end_point: tuple[float, float],
+    ):
         closest_idx = 0
         closest_dist = float("inf")
         for i, (inner_point, outer_point) in enumerate(zip(inner_points, outer_points)):
@@ -268,6 +286,7 @@ def get_driver_df(tel: Telemetry, s_divisor: int, frames_per_second: int):
 
     Returns:
         DataFrame with X, Y, Z, and Speed columns at specified frame rate
+
     """
     total_distance = 0
     distances = [0.0]
@@ -279,9 +298,7 @@ def get_driver_df(tel: Telemetry, s_divisor: int, frames_per_second: int):
     y_vals: Series[float] = tel["Y"]
     for cur_x, cur_y in zip(x_vals, y_vals):
         if prev_x is not None and prev_y is not None:
-            distance = (
-                (prev_x - cur_x) ** 2 + (prev_y - cur_y) ** 2
-            ) ** 0.5
+            distance = ((prev_x - cur_x) ** 2 + (prev_y - cur_y) ** 2) ** 0.5
             total_distance += distance
             distances.append(total_distance)
         prev_x = cur_x
@@ -703,7 +720,9 @@ def optimize_smoothness_concurrent(
 # in order to run this function, we need to already have the track data for this track and year
 # because this will be necessary to ensure that we have the correct smoothness so the movement
 # looks natural but also so that we are within track limits
-def main(config: Config, track_data: TrackData) -> tuple[dict[Driver, pd.DataFrame], int]:
+def main(
+    config: Config, track_data: TrackData
+) -> tuple[dict[Driver, pd.DataFrame], int]:
     # is_done, driver_dfs, start_finish_line_idx = already_done(
     #     str(config["year"]), config["track"], str(config["render"]["fps"])
     # )

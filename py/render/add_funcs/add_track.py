@@ -44,8 +44,8 @@ def create_planes(
         bm.faces.new(
             [inner_verts[i], inner_verts[i + 1], outer_verts[i + 1], outer_verts[i]]
         )
-    if len(inner_points) > 2:
-        bm.faces.new([inner_verts[-1], inner_verts[0], outer_verts[0], outer_verts[-1]])
+    # if len(inner_points) > 2:
+    #     bm.faces.new([inner_verts[-1], inner_verts[0], outer_verts[0], outer_verts[-1]])
 
     bm.to_mesh(mesh)  # pyright: ignore
     bm.free()  # pyright: ignore

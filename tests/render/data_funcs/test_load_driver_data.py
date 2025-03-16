@@ -1,6 +1,10 @@
-from py.render.data_funcs.load_driver_data import load_from_fastf1, process_grouped_driver_tels
-from tests.bases import SetupAlpha
 import math
+
+from py.render.data_funcs.load_driver_data import (
+    load_from_fastf1,
+    process_grouped_driver_tels,
+)
+from tests.bases import SetupAlpha
 
 
 class TestStartFinishSyncOfSmoothedDF(SetupAlpha):
@@ -14,17 +18,26 @@ class TestStartFinishSyncOfSmoothedDF(SetupAlpha):
             z_points = df["Z"].astype(float)
 
             start_buffer_frames = self.config["render"]["start_buffer_frames"]
-            start_point = (x_points[start_buffer_frames], y_points[start_buffer_frames], z_points[start_buffer_frames])
+            start_point = (
+                x_points[start_buffer_frames],
+                y_points[start_buffer_frames],
+                z_points[start_buffer_frames],
+            )
             all_start_points.append(start_point)
 
-        max_difference = 0.15 # 0.15 should be visually irrecognizable
+        max_difference = 0.15  # 0.15 should be visually irrecognizable
 
         for i in range(len(all_start_points)):
             cur_start = all_start_points[i]
-            for j in range(i+1, len(all_start_points)):
+            for j in range(i + 1, len(all_start_points)):
                 next_start = all_start_points[j]
-                distance = math.sqrt((cur_start[0] - next_start[0]) ** 2 + (cur_start[1] - next_start[1]) ** 2 + (cur_start[2] - next_start[2]) ** 2)
+                distance = math.sqrt(
+                    (cur_start[0] - next_start[0]) ** 2
+                    + (cur_start[1] - next_start[1]) ** 2
+                    + (cur_start[2] - next_start[2]) ** 2
+                )
                 self.assertLess(distance, max_difference)
+
 
 class TestStartFinishSyncOfInitialTel(SetupAlpha):
     def test_start_finish_sync(self):
@@ -46,9 +59,9 @@ class TestStartFinishSyncOfInitialTel(SetupAlpha):
             z_points = tel["Z"].astype(float)
 
             # Assert there are no NaN or null values in the coordinates
-            assert x_points.notna().all(), "X coordinates contain NaN/null values" # pyright: ignore
-            assert y_points.notna().all(), "Y coordinates contain NaN/null values" # pyright: ignore
-            assert z_points.notna().all(), "Z coordinates contain NaN/null values" # pyright: ignore
+            assert x_points.notna().all(), "X coordinates contain NaN/null values"  # pyright: ignore
+            assert y_points.notna().all(), "Y coordinates contain NaN/null values"  # pyright: ignore
+            assert z_points.notna().all(), "Z coordinates contain NaN/null values"  # pyright: ignore
 
             start_point = (x_points.iloc[0], y_points.iloc[0], z_points.iloc[0])
             end_point = (x_points.iloc[-1], y_points.iloc[-1], z_points.iloc[-1])

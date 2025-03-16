@@ -248,6 +248,7 @@ class HeadToHeadRenderer(AbstractRenderer):
             raise ValueError("Focused driver is not set.")
 
         self.state.camera_obj = add_camera.main(
+            self.config,
             self.state.driver_dfs[self.state.focused_driver],
             self.state.driver_objs[self.state.focused_driver],
             self.config["render"]["start_buffer_frames"],
@@ -362,6 +363,7 @@ class RestOfFieldRenderer(AbstractRenderer):
             raise ValueError("Focused driver is not set.")
 
         self.state.camera_obj = add_camera.main(
+            self.config,
             self.state.driver_dfs[self.state.focused_driver],
             self.state.driver_objs[self.state.focused_driver],
             self.config["render"]["start_buffer_frames"],

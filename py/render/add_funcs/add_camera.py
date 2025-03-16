@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame, Series
 
+from py.utils.config import Config
+
 MIN_CAM_DISTANCE = 80
 MAX_CAM_DISTANCE = 80
 
@@ -32,8 +34,8 @@ def scale_frames(df_for_cam: DataFrame):
     cam_x: Series[float] = df_for_cam_x * scale_factor
     cam_y: Series[float] = df_for_cam_y * scale_factor
 
-    cam_x = cam_x + df_for_cam_x.mean() - cam_x.mean() # pyright: ignore
-    cam_y = cam_y + df_for_cam_y.mean() - cam_y.mean() # pyright: ignore
+    cam_x = cam_x + df_for_cam_x.mean() - cam_x.mean()  # pyright: ignore
+    cam_y = cam_y + df_for_cam_y.mean() - cam_y.mean()  # pyright: ignore
 
     cam_z = np.zeros(len(cam_x)) + z_up
 
@@ -84,7 +86,12 @@ def move_with_min_max_distance(cam_df: DataFrame, car_df: DataFrame) -> None:
 
 
 def add_keyframes(
-    camera_obj: bpy.types.Object, cam_df: DataFrame, driver_df: DataFrame, start_buffer_frames: int, end_buffer_frames: int
+    config: Config,
+    camera_obj: bpy.types.Object,
+    cam_df: DataFrame,
+    driver_df: DataFrame,
+    start_buffer_frames: int,
+    end_buffer_frames: int,
 ):
     """Add keyframes to animate a camera following a driver object.
 
@@ -119,28 +126,45 @@ def add_keyframes(
         cam_z = cam_zs.iloc[i]
         camera_point = (cam_x, cam_y, cam_z)
 
-        if start_buffer_frames <= frame <= len(cam_df) - end_buffer_frames:
-            look_at_point = mathutils.Vector((driver_xs.iloc[i], driver_ys.iloc[i], driver_zs.iloc[i]))
+        if (
+            start_buffer_frames <= frame or config["render"]["is_shorts_output"]
+        ) and frame <= len(cam_df) - end_buffer_frames:
+            # for shorts mode, we don't want to point at the start line at the beginning,
+            # shorts viewers may want to see the cars from the start to have a good indication of the
+            # content of the video
+            look_at_point = mathutils.Vector(
+                (driver_xs.iloc[i], driver_ys.iloc[i], driver_zs.iloc[i])
+            )
         elif frame < start_buffer_frames:
             idx = start_buffer_frames - 1
-            look_at_point = mathutils.Vector((driver_xs.iloc[idx], driver_ys.iloc[idx], driver_zs.iloc[idx]))
+            look_at_point = mathutils.Vector(
+                (driver_xs.iloc[idx], driver_ys.iloc[idx], driver_zs.iloc[idx])
+            )
         else:  # frame > end_buffer_frames
             idx = len(cam_df) - end_buffer_frames - 1
             camera_point = (cam_xs.iloc[idx], cam_ys.iloc[idx], cam_zs.iloc[idx])
-            look_at_point = mathutils.Vector((driver_xs.iloc[idx], driver_ys.iloc[idx], driver_zs.iloc[idx]))
+            look_at_point = mathutils.Vector(
+                (driver_xs.iloc[idx], driver_ys.iloc[idx], driver_zs.iloc[idx])
+            )
 
         camera_obj.location = mathutils.Vector(camera_point)
-        camera_obj.keyframe_insert(data_path="location", frame=frame) # pyright: ignore
+        camera_obj.keyframe_insert(data_path="location", frame=frame)  # pyright: ignore
 
         direction = look_at_point - camera_obj.location
         rot_quat = direction.to_track_quat("-Z", "Y")
 
         camera_obj.rotation_mode = "QUATERNION"
         camera_obj.rotation_quaternion = rot_quat
-        camera_obj.keyframe_insert(data_path="rotation_quaternion", frame=frame) # pyright: ignore
+        camera_obj.keyframe_insert(data_path="rotation_quaternion", frame=frame)  # pyright: ignore
 
 
-def main(df_for_cam: DataFrame, driver_obj: bpy.types.Object, start_buffer_frames: int, end_buffer_frames: int):
+def main(
+    config: Config,
+    df_for_cam: DataFrame,
+    driver_obj: bpy.types.Object,
+    start_buffer_frames: int,
+    end_buffer_frames: int,
+):
     """Create a camera that tracks the driver.
 
     Args:
@@ -168,7 +192,7 @@ def main(df_for_cam: DataFrame, driver_obj: bpy.types.Object, start_buffer_frame
     move_with_min_max_distance(cam_df, df_for_cam)
 
     add_keyframes(
-        camera_obj, cam_df, df_for_cam, start_buffer_frames, end_buffer_frames
+        config, camera_obj, cam_df, df_for_cam, start_buffer_frames, end_buffer_frames
     )
 
     bpy.context.scene.camera = camera_obj  # pyright: ignore

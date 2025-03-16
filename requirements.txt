@@ -1,4 +1,4 @@
-fastf1
+fastf1>=3.5.2
 numpy
 pyyaml
 pandas
@@ -13,4 +13,3 @@ google-auth
 google-auth-oauthlib
 google-auth-httplib2
 pytest
-colorsys

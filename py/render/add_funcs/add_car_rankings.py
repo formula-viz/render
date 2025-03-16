@@ -43,7 +43,10 @@ def point_to_line_distance(
 
 
 def find_closest_track_idx(
-    inner_points: list[tuple[float, float, float]], outer_points: list[tuple[float, float, float]], previous_reference_idx: int, car_point: tuple[float, float, float]
+    inner_points: list[tuple[float, float, float]],
+    outer_points: list[tuple[float, float, float]],
+    previous_reference_idx: int,
+    car_point: tuple[float, float, float],
 ) -> int:
     """Find the closest track segment to a car point.
 
@@ -65,45 +68,48 @@ def find_closest_track_idx(
     assert len(inner_points) == len(outer_points), (
         "Inner and outer points must have the same length"
     )
-    n = len(inner_points)
 
-    def next_pos(idx: int):
-        return (idx + 1) % n
-
-    def next_neg(idx: int):
-        return (idx - 1) % n
+    # using normalize for indexes because we want the "absolute" index in order to rank them properly
+    # for example if we have 5000 and len is 5001, then we need to be able to show that 0 is above 5000 by
+    # recording that as 5001.
+    def normalize(idx: int):
+        return idx % len(inner_points)
 
     pos = previous_reference_idx
-    neg = next_neg(previous_reference_idx)
+    neg = previous_reference_idx - 1
 
     pos_distance = point_to_line_distance(
         car_point, inner_points[pos], outer_points[pos]
     )
     neg_distance = point_to_line_distance(
-        car_point, inner_points[neg], outer_points[neg]
+        car_point, inner_points[normalize(neg)], outer_points[normalize(neg)]
     )
 
     while (
         point_to_line_distance(
-            car_point, inner_points[next_pos(pos)], outer_points[next_pos(pos)]
+            car_point,
+            inner_points[normalize(pos + 1)],
+            outer_points[normalize(pos + 1)],
         )
         < pos_distance
     ):
-        pos = next_pos(pos)
+        pos += 1
         pos_distance = point_to_line_distance(
-            car_point, inner_points[pos], outer_points[pos]
+            car_point, inner_points[normalize(pos)], outer_points[normalize(pos)]
         )
 
     # only do one less for neg
     if (
         point_to_line_distance(
-            car_point, inner_points[next_neg(neg)], outer_points[next_neg(neg)]
+            car_point,
+            inner_points[normalize(neg - 1)],
+            outer_points[normalize(neg - 1)],
         )
         < neg_distance
     ):
-        neg = next_neg(neg)
+        neg -= 1
         neg_distance = point_to_line_distance(
-            car_point, inner_points[neg], outer_points[neg]
+            car_point, inner_points[normalize(neg)], outer_points[normalize(neg)]
         )
 
     return pos if pos_distance < neg_distance else neg
@@ -194,7 +200,10 @@ def main(
         current_frame_positions = [driver_points[i] for driver_points in driver_data]
 
         rankings, reference_idx = ranking_at_frame(
-            track_data.inner_points, track_data.outer_points, reference_idx, current_frame_positions
+            track_data.inner_points,
+            track_data.outer_points,
+            reference_idx,
+            current_frame_positions,
         )
 
         final_rank.append([(indices[rank[0]], rank[1]) for rank in rankings])

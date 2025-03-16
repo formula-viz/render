@@ -99,6 +99,8 @@ def main():
 
     # Discover and run tests
     suite = unittest.TestLoader().discover(str(root_dir / "tests"), pattern="test_*.py")
+
+    # Original code with ColorText formatting
     result = ColorTextTestRunner(verbosity=2, stream=sys.stdout, descriptions=True).run(
         suite
     )

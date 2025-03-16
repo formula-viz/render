@@ -6,10 +6,10 @@ smoothing track boundaries, calculating inner/outer track edges, and generating 
 The processed data can be used to create an accurate track representation.
 """
 
+import math
 import os
 import sys
 from dataclasses import dataclass
-import math
 
 import numpy as np
 import pandas as pd
@@ -69,7 +69,7 @@ def load_raw_data(year: int, track: str, use_latest_year: bool = True) -> DataFr
             )
 
     track_data_path = os.path.join(track_data_dir, track_data_file)
-    track_data: DataFrame = pd.read_csv(track_data_path) # pyright: ignore
+    track_data: DataFrame = pd.read_csv(track_data_path)  # pyright: ignore
 
     return track_data
 
@@ -175,7 +175,10 @@ def smooth_points(track_points: DataFrame) -> DataFrame:
                      and 'rights_Z'
 
     """
-    def smooth_closed_loop(x: list[float], y: list[float], num_points: int = 10000, smoothing: float = 100) -> tuple[list[float], list[float]]:
+
+    def smooth_closed_loop(
+        x: list[float], y: list[float], num_points: int = 10000, smoothing: float = 100
+    ) -> tuple[list[float], list[float]]:
         tck, _ = splprep([x, y], s=smoothing, per=True)
         u_new = np.linspace(0, 1, num_points)
         smooth_x, smooth_y = splev(u_new, tck)
@@ -191,10 +194,24 @@ def smooth_points(track_points: DataFrame) -> DataFrame:
     shift_amount = len(lefts_x) // 3
     lefts_x = lefts_x[shift_amount:] + lefts_x[:shift_amount]
     lefts_y = lefts_y[shift_amount:] + lefts_y[:shift_amount]
-    origi_rights_x = rights_x[shift_amount:] + rights_x[:shift_amount]
-    origi_rights_y = rights_y[shift_amount:] + rights_y[:shift_amount]
+    rights_x = rights_x[shift_amount:] + rights_x[:shift_amount]
+    rights_y = rights_y[shift_amount:] + rights_y[:shift_amount]
 
     lefts_x, lefts_y = smooth_closed_loop(lefts_x, lefts_y)
+
+    prev_point = None
+    for i, (left_x, left_y) in enumerate(zip(lefts_x, lefts_y)):
+        cur_point = (left_x, left_y)
+        if prev_point:
+            distance = math.sqrt(
+                (prev_point[0] - cur_point[0]) ** 2
+                + (prev_point[1] - cur_point[1]) ** 2
+            )
+            assert distance < 1.0, (
+                f"Distance between left points {i} and {i + 1} out of {len(lefts_x)} is {distance}"
+            )
+        prev_point = cur_point
+
     # instead of generating a spline for both lefts and rights, we generate a spline for just the lefts
     # this is because around corners, the lines end up overlapping due to the fact that the
     # distances are shorter around the two curves, this way we can ensure that they do not
@@ -203,14 +220,9 @@ def smooth_points(track_points: DataFrame) -> DataFrame:
     rights_y: list[float] = []
     track_width = 12  # this is hardcoded from how we generate the track
     for i in range(len(lefts_x)):
-        next_idx = i + 1 if i + 1 < len(lefts_x) else 0
+        next_idx = i + 1 if i + 1 < len(lefts_x) else i - 1
         cur_point_x, cur_point_y = lefts_x[i], lefts_y[i]
         next_point_x, next_point_y = lefts_x[next_idx], lefts_y[next_idx]
-
-        assert isinstance(cur_point_x, (int, float))
-        assert isinstance(cur_point_y, (int, float))
-        assert isinstance(next_point_x, (int, float))
-        assert isinstance(next_point_y, (int, float))
 
         vec_x = next_point_x - cur_point_x
         vec_y = next_point_y - cur_point_y
@@ -226,23 +238,47 @@ def smooth_points(track_points: DataFrame) -> DataFrame:
         b_x = cur_point_x + perp_vec_x * track_width
         b_y = cur_point_y + perp_vec_y * track_width
 
-        # how do we know which one to choose?
-        # iterate through all rights points, as we are recreating the rights line, and find the shortest distance
-        # between a and b, then choose the one which is further from the closest point
-        min_dist_a = 1000
-        min_dist_b = 1000
-        for x, y in zip(origi_rights_x, origi_rights_y):
-            dist_a = ((x - a_x) ** 2 + (y - a_y) ** 2) ** 0.5
-            dist_b = ((x - b_x) ** 2 + (y - b_y) ** 2) ** 0.5
-            min_dist_a = min(min_dist_a, dist_a)
-            min_dist_b = min(min_dist_b, dist_b)
+        # if this is the first, we need to choose the point closest to lefts[0]
+        if i == 0:
+            left_x, left_y = lefts_x[0], lefts_y[0]
 
-        if min_dist_a < min_dist_b:
-            rights_x.append(a_x)
-            rights_y.append(a_y)
+            a_distance = math.sqrt((left_x - a_x) ** 2 + (left_y - a_y) ** 2)
+            b_distance = math.sqrt((left_x - b_x) ** 2 + (left_y - b_y) ** 2)
+            if a_distance < b_distance:
+                rights_x.append(a_x)
+                rights_y.append(a_y)
+            else:
+                rights_x.append(b_x)
+                rights_y.append(b_y)
+        elif i == len(lefts_x) - 1:
+            rights_x.append(rights_x[0])
+            rights_y.append(rights_y[0])
         else:
-            rights_x.append(b_x)
-            rights_y.append(b_y)
+            # find the closest point to the last right point
+            last_x, last_y = rights_x[-1], rights_y[-1]
+
+            a_distance = math.sqrt((last_x - a_x) ** 2 + (last_y - a_y) ** 2)
+            b_distance = math.sqrt((last_x - b_x) ** 2 + (last_y - b_y) ** 2)
+            if a_distance < b_distance:
+                rights_x.append(a_x)
+                rights_y.append(a_y)
+            else:
+                rights_x.append(b_x)
+                rights_y.append(b_y)
+
+    prev_point = None
+    for i, (right_x, right_y) in enumerate(zip(rights_x, rights_y)):
+        cur_point = (right_x, right_y)
+        if prev_point:
+            distance = math.sqrt(
+                (prev_point[0] - cur_point[0]) ** 2
+                + (prev_point[1] - cur_point[1]) ** 2
+            )
+            log_info(f"Distance: {distance}")
+            assert distance < 1.5, (
+                f"Distance between right points {i} and {i + 1} out of {len(rights_x)} is {distance}"
+            )
+        prev_point = cur_point
 
     new_track_points = pd.DataFrame(
         {
@@ -258,7 +294,9 @@ def smooth_points(track_points: DataFrame) -> DataFrame:
     return new_track_points
 
 
-def assign_inner_outer(track_points: DataFrame) -> tuple[list[tuple[float, float, float]], list[tuple[float, float, float]]]:
+def assign_inner_outer(
+    track_points: DataFrame,
+) -> tuple[list[tuple[float, float, float]], list[tuple[float, float, float]]]:
     """Determine inner and outer track boundaries from left and right points.
 
     The track data API provides left and right points, but doesn't specify which is inner vs outer.
@@ -313,7 +351,11 @@ def assign_inner_outer(track_points: DataFrame) -> tuple[list[tuple[float, float
     return inner_points, outer_points
 
 
-def curb(cur: list[tuple[float, float, float]], other: list[tuple[float, float, float]], curb_width: float) -> list[tuple[float, float, float]]:
+def curb(
+    cur: list[tuple[float, float, float]],
+    other: list[tuple[float, float, float]],
+    curb_width: float,
+) -> list[tuple[float, float, float]]:
     """Calculate curb points perpendicular to the track boundary.
 
     Takes the line which is perpendicular to the current point and the next point,
