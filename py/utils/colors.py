@@ -1,10 +1,12 @@
+"""Convert hex color to Blender RGB tuple."""
+
+from typing import cast
+
 import numpy as np
 from colormath.color_conversions import convert_color
 from colormath.color_diff import delta_e_cie2000
 from colormath.color_objects import LabColor, sRGBColor
 from fastf1 import plotting
-
-from typing import cast
 
 from py.render.data_funcs.load_driver_data import Driver
 from py.utils.logger import log_warn
@@ -21,9 +23,9 @@ def hex_to_blender_rgb(hex_color: str) -> tuple[float, float, float]:
     # In blender, the RGB values are between 0 and 1.
     hex_color = hex_color.lstrip("#")
 
-    r = int(hex_color[0 : 2], 16)
-    g = int(hex_color[2 : 4], 16)
-    b = int(hex_color[4 : 6], 16)
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
 
     return r / 255.0, g / 255.0, b / 255.0
 
@@ -32,9 +34,9 @@ def hex_to_normal_rgb(hex_color: str) -> tuple[float, float, float]:
     # Convert a hex color to a normal RGB tuple.
     hex_color = hex_color.lstrip("#")
 
-    r = int(hex_color[0 : 2], 16)
-    g = int(hex_color[2 : 4], 16)
-    b = int(hex_color[4 : 6], 16)
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
 
     return r, g, b
 
@@ -99,7 +101,9 @@ def get_head_to_head_colors(drivers: list[Driver]):
     return colors
 
 
-def blender_rgb_to_linear(tup: tuple[float, float, float]) -> tuple[float, float, float]:
+def blender_rgb_to_linear(
+    tup: tuple[float, float, float],
+) -> tuple[float, float, float]:
     def srgb_to_linearrgb(c: float):
         if c < 0:
             return 0
@@ -119,6 +123,7 @@ class CurbColor:
     @staticmethod
     def get_scene_rgb() -> tuple[float, float, float]:
         return blender_rgb_to_linear(hex_to_blender_rgb(CURB_COLOR))
+
 
 class AlternateCurbColor:
     @staticmethod

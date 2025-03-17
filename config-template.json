@@ -13,6 +13,7 @@
     "engine": "eevee",
     "fps": 30,
     "samples": 32,
+    "is_both_mode": false,
     "is_shorts_output": true,
     "output": "render-output.mp4",
     "start_buffer_frames": 45,

@@ -10,15 +10,15 @@ class YoutubeText:
     def get_title(config: Config):
         """Get the title of the YouTube video."""
         if config["type"] == "rest-of-field":
-            return f"{config['drivers'][0]} bests Rest of Field at {config['track'].title()} Qualifying {config['year']}"
+            return f"How {config['drivers'][0]} won P1 at {config['track'].title()} Qualifying {config['year']}"
         else:
             # there could be several drivers here
             # say Norris, Verstappen, Russel, we want:
             # Norris vs Verstappen vs Russell
             drivers = config["drivers"]
-            drivers_str = " vs ".join(drivers)
+            drivers_str = " vs ".join(drivers[1:])
 
-            return f"{drivers_str} at {config['track'].title()} Qualifying {config['year']}"
+            return f"How {drivers[0]} beat {drivers_str} at {config['track'].title()} Qualifying {config['year']}"
 
     @staticmethod
     def get_description(config: Config):

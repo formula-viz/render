@@ -1,3 +1,5 @@
+"""Add a gradient plane to the scene."""
+
 import math
 
 import bpy
@@ -6,6 +8,7 @@ from py.utils.config import Config
 
 
 def add_camera_plane(config: Config, camera_obj: bpy.types.Object):
+    """Add a gradient plane to the scene."""
     # Create a new mesh for the plane
     mesh = bpy.data.meshes.new("GradientPlaneMesh")
     plane_obj = bpy.data.objects.new("GradientPlane", mesh)
@@ -28,7 +31,7 @@ def add_camera_plane(config: Config, camera_obj: bpy.types.Object):
     mesh.update()
 
     # Add the plane to the scene
-    bpy.context.collection.objects.link(plane_obj)
+    bpy.context.collection.objects.link(plane_obj)  # pyright: ignore
 
     # Make the plane a child of the camera
     plane_obj.parent = camera_obj
@@ -37,8 +40,8 @@ def add_camera_plane(config: Config, camera_obj: bpy.types.Object):
     # Create gradient material
     mat = bpy.data.materials.new(name="GradientMaterial")
     mat.use_nodes = True
-    nodes = mat.node_tree.nodes
-    links = mat.node_tree.links
+    nodes = mat.node_tree.nodes  # pyright: ignore
+    links = mat.node_tree.links  # pyright: ignore
 
     # Clear default nodes
     for node in nodes:
@@ -59,7 +62,7 @@ def add_camera_plane(config: Config, camera_obj: bpy.types.Object):
     gradient_node.location = (-300, 0)
 
     # Set the diffuse shader to black
-    diffuse_shader.inputs[0].default_value = (0, 0, 0, 1)  # Black color
+    diffuse_shader.inputs[0].default_value = (0, 0, 0, 1)  # pyright: ignore
 
     # Create node connections
     links.new(gradient_node.outputs[0], mix_shader.inputs[0])
@@ -69,9 +72,9 @@ def add_camera_plane(config: Config, camera_obj: bpy.types.Object):
 
     # Set material settings
     mat.blend_method = "BLEND"
-    mat.shadow_method = "NONE"
+    mat.shadow_method = "NONE"  # pyright: ignore
 
-    plane_obj.data.materials.append(mat)
+    plane_obj.data.materials.append(mat)  # pyright: ignore
 
     if config["render"]["is_shorts_output"]:
         plane_obj.location = (0, 0.21, -1.1)

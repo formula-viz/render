@@ -37,23 +37,23 @@ class ThumbnailGenerator:
 
     def _add_sample_track(self):
         """Add a track element for the thumbnail based on the necessary width."""
-        close_points = [(1.5, -1000, 0), (1.5, 1000, 0)]
+        close_points = [(1.5, -1000.0, 0.0), (1.5, 1000.0, 0.0)]
 
         # here, the first car is actually placed at the origin, so it starts at +1 not 0
         if self.config["type"] == "head-to-head":
             total_width_covered = (len(self.drivers_in_color_order) - 1) * abs(self.dx)
 
             far_points = [
-                (-total_width_covered - 1.5, -1000, 0),
-                (-total_width_covered - 1.5, 1000, 0),
+                (-total_width_covered - 1.5, -1000.0, 0.0),
+                (-total_width_covered - 1.5, 1000.0, 0.0),
             ]
         else:
             # there will be 10 drivers across for the 2 rows. 20 drivers total in a quali
             total_width_covered = abs(self.dx) * 3
 
             far_points = [
-                (-total_width_covered - 1.5, -1000, 0),
-                (-total_width_covered - 1.5, 1000, 0),
+                (-total_width_covered - 1.5, -1000.0, 0.0),
+                (-total_width_covered - 1.5, 1000.0, 0.0),
             ]
 
         close_curb_points = [
@@ -85,7 +85,7 @@ class ThumbnailGenerator:
         return camera_obj
 
     def _add_formula_viz_car(self):
-        formula_viz_car_obj = add_formula_viz_car.import_car_collections()
+        formula_viz_car_obj = add_formula_viz_car.import_car_collections(None)
 
         formula_viz_car_obj.location = (-0.16, -0.16, -1)
         formula_viz_car_obj.scale = (0.015, 0.015, 0.015)

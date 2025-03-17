@@ -149,10 +149,11 @@ def setup_car_animation(car_obj: bpy.types.Object):
 
 
 def create_animated_color() -> bpy.types.Material:
+    """Create an animated material with color cycling."""
     material = bpy.data.materials.new(name="AnimatedColorMaterial")
     material.use_nodes = True
 
-    principled_bsdf = material.node_tree.nodes.get("Principled BSDF")
+    principled_bsdf = material.node_tree.nodes.get("Principled BSDF")  # pyright: ignore
     if principled_bsdf:
         # Get the Base Color input
         base_color_input = principled_bsdf.inputs["Base Color"]
@@ -172,11 +173,11 @@ def create_animated_color() -> bpy.types.Material:
             r, g, b = colorsys.hsv_to_rgb(hue, 1.0, 1.0)
 
             # Set current frame
-            bpy.context.scene.frame_set(frame)
+            bpy.context.scene.frame_set(frame)  # pyright: ignore
 
             # Set color and create keyframe
-            base_color_input.default_value = (r, g, b, 1.0)
-            emission.default_value = (r, g, b, 1.0)
+            base_color_input.default_value = (r, g, b, 1.0)  # pyright: ignore
+            emission.default_value = (r, g, b, 1.0)  # pyright: ignore
             base_color_input.keyframe_insert("default_value", frame=frame)
 
     return material

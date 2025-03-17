@@ -64,6 +64,15 @@ def get_authenticated_youtube(yt_config: YouTubeConfig):
 
 
 def resize_yt_thumbnail_if_needed(filepath):
+    """Resize the YouTube thumbnail if needed.
+
+    Args:
+        filepath: Path to the thumbnail file
+
+    Returns:
+        str: Path to the thumbnail file of the correct size
+
+    """
     maxsize = 2097152
 
     # Check current file size
@@ -73,7 +82,7 @@ def resize_yt_thumbnail_if_needed(filepath):
 
     img = Image.open(filepath)
     width, height = img.size
-    resized_img = img.resize((int(width / 2.2), int(height / 2.2)), Image.LANCZOS)
+    resized_img = img.resize((int(width / 2.2), int(height / 2.2)), Image.LANCZOS)  # pyright: ignore
 
     # Save with current quality
     output_path = "output/thumbnail-yt-resized.png"

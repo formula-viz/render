@@ -11,10 +11,12 @@ import bpy
 from mathutils import Vector
 from pandas import DataFrame
 
+from py.render.add_funcs.add_flag import add_flag
 from py.render.add_funcs.add_start_finish_line import add_start_finish_line
 from py.render.add_funcs.add_track import create_material, create_planes
 from py.render.data_funcs.load_track_data import TrackData
 from py.utils.colors import hex_to_blender_rgb
+from py.utils.config import Config
 from py.utils.logger import log_info
 
 # In the shorts mode, if we have a dot object, 1 meter away from the camera,
@@ -47,6 +49,7 @@ class StatusTrack:
         start_finish_line_idx: int,
         driver_df: DataFrame,
         is_shorts_output: bool,
+        config: Config,
     ):
         """Initialize the StatusTrack with track data and positioning parameters.
 
@@ -63,6 +66,7 @@ class StatusTrack:
         self.start_finish_line_idx = start_finish_line_idx
         self.driver_df = driver_df
         self.is_shorts_output = is_shorts_output
+        self.config = config
 
         self._create_parent_empty()
         log_info("Initializing StatusTrack...")
@@ -92,6 +96,7 @@ class StatusTrack:
 
         Args:
             new_track_data: Track data containing points to widen
+            total_widen: Total amount to widen the track by
 
         Returns:
             TrackData with widened track points
@@ -206,7 +211,7 @@ class StatusTrack:
             "StatusStartFinishLine",
             line_width=50,
         )
-        status_start_finish_line.data.materials[0] = track_mat
+        status_start_finish_line.data.materials[0] = track_mat  # pyright: ignore
 
         self._scale(optimal_scale, status_track_obj)
         indicator_dot = self._add_indicator_dot(new_driver_df)
@@ -363,17 +368,24 @@ class StatusTrack:
         return new_track_data, new_driver_df
 
     def _add_indicator_dot(self, new_driver_df: DataFrame) -> bpy.types.Object:
-        dot = self._create_indicator_dot()
+        indicator = add_flag(self.config, None, 200.0)
+        is_flag = True
+        if indicator is None:
+            indicator = self._create_indicator_dot()
+            is_flag = False
 
         x_vals = new_driver_df["X"].astype(float)
         y_vals = new_driver_df["Y"].astype(float)
 
         for i in range(len(x_vals)):
             frame = i + 1
-            dot.location = (x_vals[i], y_vals[i], 0)
-            dot.keyframe_insert(data_path="location", frame=frame)  # pyright: ignore
+            if is_flag:
+                indicator.location = (x_vals[i], y_vals[i], 10)
+            else:
+                indicator.location = (x_vals[i], y_vals[i], 0)
+            indicator.keyframe_insert(data_path="location", frame=frame)  # pyright: ignore
 
-        return dot
+        return indicator
 
     def _create_indicator_dot(self) -> bpy.types.Object:
         bpy.ops.mesh.primitive_uv_sphere_add(radius=45, segments=64, ring_count=64)  # pyright: ignore

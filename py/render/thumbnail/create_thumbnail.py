@@ -17,10 +17,9 @@ from py.render.thumbnail.thumbnail_layouts.landscape import LandscapeConfigurer
 from py.render.thumbnail.thumbnail_layouts.shorts import ShortsConfigurer
 from py.utils.colors import CurbColor, MainTrackColor, hex_to_blender_rgb
 from py.utils.config import Config
+from py.utils.logger import log_info
 from py.utils.models import Driver
 from py.utils.project_structure import DriverDataPS
-from py.utils.logger import log_info
-
 
 
 class ThumbnailGenerator:
@@ -99,7 +98,7 @@ class ThumbnailGenerator:
         scene.render.resolution_percentage = 100
 
         # Render the image
-        bpy.ops.render.render(write_still=True) # pyright: ignore
+        bpy.ops.render.render(write_still=True)  # pyright: ignore
 
     def _setup_render(self):
         scene = bpy.context.scene
@@ -133,23 +132,23 @@ class ThumbnailGenerator:
 
     def _add_sample_track(self):
         """Add a track element for the thumbnail based on the necessary width."""
-        close_points = [(1.5, -1000, 0), (1.5, 1000, 0)]
+        close_points = [(1.5, -1000.0, 0.0), (1.5, 1000.0, 0.0)]
 
         # here, the first car is actually placed at the origin, so it starts at +1 not 0
         if self.config["type"] == "head-to-head":
             total_width_covered = (len(self.drivers_in_color_order) - 1) * abs(self.dx)
 
             far_points = [
-                (-total_width_covered - 1.5, -1000, 0),
-                (-total_width_covered - 1.5, 1000, 0),
+                (-total_width_covered - 1.5, -1000.0, 0.0),
+                (-total_width_covered - 1.5, 1000.0, 0.0),
             ]
         else:
             # there will be 10 drivers across for the 2 rows. 20 drivers total in a quali
             total_width_covered = abs(self.dx) * 3
 
             far_points = [
-                (-total_width_covered - 1.5, -1000, 0),
-                (-total_width_covered - 1.5, 1000, 0),
+                (-total_width_covered - 1.5, -1000.0, 0.0),
+                (-total_width_covered - 1.5, 1000.0, 0.0),
             ]
 
         close_curb_points = [
@@ -208,7 +207,7 @@ class ThumbnailGenerator:
         nodes = node_tree.nodes
 
         # Clear existing nodes and create new emission shader
-        nodes.clear() # pyright: ignore
+        nodes.clear()  # pyright: ignore
         emission_node = nodes.new(type="ShaderNodeEmission")
         output_node = nodes.new(type="ShaderNodeOutputMaterial")
 
@@ -234,7 +233,7 @@ class ThumbnailGenerator:
         if not isinstance(mesh_data, Mesh):
             raise TypeError(f"Expected Mesh type, got {type(mesh_data).__name__}")
 
-        mesh_data.materials.append(mat) # pyright: ignore
+        mesh_data.materials.append(mat)  # pyright: ignore
 
         # Set as child of camera and position
         color_plane.parent = self.camera  # pyright: ignore

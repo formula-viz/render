@@ -125,9 +125,9 @@ class AbstractRenderer(ABC):
             bpy.data.materials.remove(material, do_unlink=True)  # type: ignore
 
         add_sun.main()
-        bpy.data.worlds["World"].node_tree.nodes["Background"].inputs[
+        bpy.data.worlds["World"].node_tree.nodes["Background"].inputs[  # pyright: ignore
             0
-        ].default_value = (0.045, 0.046, 0.051, 1)
+        ].default_value = (0.045, 0.046, 0.051, 1)  # pyright: ignore
 
     def trigger_render(self):
         """Start the rendering process.
@@ -267,12 +267,16 @@ class HeadToHeadRenderer(AbstractRenderer):
         if self.state.focused_driver is None:
             raise ValueError("Focused driver is not set.")
 
+        if not self.state.track_data:
+            raise ValueError("Track data is not set.")
+
         add_status_track.StatusTrack(
             self.state.track_data,
             self.state.camera_obj,
             self.state.start_finish_line_idx,
             self.state.driver_dfs[self.state.focused_driver],
             self.config["render"]["is_shorts_output"],
+            self.config,
         )
         add_live_leaderboard.LiveLeaderboard(
             self.config,
@@ -382,12 +386,16 @@ class RestOfFieldRenderer(AbstractRenderer):
         if self.state.focused_driver is None:
             raise ValueError("Focused driver is not set.")
 
+        if not self.state.track_data:
+            raise ValueError("Track data is not set.")
+
         add_status_track.StatusTrack(
             self.state.track_data,
             self.state.camera_obj,
             self.state.start_finish_line_idx,
             self.state.driver_dfs[self.state.focused_driver],
             self.config["render"]["is_shorts_output"],
+            self.config,
         )
         add_race_timer.RaceTimer(
             self.config,

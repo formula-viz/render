@@ -1,4 +1,5 @@
 """Start Formula Viz rendering and publishing process."""
+
 import json
 import os
 import subprocess
@@ -30,31 +31,42 @@ def main():
 
     ui_mode = config.get("dev_settings", {}).get("ui_mode", False)
 
-    try:
-        cmd = ["blender"]
-        if not ui_mode:
-            cmd.append("-b")  # Background mode if not UI mode
+    def trigger(config):
+        try:
+            cmd = ["blender"]
+            if not ui_mode:
+                cmd.append("-b")  # Background mode if not UI mode
 
-        cmd.extend(
-            [
-                "--python",
-                f"{project_root}/py/render/render.py",
-                "--",
-                json.dumps(config),
-            ]
-        )
+            cmd.extend(
+                [
+                    "--python",
+                    f"{project_root}/py/render/render.py",
+                    "--",
+                    json.dumps(config),
+                ]
+            )
 
-        subprocess.run(cmd, check=True)
+            subprocess.run(cmd, check=True)
 
-        if not ui_mode:
-            mp4_filepath = post_process(config)
-            yt_url = youtube_upload.main(config, os.path.join("output", mp4_filepath))
-            print(f"Video uploaded to {yt_url}")
+            if not ui_mode:
+                mp4_filepath = post_process(config)
+                yt_url = youtube_upload.main(
+                    config, os.path.join("output", mp4_filepath)
+                )
+                print(f"Video uploaded to {yt_url}")
 
-        return 0
-    except subprocess.CalledProcessError as e:
-        print(f"Blender exited with error code {e.returncode}")
-        return e.returncode
+            return 0
+        except subprocess.CalledProcessError as e:
+            print(f"Blender exited with error code {e.returncode}")
+            return e.returncode
+
+    if config["render"]["is_both_mode"]:
+        config["render"]["is_shorts_mode"] = False
+        trigger(config)
+        config["render"]["is_shorts_mode"] = True
+        trigger(config)
+    else:
+        trigger(config)
 
 
 if __name__ == "__main__":

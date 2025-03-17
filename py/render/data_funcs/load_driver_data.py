@@ -22,12 +22,9 @@ import json
 import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
-
-import fastf1 as ff1
-
-ff1.ergast.interface.BASE_URL = "https://api.jolpi.ca/ergast/f1"
 from typing import Optional
 
+import fastf1 as ff1
 import mathutils
 import numpy as np
 import pandas as pd
@@ -41,6 +38,9 @@ from py.utils.config import Config
 from py.utils.logger import log_info, log_warn
 from py.utils.models import Driver
 from py.utils.project_structure import DriverDataPS
+
+# Uses the new API which has access to the 2025 data
+ff1.ergast.interface.BASE_URL = "https://api.jolpi.ca/ergast/f1"  # pyright: ignore
 
 
 def load_driver_headshots(drivers: list[Driver], headshot_urls) -> None:
