@@ -16,6 +16,7 @@ from py.render.add_funcs import (
     add_driver_objects,
     add_formula_viz_car,
     add_live_leaderboard,
+    add_outro,
     add_race_timer,
     add_start_finish_line,
     add_status_track,
@@ -184,6 +185,7 @@ class AbstractRenderer(ABC):
                 self.state.camera_obj, self.config["render"]["is_shorts_output"]
             )
             add_camera_plane(self.config, self.state.camera_obj)
+            add_outro.Outro(self.config, self.state.camera_obj, self.state.num_frames)
             self.trigger_render()
 
 

@@ -6,7 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from py.post_process.post_process_test import post_process
+from py.post_process.post_process import post_process
 from py.socials import youtube_upload
 from py.utils.logger import log_err, log_info
 

@@ -40,6 +40,9 @@ OUTPUT_DIR = PROJECT_ROOT / "output"
 # Python script paths
 RENDER_PY = PROJECT_ROOT / "py/render/render.py"
 
+FORMULA_VIZ_ICON_PATH = RESOURCES_DIR / "formula-viz-icon.png"
+FORMULA_VIZ_ICON_TRANSPARENT_PATH = RESOURCES_DIR / "formula-viz-icon-transparent.png"
+
 # Social Media Icons
 SOCIAL_ICONS_DIR = RESOURCES_DIR / "social_icons"
 YOUTUBE_ICON_PATH = SOCIAL_ICONS_DIR / "youtube.png"
