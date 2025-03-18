@@ -20,12 +20,14 @@
     "end_buffer_frames": 70
   },
   "post_process": {
-    "output": "post-process-output.mp4"
+    "output": "post-process-output.mp4",
+    "music-fadeout-seconds": 5
   },
   "socials": {
     "youtube": {
       "service_account_path": "formula-viz-981f62016605.json",
-      "visibility": "unlisted"
+      "visibility": "unlisted",
+      "publish_at": null
     }
   }
 }

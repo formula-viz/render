@@ -309,11 +309,14 @@ class RestOfFieldRenderer(AbstractRenderer):
             self.config, self.state.track_data
         )
 
-        self.state.driver_colors = get_rest_of_field_colors()
-
         for driver in self.state.driver_dfs.keys():
             if driver.last_name == self.config["drivers"][0]:
                 self.state.focused_driver = driver
+
+        assert self.state.focused_driver is not None, "Focused driver not found"
+        self.state.driver_colors = get_rest_of_field_colors(
+            self.state.focused_driver.abbrev
+        )
 
         if not self.state.focused_driver:
             raise ValueError(

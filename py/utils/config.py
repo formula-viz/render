@@ -29,6 +29,7 @@ class YouTubeConfig(TypedDict):
 
     client_secret_path: str
     visibility: Literal["public", "private", "unlisted"]
+    publish_at: Optional[str]
 
 
 class InstagramConfig(TypedDict):
@@ -72,6 +73,7 @@ class PostProcessConfig(TypedDict):
     """Handles post-processing configuration for the output."""
 
     output: str
+    music_fadeout_seconds: int
 
 
 class Config(TypedDict):

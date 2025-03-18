@@ -59,6 +59,7 @@ class StatusTrack:
             start_finish_line_idx: Index of the start/finish line point
             driver_df: DataFrame containing driver position data over time
             is_shorts_output: Boolean indicating if output is for shorts format (vertical)
+            config: Global configuration settings
 
         """
         self.track_data = track_data
@@ -368,7 +369,7 @@ class StatusTrack:
         return new_track_data, new_driver_df
 
     def _add_indicator_dot(self, new_driver_df: DataFrame) -> bpy.types.Object:
-        indicator = add_flag(self.config, None, 200.0)
+        indicator = add_flag(self.config, None, 150.0)
         is_flag = True
         if indicator is None:
             indicator = self._create_indicator_dot()

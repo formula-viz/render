@@ -47,9 +47,14 @@ def rgb_to_hex(rgb_color: tuple[float, float, float]) -> str:
 
 
 # 19 gray scale colors and one gold color, the gold must be at index 0
-def get_rest_of_field_colors():
+def get_rest_of_field_colors(winner_abbrev: str):
     gray_scale = [(x, x, x) for x in np.linspace(70, 255, 19, dtype=float)]
-    gray_scale.insert(0, GOLD_RGB)
+    gray_scale.insert(
+        0,
+        hex_to_normal_rgb(
+            plotting.DRIVER_COLORS[plotting.DRIVER_TRANSLATE[winner_abbrev]]
+        ),
+    )
 
     return [rgb_to_hex(x) for x in gray_scale]
 
