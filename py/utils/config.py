@@ -1,6 +1,6 @@
 """Casts the raw json configuration of the application into specific types for language server support."""
 
-from typing import List, Literal, Optional, TypedDict
+from typing import List, Literal, Optional, TypedDict, Union
 
 
 class DevelopmentConfig(TypedDict):
@@ -32,31 +32,6 @@ class YouTubeConfig(TypedDict):
     publish_at: Optional[str]
 
 
-class InstagramConfig(TypedDict):
-    """Instagram-specific configuration settings."""
-
-    caption: str
-    first_comment: Optional[str]
-    location_id: Optional[str]
-
-
-class TikTokConfig(TypedDict):
-    """TikTok-specific configuration settings."""
-
-    description: str
-    allow_comments: bool
-    allow_duet: bool
-    allow_stitch: bool
-
-
-class FacebookConfig(TypedDict):
-    """Facebook-specific configuration settings."""
-
-    description: str
-    privacy: Literal["public", "friends", "only_me"]
-    scheduled_publish_time: Optional[int]
-
-
 class SocialsConfig(TypedDict):
     """Handles social media configuration for publishing the output."""
 
@@ -64,9 +39,16 @@ class SocialsConfig(TypedDict):
     tags: List[str]
     thumbnail_path: Optional[str]
     youtube: Optional[YouTubeConfig]
-    instagram: Optional[InstagramConfig]
-    tiktok: Optional[TikTokConfig]
-    facebook: Optional[FacebookConfig]
+
+
+class MixedConfig(TypedDict):
+    """Handles mixed config, like 2025 Pole vs 2024 Pole."""
+
+    enabled: bool
+    title: str  # since the mixed config may be complicated, custom title
+    drivers: dict[
+        str, dict[str, Union[str, int]]
+    ]  # dict from driver name to year of the data we want
 
 
 class PostProcessConfig(TypedDict):
@@ -87,8 +69,10 @@ class Config(TypedDict):
 
     track: str
     year: int
+    session: str  # Q or SQ, for Qualifying or Sprint Qualifying
     _type: str
     type: Literal["head-to-head", "rest-of-field"]
+    mixed_mode: MixedConfig
     dev_settings: DevelopmentConfig
     render: RenderConfig
     socials: SocialsConfig

@@ -29,7 +29,7 @@ import mathutils
 import numpy as np
 import pandas as pd
 import requests
-from fastf1.core import Laps, Telemetry
+from fastf1.core import Laps, Session, Telemetry
 from pandas import Series
 from scipy.interpolate import UnivariateSpline
 
@@ -43,7 +43,7 @@ from py.utils.project_structure import DriverDataPS
 ff1.ergast.interface.BASE_URL = "https://api.jolpi.ca/ergast/f1"  # pyright: ignore
 
 
-def load_driver_headshots(drivers: list[Driver], headshot_urls) -> None:
+def load_driver_headshots(drivers: list[Driver]) -> None:
     """Download driver headshot images if they aren't already cached.
 
     Args:
@@ -52,7 +52,7 @@ def load_driver_headshots(drivers: list[Driver], headshot_urls) -> None:
 
     """
     # taking before .transform gives the original image
-    headshot_urls = [url.split(".transform")[0] for url in headshot_urls]
+    headshot_urls = [driver.headshot_url.split(".transform")[0] for driver in drivers]
 
     downloaded_count = 0
     for driver, url in zip(drivers, headshot_urls):
@@ -90,97 +90,114 @@ def save_driver_times(driver_times: dict[Driver, str], year: str, track: str):
         json.dump(driver_times, file)
 
 
-def load_from_fastf1(year: int, track: str):
-    """Load driver telemetry data from FastF1 API.
+def process_tel(q: Laps, driver: Driver) -> Optional[Telemetry]:
+    try:
+        fastest = q.pick_not_deleted().pick_fastest()
+        if fastest is None:
+            log_warn(f"Couldn't find fastest lap for {driver}")
+            return None
 
-    Gets qualifying session data for the specified year and track,
-    processes telemetry for each driver's fastest qualifying lap.
+        tel: Telemetry = fastest.get_telemetry(frequency="original")
+    except Exception as e:
+        log_warn(f"Couldn't get proper telemetry for {driver}: {e}")
+        return None
 
-    Args:
-        year: The year of the race/session
-        track: The name of the track
+    tel = tel[tel["Source"].isin(["pos", "interpolation"])]  # pyright: ignore
+    tel.reset_index(drop=True)
 
-    Returns:
-        Dictionary mapping Driver objects to their telemetry data
+    tel = tel.astype({"X": float, "Y": float, "Z": float})
 
-    """
-    session = ff1.get_session(year, track, "Q")
-    session.load()
+    tel.loc[:, "X"] = tel["X"] / 10
+    tel.loc[:, "Y"] = tel["Y"] / 10
+    tel.loc[:, "Z"] = tel["Z"] / 10
 
-    drivers = session.drivers
-    drivers = [session.get_driver(d) for d in drivers]
+    total_time = str(tel["Time"].iloc[-1])
+    # this is a time_delta, we want format: 1:23.342
+    # it will be in the format of: 00:01:23.342343
+    total_time = total_time.split(" ")[-1][3:12]
+
+    # if exactly 01:21, then the decimals aren't added automatically. This is not
+    # aesthetically pleasing, so add them manually
+    if "." not in total_time:
+        total_time += ".000"
+
+    return tel
+
+
+def get_driver_classes(ff1_session: Session, year: int, session: str) -> list[Driver]:
+    drivers = ff1_session.drivers
+    drivers = [ff1_session.get_driver(d) for d in drivers]
 
     driver_classes: list[Driver] = []
-    driver_abbrevs = []
-    driver_last_names = []
     for d in drivers:
         abbrev = str(d["Abbreviation"])
         last_name = str(d["LastName"])
+        headshot_url = str(d["HeadshotUrl"])
 
-        driver_classes.append(Driver(last_name, abbrev))
-        driver_abbrevs.append(abbrev)
-        driver_last_names.append(last_name)
+        driver_classes.append(
+            Driver(
+                last_name,
+                abbrev,
+                headshot_url,
+                year,
+                session,
+            )
+        )
+    return driver_classes
 
-    # let's load the driver images if they are not present already
-    headshot_urls = [d["HeadshotUrl"] for d in drivers]
-    load_driver_headshots(driver_classes, headshot_urls)
 
-    laps = session.laps
-
-    def process_tel(q: Laps, driver: Driver):
-        try:
-            fastest = q.pick_not_deleted().pick_fastest()
-            if fastest is None:
-                log_warn(f"Couldn't find fastest lap for {driver}")
-                return
-
-            tel: Telemetry = fastest.get_telemetry(frequency="original")
-        except Exception as e:
-            log_warn(f"Couldn't get proper telemetry for {driver}: {e}")
-            return
-
-        tel = tel[tel["Source"].isin(["pos", "interpolation"])]  # pyright: ignore
-        tel.reset_index(drop=True)
-
-        tel = tel.astype({"X": float, "Y": float, "Z": float})
-
-        tel.loc[:, "X"] = tel["X"] / 10
-        tel.loc[:, "Y"] = tel["Y"] / 10
-        tel.loc[:, "Z"] = tel["Z"] / 10
-
-        total_time = str(tel["Time"].iloc[-1])
-        # this is a time_delta, we want format: 1:23.342
-        # it will be in the format of: 00:01:23.342343
-        total_time = total_time.split(" ")[-1][3:12]
-
-        # if exactly 01:21, then the decimals aren't added automatically. This is not
-        # aesthetically pleasing, so add them manually
-        if "." not in total_time:
-            total_time += ".000"
-
-        driver_times[driver] = total_time
-        driver_tels[driver] = tel
-
-    driver_times: dict[Driver, str] = {}
+def get_driver_tels(config: Config) -> dict[Driver, Telemetry]:
     driver_tels: dict[Driver, Telemetry] = {}
-    for driver in driver_classes:
-        # Safely handle the case where driver might not have any lap data
-        driver_laps = laps.pick_drivers(driver.abbrev)
-        if driver_laps is None or len(driver_laps) == 0:
-            log_warn(f"No lap data found for driver {driver.abbrev}")
-            continue
 
-        q1, q2, q3 = driver_laps.split_qualifying_sessions()
-        # we want to get the fastest lap for the highest qualifying session which the driver reached
+    def populate_driver_tels(
+        driver_tels: dict[Driver, Telemetry], drivers: list[Driver]
+    ):
+        for driver in drivers:
+            laps = ff1_session.laps.pick_driver(driver.abbrev)
+            if laps is None or len(laps) == 0:
+                log_warn(f"No lap data found for driver {driver}")
+                continue
 
-        if q3 is not None:
-            process_tel(q3, driver)
-        elif q2 is not None:
-            process_tel(q2, driver)
-        elif q1 is not None:
-            process_tel(q1, driver)
+            q1, q2, q3 = laps.split_qualifying_sessions()
+            # we want to get the fastest lap for the highest qualifying session which the driver reached
+            if q3 is not None:
+                tel = process_tel(q3, driver)
+                if tel is not None:
+                    driver_tels[driver] = tel
+            elif q2 is not None:
+                tel = process_tel(q2, driver)
+                if tel is not None:
+                    driver_tels[driver] = tel
+            elif q1 is not None:
+                tel = process_tel(q1, driver)
+                if tel is not None:
+                    driver_tels[driver] = tel
 
-    # save_driver_times(driver_times_str_key, str(year), track)
+    if config["mixed_mode"]["enabled"]:
+        touched_ff1_sessions: set[tuple[int, str]] = set()
+        for driver_last_name, sub_dict in config["mixed_mode"]["drivers"].items():
+            year = int(sub_dict["year"])
+            session = str(sub_dict["session"])
+            if (year, session) not in touched_ff1_sessions:
+                ff1_session = ff1.get_session(year, config["track"], session)
+                ff1_session.load()
+
+                drivers = get_driver_classes(ff1_session, year, session)
+                # load the driver images if they are not present already
+                load_driver_headshots(drivers)
+                populate_driver_tels(driver_tels, drivers)
+
+                touched_ff1_sessions.add((year, session))
+    else:
+        ff1_session = ff1.get_session(
+            config["year"], config["track"], config["session"]
+        )
+        ff1_session.load()
+
+        drivers = get_driver_classes(ff1_session, config["year"], config["session"])
+        # load the driver images if they are not present already
+        load_driver_headshots(drivers)
+        populate_driver_tels(driver_tels, drivers)
 
     return driver_tels
 
@@ -592,31 +609,31 @@ def save(
         file.write(str(start_finish_line_idx))
 
 
-def already_done(
-    year: str, track: str, fps: str
-) -> tuple[bool, dict[Driver, pd.DataFrame], int]:
-    cur_dir = DriverDataPS.get_car_data_dir(year, track, fps)
-    start_finish_line_idx = 0
+# def already_done(
+#     year: str, track: str, fps: str
+# ) -> tuple[bool, dict[Driver, pd.DataFrame], int]:
+#     cur_dir = DriverDataPS.get_car_data_dir(year, track, fps)
+#     start_finish_line_idx = 0
 
-    if os.path.exists(cur_dir):
-        driver_dfs: dict[Driver, pd.DataFrame] = {}
-        for driver in os.listdir(cur_dir):
-            if driver == "start_finish_line_idx.txt":
-                with open(os.path.join(cur_dir, driver), "r") as file:
-                    start_finish_line_idx = int(file.read())
-                continue
-            driver_path = os.path.join(cur_dir, driver)
-            driver_str = driver.split(".")[0]
+#     if os.path.exists(cur_dir):
+#         driver_dfs: dict[Driver, pd.DataFrame] = {}
+#         for driver in os.listdir(cur_dir):
+#             if driver == "start_finish_line_idx.txt":
+#                 with open(os.path.join(cur_dir, driver), "r") as file:
+#                     start_finish_line_idx = int(file.read())
+#                 continue
+#             driver_path = os.path.join(cur_dir, driver)
+#             driver_str = driver.split(".")[0]
 
-            driver_abbrev = driver_str.split("-")[0]
-            driver_last_name = driver_str.split("-")[1]
+#             driver_abbrev = driver_str.split("-")[0]
+#             driver_last_name = driver_str.split("-")[1]
 
-            driver = Driver(driver_last_name, driver_abbrev)
-            driver_dfs[driver] = pd.read_csv(driver_path)
+#             driver = Driver(driver_last_name, driver_abbrev)
+#             driver_dfs[driver] = pd.read_csv(driver_path)
 
-        return True, driver_dfs, start_finish_line_idx
+#         return True, driver_dfs, start_finish_line_idx
 
-    return False, {}, start_finish_line_idx
+#     return False, {}, start_finish_line_idx
 
 
 # if all 4 wheels go off the track, then they are out of track limits
@@ -731,7 +748,7 @@ def main(
     #     return driver_dfs, start_finish_line_idx
     log_info("Fetching and processing car data")
 
-    driver_tels = load_from_fastf1(config["year"], config["track"])
+    driver_tels = get_driver_tels(config)
     start_finish_line_idx = process_grouped_driver_tels(
         driver_tels, track_data.inner_points, track_data.outer_points
     )

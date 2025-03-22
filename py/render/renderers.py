@@ -201,12 +201,30 @@ class HeadToHeadRenderer(AbstractRenderer):
 
         self.state.drivers_in_order = []
         new_driver_dfs: dict[Driver, pd.DataFrame] = {}
-        for driver_last_name in self.config["drivers"]:
-            for driver_class in self.state.driver_dfs.keys():
-                if driver_last_name == driver_class.last_name:
-                    new_driver_dfs[driver_class] = self.state.driver_dfs[driver_class]
-                    self.state.drivers_in_order.append(driver_class)
-                    break
+        if self.config["mixed_mode"]["enabled"]:
+            for driver_last_name, driver_dict in self.config["mixed_mode"][
+                "drivers"
+            ].items():
+                for driver_class in self.state.driver_dfs.keys():
+                    if (
+                        driver_last_name == driver_class.last_name
+                        and driver_dict["year"] == driver_class.year
+                        and driver_dict["session"] == driver_class.session
+                    ):
+                        new_driver_dfs[driver_class] = self.state.driver_dfs[
+                            driver_class
+                        ]
+                        self.state.drivers_in_order.append(driver_class)
+                        break
+        else:
+            for driver_last_name in self.config["drivers"]:
+                for driver_class in self.state.driver_dfs.keys():
+                    if driver_last_name == driver_class.last_name:
+                        new_driver_dfs[driver_class] = self.state.driver_dfs[
+                            driver_class
+                        ]
+                        self.state.drivers_in_order.append(driver_class)
+                        break
         self.state.driver_dfs = new_driver_dfs
         self.state.drivers_in_color_order = self.state.drivers_in_order
 
@@ -309,6 +327,10 @@ class RestOfFieldRenderer(AbstractRenderer):
         assert self.state.track_data is not None, "Track data is not loaded"
         self.state.driver_dfs, self.state.start_finish_line_idx = load_driver_data.main(
             self.config, self.state.track_data
+        )
+
+        assert self.config["mixed_mode"]["enabled"] is False, (
+            "Mixed mode does not support Rest of Field Renderer"
         )
 
         for driver in self.state.driver_dfs.keys():
