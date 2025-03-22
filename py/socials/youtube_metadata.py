@@ -12,7 +12,7 @@ class YoutubeText:
         if config["mixed_mode"]["enabled"]:
             return f"{config['mixed_mode']['title']} #f1"
         if config["type"] == "rest-of-field":
-            return f"How {config['drivers'][0]} won P1 at {config['track'].title()} Qualifying {config['year']} #f1"
+            return f"How {config['drivers'][0]} won P1 at {config['track'].title()} Qualifying {config['year']} Simulation #f1"
         else:
             # there could be several drivers here
             # say Norris, Verstappen, Russel, we want:
@@ -20,7 +20,7 @@ class YoutubeText:
             drivers = config["drivers"]
             drivers_str = " and ".join(drivers[1:])
 
-            return f"How {drivers[0]} beat {drivers_str} at {config['track'].title()} Qualifying {config['year']} #f1"
+            return f"How {drivers[0]} beat {drivers_str} at {config['track'].title()} Qualifying {config['year']} Simulation #f1"
 
     @staticmethod
     def get_description(config: Config):

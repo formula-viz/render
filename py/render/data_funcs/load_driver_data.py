@@ -91,6 +91,16 @@ def save_driver_times(driver_times: dict[Driver, str], year: str, track: str):
 
 
 def process_tel(q: Laps, driver: Driver) -> Optional[Telemetry]:
+    """Process telemetry data for a given driver.
+
+    Args:
+        q: Laps object containing the driver's laps
+        driver: Driver object for which to process telemetry
+
+    Returns:
+        Telemetry object containing processed data, or None if processing failed
+
+    """
     try:
         fastest = q.pick_not_deleted().pick_fastest()
         if fastest is None:
@@ -125,6 +135,17 @@ def process_tel(q: Laps, driver: Driver) -> Optional[Telemetry]:
 
 
 def get_driver_classes(ff1_session: Session, year: int, session: str) -> list[Driver]:
+    """Get a list of Driver objects for the given session.
+
+    Args:
+        ff1_session: Session object containing the driver data
+        year: Year of the session
+        session: Session type ("Q", "SQ") for qualifying or sprint qualifying
+
+    Returns:
+        List of Driver objects for the given session
+
+    """
     drivers = ff1_session.drivers
     drivers = [ff1_session.get_driver(d) for d in drivers]
 
@@ -146,32 +167,43 @@ def get_driver_classes(ff1_session: Session, year: int, session: str) -> list[Dr
     return driver_classes
 
 
+def populate_driver_tels(
+    driver_tels: dict[Driver, Telemetry], drivers: list[Driver], ff1_session: Session
+):
+    """Populate the driver_tels dictionary with telemetry data for the given drivers and session."""
+    for driver in drivers:
+        laps = ff1_session.laps.pick_driver(driver.abbrev)
+        if laps is None or len(laps) == 0:
+            log_warn(f"No lap data found for driver {driver}")
+            continue
+
+        q1, q2, q3 = laps.split_qualifying_sessions()
+        # we want to get the fastest lap for the highest qualifying session which the driver reached
+        if q3 is not None:
+            tel = process_tel(q3, driver)
+            if tel is not None:
+                driver_tels[driver] = tel
+        elif q2 is not None:
+            tel = process_tel(q2, driver)
+            if tel is not None:
+                driver_tels[driver] = tel
+        elif q1 is not None:
+            tel = process_tel(q1, driver)
+            if tel is not None:
+                driver_tels[driver] = tel
+
+
 def get_driver_tels(config: Config) -> dict[Driver, Telemetry]:
+    """Return a dictionary of Driver objects and their telemetry data for the given session.
+
+    Args:
+        config: Configuration object containing the session data
+
+    Returns:
+        Dictionary of Driver objects and their telemetry data for the given session
+
+    """
     driver_tels: dict[Driver, Telemetry] = {}
-
-    def populate_driver_tels(
-        driver_tels: dict[Driver, Telemetry], drivers: list[Driver]
-    ):
-        for driver in drivers:
-            laps = ff1_session.laps.pick_driver(driver.abbrev)
-            if laps is None or len(laps) == 0:
-                log_warn(f"No lap data found for driver {driver}")
-                continue
-
-            q1, q2, q3 = laps.split_qualifying_sessions()
-            # we want to get the fastest lap for the highest qualifying session which the driver reached
-            if q3 is not None:
-                tel = process_tel(q3, driver)
-                if tel is not None:
-                    driver_tels[driver] = tel
-            elif q2 is not None:
-                tel = process_tel(q2, driver)
-                if tel is not None:
-                    driver_tels[driver] = tel
-            elif q1 is not None:
-                tel = process_tel(q1, driver)
-                if tel is not None:
-                    driver_tels[driver] = tel
 
     if config["mixed_mode"]["enabled"]:
         touched_ff1_sessions: set[tuple[int, str]] = set()
@@ -185,7 +217,7 @@ def get_driver_tels(config: Config) -> dict[Driver, Telemetry]:
                 drivers = get_driver_classes(ff1_session, year, session)
                 # load the driver images if they are not present already
                 load_driver_headshots(drivers)
-                populate_driver_tels(driver_tels, drivers)
+                populate_driver_tels(driver_tels, drivers, ff1_session)
 
                 touched_ff1_sessions.add((year, session))
     else:
@@ -197,7 +229,7 @@ def get_driver_tels(config: Config) -> dict[Driver, Telemetry]:
         drivers = get_driver_classes(ff1_session, config["year"], config["session"])
         # load the driver images if they are not present already
         load_driver_headshots(drivers)
-        populate_driver_tels(driver_tels, drivers)
+        populate_driver_tels(driver_tels, drivers, ff1_session)
 
     return driver_tels
 
@@ -740,6 +772,7 @@ def optimize_smoothness_concurrent(
 def main(
     config: Config, track_data: TrackData
 ) -> tuple[dict[Driver, pd.DataFrame], int]:
+    """Load driver data, returning all dataframes, needed ones are filtered later."""
     # is_done, driver_dfs, start_finish_line_idx = already_done(
     #     str(config["year"]), config["track"], str(config["render"]["fps"])
     # )

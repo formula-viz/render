@@ -12,6 +12,7 @@ from py.utils.logger import log_err, log_info
 
 
 def run_for_config(config, project_root):
+    """Run the rendering process for a given configuration."""
     ui_mode = config.get("dev_settings", {}).get("ui_mode", False)
 
     def trigger(config):
@@ -44,9 +45,9 @@ def run_for_config(config, project_root):
             return e.returncode
 
     if config["render"]["is_both_mode"]:
-        config["render"]["is_shorts_output"] = False
-        trigger(config)
         config["render"]["is_shorts_output"] = True
+        trigger(config)
+        config["render"]["is_shorts_output"] = False
         trigger(config)
     else:
         trigger(config)
@@ -69,6 +70,7 @@ def run_single_mode(project_root):
 
 
 def run_batch_mode(project_root):
+    """Run batch mode, meaning a group of configurations."""
     batch_configs_dir = project_root / "batch_configs"
     if not batch_configs_dir.exists():
         log_err(f"Batch configs directory not found: {batch_configs_dir}")
