@@ -12,6 +12,7 @@ class Driver:
         year: int,
         session: str,
         team: str,
+        driver_color: str
     ):
         """Initialize a Driver object with identifying information.
 
@@ -29,6 +30,7 @@ class Driver:
         self.year = year
         self.session = session
         self.team = team
+        self.driver_color = driver_color
 
     def __str__(self) -> str:
         """Return a string representation of the Driver.
@@ -37,4 +39,4 @@ class Driver:
             A string with the driver's last name and abbreviation.
 
         """
-        return f"{self.last_name} ({self.abbrev}, {self.year}, {self.session}, {self.team})"
+        return f"{self.last_name} ({self.abbrev}, {self.year}, {self.session}, {self.team}, {self.driver_color})"

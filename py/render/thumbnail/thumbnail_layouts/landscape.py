@@ -14,23 +14,23 @@ class LandscapeConfigurer(LayoutConfigurer):
 
     def position_cars(self, cars: list[bpy.types.Object]) -> None:
         two_car_positions = [
-            (-6.52, 14.27, 6.56),
-            (-4.82, 11.7, 4.97),
+            (-6.24, 8.65, 5.44),
+            (-4, 8.93, 4.23),
         ]
         two_car_rotations = [
-            (math.radians(0), math.radians(21), math.radians(-185)),
-            (math.radians(2), math.radians(-27), math.radians(-167)),
+            (math.radians(0), math.radians(5), math.radians(-185)),
+            (math.radians(0), math.radians(-8), math.radians(-175)),
         ]
 
         three_car_positions = [
-            (-4.34, 11.77, 4.42),
-            (-6.52, 13.1, 5.27),
-            (-6, 12.35, 6.6),
+            (-3.46, 8.31, 3.57),
+            (-6.52, 9.63, 4.42),
+            (-4.9, 9.23, 5.95),
         ]
         three_car_rotations = [
-            (math.radians(3), math.radians(-9), math.radians(-183)),
+            (math.radians(0), math.radians(-9), math.radians(-172)),
             (0, math.radians(21), math.radians(-185)),
-            (math.radians(-5), math.radians(-14), math.radians(-169)),
+            (math.radians(-2), math.radians(-12), math.radians(-174)),
         ]
 
         # Set positions and rotations based on number of cars

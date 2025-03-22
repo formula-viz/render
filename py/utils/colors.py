@@ -6,7 +6,6 @@ import numpy as np
 from colormath.color_conversions import convert_color
 from colormath.color_diff import delta_e_cie2000
 from colormath.color_objects import LabColor, sRGBColor
-from fastf1 import plotting
 
 from py.render.data_funcs.load_driver_data import Driver
 from py.utils.logger import log_warn
@@ -47,12 +46,12 @@ def rgb_to_hex(rgb_color: tuple[float, float, float]) -> str:
 
 
 # 19 gray scale colors and one gold color, the gold must be at index 0
-def get_rest_of_field_colors(winner_abbrev: str):
+def get_rest_of_field_colors(driver: Driver):
     gray_scale = [(x, x, x) for x in np.linspace(70, 255, 19, dtype=float)]
     gray_scale.insert(
         0,
         hex_to_normal_rgb(
-            plotting.DRIVER_COLORS[plotting.DRIVER_TRANSLATE[winner_abbrev]]
+            driver.driver_color
         ),
     )
 
@@ -84,7 +83,7 @@ def get_head_to_head_colors(drivers: list[Driver]):
     base_color_idx = 0
 
     colors = [
-        plotting.DRIVER_COLORS[plotting.DRIVER_TRANSLATE[driver.abbrev]]
+        driver.driver_color
         for driver in drivers
     ]
 

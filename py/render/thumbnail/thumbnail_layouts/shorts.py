@@ -14,7 +14,7 @@ class ShortsConfigurer(LayoutConfigurer):
 
     def position_cars(self, cars: list[bpy.types.Object]) -> None:
         two_car_positions = [
-            (-6.52, 14.27, 6.56),
+            (-6.59, 11.51, 6.56),
             (-4.82, 11.7, 4.97),
         ]
         two_car_rotations = [
@@ -23,14 +23,14 @@ class ShortsConfigurer(LayoutConfigurer):
         ]
 
         three_car_positions = [
-            (-4.34, 11.77, 4.42),
-            (-6.52, 13.1, 5.27),
-            (-6, 12.35, 6.6),
+            (-4.24, 11.9, 4.42),
+            (-6.92, 11.02, 5.27),
+            (-4.97, 8.77, 6.41),
         ]
         three_car_rotations = [
-            (math.radians(3), math.radians(-9), math.radians(-183)),
+            (math.radians(-8), math.radians(-11), math.radians(-169)),
             (0, math.radians(21), math.radians(-185)),
-            (math.radians(-5), math.radians(-14), math.radians(-169)),
+            (math.radians(-2), math.radians(-12), math.radians(-172)),
         ]
 
         # Set positions and rotations based on number of cars

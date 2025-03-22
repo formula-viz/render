@@ -25,6 +25,7 @@ from datetime import timedelta
 from typing import Optional
 
 import fastf1 as ff1
+from fastf1.plotting import get_driver_color
 import mathutils
 import numpy as np
 import pandas as pd
@@ -154,11 +155,13 @@ def get_driver_classes(ff1_session: Session, year: int, session: str) -> list[Dr
         abbrev = str(d["Abbreviation"])
         last_name = str(d["LastName"])
         headshot_url = str(d["HeadshotUrl"])
-        team_id = str(d["TeamId"])
+        team = str(d["TeamName"]).replace(" ", "")
 
+        driver_color = get_driver_color(abbrev, ff1_session)
         driver_classes.append(
-            Driver(last_name, abbrev, headshot_url, year, session, team_id)
+            Driver(last_name, abbrev, headshot_url, year, session, team, driver_color)
         )
+
     return driver_classes
 
 

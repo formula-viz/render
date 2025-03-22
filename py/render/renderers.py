@@ -340,7 +340,7 @@ class RestOfFieldRenderer(AbstractRenderer):
 
         assert self.state.focused_driver is not None, "Focused driver not found"
         self.state.driver_colors = get_rest_of_field_colors(
-            self.state.focused_driver.abbrev
+            self.state.focused_driver
         )
 
         if not self.state.focused_driver:

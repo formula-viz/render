@@ -8,6 +8,7 @@ from py.render.add_funcs import add_formula_viz_car
 from py.render.add_funcs.add_driver_objects import (
     create_null_base,
     create_driver_from_base,
+    create_team_base,
     set_color,
 )
 from py.render.add_funcs.add_track import create_material, create_planes
@@ -241,12 +242,19 @@ class ThumbnailGenerator:
         color_plane.scale = (1001, 1000, 1000)  # pyright: ignore
 
     def _add_cars(self) -> list[bpy.types.Object]:
-        base_empty_obj = create_null_base()
+        base_empty_objs_by_team: dict[str, bpy.types.Object] = {}
 
         cars: list[bpy.types.Object] = []
         for driver, color in zip(self.drivers_in_color_order, self.colors):
             if len(cars) == 3:
                 break
+
+            if driver.team in base_empty_objs_by_team:
+                base_empty_obj = base_empty_objs_by_team[driver.team]
+            else:
+                base_empty_obj = create_team_base(driver.team)
+                base_empty_objs_by_team[driver.team] = base_empty_obj
+
             driver_obj = create_driver_from_base(driver.last_name, base_empty_obj)
             set_color(driver_obj, color, driver.abbrev)
             cars.append(driver_obj)
