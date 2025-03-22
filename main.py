@@ -52,14 +52,8 @@ def run_for_config(config, project_root):
         trigger(config)
 
 
-def run_single_mode():
+def run_single_mode(project_root):
     """Load configuration and set up the environment for the rendering process."""
-    project_root = Path(__file__).parent.absolute()
-
-    os.environ["PYTHONPATH"] = (
-        f"{project_root}:{project_root}/py:{os.environ.get('PYTHONPATH', '')}"
-    )
-
     config_file = project_root / "config.json"
     template_file = project_root / "config-template.json"
 
@@ -97,10 +91,14 @@ def main():
     """Start Formula Viz rendering and publishing process."""
     project_root = Path(__file__).parent.absolute()
 
+    os.environ["PYTHONPATH"] = (
+        f"{project_root}:{project_root}/py:{os.environ.get('PYTHONPATH', '')}"
+    )
+
     if len(sys.argv) > 1 and sys.argv[1] == "batch":
         return run_batch_mode(project_root)
     else:
-        return run_single_mode()
+        return run_single_mode(project_root)
 
 
 if __name__ == "__main__":

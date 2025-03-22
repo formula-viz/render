@@ -197,7 +197,7 @@ class Outro:
         # Position it slightly behind other elements
         bg_plane.location = Vector((0, 0, -1))  # pyright: ignore
         if self.config["render"]["is_shorts_output"]:
-            bg_plane.scale = (1.47, 0.83, 0)  # pyright: ignore
+            bg_plane.scale = (0.64, 1.13, 0)  # pyright: ignore
         else:
             bg_plane.scale = (1.12, 0.64, 0)  # pyright: ignore
 
@@ -279,8 +279,8 @@ class Outro:
         end_buffer = self.config["render"]["end_buffer_frames"]
 
         if self.config["render"]["is_shorts_output"]:
-            final_position = (-0.14, 0.0, -0.8)
-            start_position = (-0.14, 3.0, -0.8)
+            final_position = (0.0, 0.0, -0.8)
+            start_position = (0.0, 2.0, -0.8)
         else:
             # TODO, modify to support 4k landscape mode
             final_position = (0.0, 0.0, -0.8)
