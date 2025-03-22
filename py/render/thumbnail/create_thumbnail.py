@@ -6,7 +6,7 @@ import bpy
 
 from py.render.add_funcs import add_formula_viz_car
 from py.render.add_funcs.add_driver_objects import (
-    create_base_driver_obj,
+    create_null_base,
     create_driver_from_base,
     set_color,
 )
@@ -241,7 +241,7 @@ class ThumbnailGenerator:
         color_plane.scale = (1001, 1000, 1000)  # pyright: ignore
 
     def _add_cars(self) -> list[bpy.types.Object]:
-        base_empty_obj = create_base_driver_obj()
+        base_empty_obj = create_null_base()
 
         cars: list[bpy.types.Object] = []
         for driver, color in zip(self.drivers_in_color_order, self.colors):

@@ -242,6 +242,7 @@ class HeadToHeadRenderer(AbstractRenderer):
             self.state.drivers_in_order,
             self.state.driver_colors,
             self.config["dev_settings"]["quick_textures_mode"],
+            None
         )
 
         assert self.state.track_data is not None, (
@@ -371,6 +372,7 @@ class RestOfFieldRenderer(AbstractRenderer):
             self.state.drivers_in_color_order,
             self.state.driver_colors,
             self.config["dev_settings"]["quick_textures_mode"],
+            self.state.focused_driver
         )
 
         assert self.state.track_data is not None, (

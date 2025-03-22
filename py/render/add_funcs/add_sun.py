@@ -12,7 +12,7 @@ def main():
     )
 
     light_data = bpy.data.lights.new(name="Sun-Data", type="SUN")
-    light_data.energy = 2.5  # pyright: ignore
+    light_data.energy = 3.0  # pyright: ignore
     light_object = bpy.data.objects.new(name="Sun", object_data=light_data)
 
     # Add slight warm color to the sun (orange/golden tint)

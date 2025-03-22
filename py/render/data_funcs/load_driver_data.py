@@ -154,15 +154,10 @@ def get_driver_classes(ff1_session: Session, year: int, session: str) -> list[Dr
         abbrev = str(d["Abbreviation"])
         last_name = str(d["LastName"])
         headshot_url = str(d["HeadshotUrl"])
+        team_id = str(d["TeamId"])
 
         driver_classes.append(
-            Driver(
-                last_name,
-                abbrev,
-                headshot_url,
-                year,
-                session,
-            )
+            Driver(last_name, abbrev, headshot_url, year, session, team_id)
         )
     return driver_classes
 
@@ -172,7 +167,7 @@ def populate_driver_tels(
 ):
     """Populate the driver_tels dictionary with telemetry data for the given drivers and session."""
     for driver in drivers:
-        laps = ff1_session.laps.pick_driver(driver.abbrev)
+        laps = ff1_session.laps.pick_drivers(driver.abbrev)
         if laps is None or len(laps) == 0:
             log_warn(f"No lap data found for driver {driver}")
             continue

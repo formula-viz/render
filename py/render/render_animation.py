@@ -51,9 +51,10 @@ def eevee_render(config: Config, num_frames: int, is_ui_mode: bool):
 
     # Bloom, bright pixels produce a glowing effect, mimicking real cameras
     # This adds depth to the cars, I like it.
-    eevee.use_bloom = True  # type: ignore
-    # The defaults are sensible, but I like the bloom color as cyan
-    eevee.bloom_color = (0.0, 1.0, 1.0)  # type: ignore
+    # eevee.use_bloom = True  # type: ignore
+    # # The defaults are sensible, but I like the bloom color as cyan
+    # eevee.bloom_color = (0.0, 1.0, 1.0)  # type: ignore
+    eevee.use_bloom = False # type: ignore
 
     # Depth of Field
     # I don't see a visual impact of depth of field, I'm not editing the defaults

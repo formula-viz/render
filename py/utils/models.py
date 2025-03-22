@@ -5,7 +5,13 @@ class Driver:
     """Represent a Formula 1 driver with identifying information."""
 
     def __init__(
-        self, last_name: str, abbrev: str, headshot_url: str, year: int, session: str
+        self,
+        last_name: str,
+        abbrev: str,
+        headshot_url: str,
+        year: int,
+        session: str,
+        team: str,
     ):
         """Initialize a Driver object with identifying information.
 
@@ -22,6 +28,7 @@ class Driver:
         self.headshot_url = headshot_url
         self.year = year
         self.session = session
+        self.team = team
 
     def __str__(self) -> str:
         """Return a string representation of the Driver.
@@ -30,4 +37,4 @@ class Driver:
             A string with the driver's last name and abbreviation.
 
         """
-        return f"{self.last_name} ({self.abbrev}, {self.year}, {self.session})"
+        return f"{self.last_name} ({self.abbrev}, {self.year}, {self.session}, {self.team})"

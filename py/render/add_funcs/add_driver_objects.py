@@ -1,7 +1,9 @@
 """Create all drivers and return a dictionary mapping driver abbreviations to their objects given the driver data."""
 
 import os
+from pickle import TRUE
 import time
+from typing import Optional
 
 import bpy
 import mathutils
@@ -12,10 +14,80 @@ from PIL import Image
 from py.utils.colors import hex_to_blender_rgb, hex_to_normal_rgb
 from py.utils.logger import log_info
 from py.utils.models import Driver
-from py.utils.project_structure import F1_CAR_BLEND_PATH, Resources
+from py.utils.project_structure import F1_CAR_BLEND_PATH, RESOURCES_DIR, Resources
 
 
-def create_base_driver_obj():
+def scale_and_position_car(empty_obj: bpy.types.Object):
+    # Calculate the bounds of all objects together
+    min_x = min_y = min_z = float('inf')
+    max_x = max_y = max_z = float('-inf')
+
+    for obj in empty_obj.children:
+        # Calculate object bounds in world space
+        for v in obj.bound_box:
+            world_v = obj.matrix_world @ mathutils.Vector(v)
+            min_x = min(min_x, world_v.x)
+            max_x = max(max_x, world_v.x)
+            min_y = min(min_y, world_v.y)
+            max_y = max(max_y, world_v.y)
+            min_z = min(min_z, world_v.z)
+            max_z = max(max_z, world_v.z)
+
+    # Calculate center of bounds, but keep bottom at z=0
+    center_x = (min_x + max_x) / 2
+    center_y = (min_y + max_y) / 2
+    center_z = min_z  # Set z-offset to min_z to place bottom at z=0
+
+    # Calculate current width and scaling factor
+    current_width = max_x - min_x
+    scale_factor = 3.0 / current_width if current_width > 0 else 1.0
+
+    for child in empty_obj.children:
+        cur_scale = child.scale
+        child.scale = (cur_scale[0] * scale_factor, cur_scale[1] * scale_factor, cur_scale[2] * scale_factor)
+        cur_loc = child.location
+        child.location = ((cur_loc[0] - center_x) * scale_factor, (cur_loc[1] - center_y) * scale_factor, (cur_loc[2] - center_z) * scale_factor)
+
+def create_team_base(team_id: str):
+    """Create a base F1 car object that will be used as a template for this team.
+
+    This can cut the memory usage in half for rest of field renders by only using 2 base for each team.
+    """
+    bpy.ops.object.empty_add(type="PLAIN_AXES")
+    empty_obj = bpy.context.object
+    if empty_obj is None:
+        raise ValueError("Failed to create empty object")
+
+    empty_obj.name = f"Team{team_id}EmptyCar"
+    empty_obj.hide_viewport = True
+    empty_obj.hide_render = True
+
+    bpy.ops.object.empty_add(type="PLAIN_AXES")
+    transform_obj = bpy.context.object
+    if transform_obj is None:
+        raise ValueError("Failed to create transform object")
+
+    with bpy.data.libraries.load(
+        f"{RESOURCES_DIR}/f1-2025-collection/{team_id}.blend"
+    ) as (data_from, data_to):
+        data_to.objects = data_from.objects
+
+    for obj in data_to.objects:
+        obj.parent = empty_obj
+
+        # Iterate through materials to set metallic to 0.5 for principled BSDF nodes
+        if obj.material_slots:
+            for material_slot in obj.material_slots:
+                if material_slot.material and material_slot.material.node_tree:
+                    for node in material_slot.material.node_tree.nodes:
+                        if node.type == 'BSDF_PRINCIPLED':
+                            node.inputs['Metallic'].default_value = 0.3
+
+    scale_and_position_car(empty_obj)
+    return empty_obj
+
+
+def create_null_base():
     """Create a base F1 car object that will be used as a template for all drivers."""
     bpy.ops.object.empty_add(type="PLAIN_AXES")
     empty_obj = bpy.context.object
@@ -32,6 +104,11 @@ def create_base_driver_obj():
     for obj in data_to.objects:
         obj.parent = empty_obj
 
+    scale_and_position_car(empty_obj)
+    # Im not sure why this is necessary, but this fixes the floating car problem
+    for obj in empty_obj.children:
+        cur_loc = obj.location
+        obj.location = cur_loc + mathutils.Vector((0, 0, -0.8))
     return empty_obj
 
 
@@ -44,7 +121,6 @@ def create_driver_from_base(driver_abbrev: str, base_empty_obj: bpy.types.Object
     # Create a copy of the master empty
     new_empty = base_empty_obj.copy()
     new_empty.name = f"{driver_abbrev.title()}MasterEmpty"
-    new_empty.scale = (1.4, 1.4, 1.4)
     driver_collection.objects.link(new_empty)
 
     # Copy all children objects
@@ -205,11 +281,12 @@ def main(
     drivers: list[Driver],
     driver_colors: list[str],
     quick_textures_mode: bool,
+    rest_of_field_focused_driver: Optional[Driver]
 ) -> dict[Driver, bpy.types.Object]:
     """Process all drivers and return a dictionary mapping driver abbreviations to their objects."""
     quick_textures_mode_max = 2
 
-    base_empty_obj = create_base_driver_obj()
+    base_empty_objs_by_team: dict[str, bpy.types.Object] = {}
 
     driver_objs: dict[Driver, bpy.types.Object] = {}
     for i, (driver, color) in enumerate(zip(drivers, driver_colors)):
@@ -218,6 +295,16 @@ def main(
 
         log_info(f"Adding {i + 1}/{len(drivers)} driver: {driver} in color: {color}")
         start_time = time.time()
+
+        if rest_of_field_focused_driver and driver != rest_of_field_focused_driver:
+            if "null" not in base_empty_objs_by_team:
+                base_empty_objs_by_team["null"] = create_null_base()
+            base_empty_obj = base_empty_objs_by_team["null"]
+        elif driver.team in base_empty_objs_by_team:
+            base_empty_obj = base_empty_objs_by_team[driver.team]
+        else:
+            base_empty_obj = create_team_base(driver.team)
+            base_empty_objs_by_team[driver.team] = base_empty_obj
 
         driver_obj = create_driver_from_base(driver.last_name, base_empty_obj)
         if not quick_textures_mode:
