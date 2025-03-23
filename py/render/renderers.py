@@ -15,7 +15,7 @@ from py.render.add_funcs import (
     add_driver_circle,
     add_driver_objects,
     add_formula_viz_car,
-    add_live_leaderboard,
+    add_live_leaderboard_new,
     add_outro,
     add_race_timer,
     add_start_finish_line,
@@ -242,7 +242,7 @@ class HeadToHeadRenderer(AbstractRenderer):
             self.state.drivers_in_order,
             self.state.driver_colors,
             self.config["dev_settings"]["quick_textures_mode"],
-            None
+            None,
         )
 
         assert self.state.track_data is not None, (
@@ -299,7 +299,7 @@ class HeadToHeadRenderer(AbstractRenderer):
             self.config["render"]["is_shorts_output"],
             self.config,
         )
-        add_live_leaderboard.LiveLeaderboard(
+        add_live_leaderboard_new.LiveLeaderboard(
             self.config,
             list(zip(self.state.drivers_in_order, self.state.driver_colors)),
             self.state.car_rankings,
@@ -339,9 +339,7 @@ class RestOfFieldRenderer(AbstractRenderer):
                 self.state.focused_driver = driver
 
         assert self.state.focused_driver is not None, "Focused driver not found"
-        self.state.driver_colors = get_rest_of_field_colors(
-            self.state.focused_driver
-        )
+        self.state.driver_colors = get_rest_of_field_colors(self.state.focused_driver)
 
         if not self.state.focused_driver:
             raise ValueError(
@@ -372,7 +370,7 @@ class RestOfFieldRenderer(AbstractRenderer):
             self.state.drivers_in_color_order,
             self.state.driver_colors,
             self.config["dev_settings"]["quick_textures_mode"],
-            self.state.focused_driver
+            self.state.focused_driver,
         )
 
         assert self.state.track_data is not None, (
@@ -431,7 +429,7 @@ class RestOfFieldRenderer(AbstractRenderer):
             self.state.camera_obj,
             self.state.num_frames,
         )
-        add_live_leaderboard.LiveLeaderboard(
+        add_live_leaderboard_new.LiveLeaderboard(
             self.config,
             list(
                 zip(

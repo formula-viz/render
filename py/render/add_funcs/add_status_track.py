@@ -205,7 +205,7 @@ class StatusTrack:
         # Create a mesh for the background
         bg_mesh = bpy.data.meshes.new("StatusTrackBackgroundMesh")
         bg_obj = bpy.data.objects.new("StatusTrackBackground", bg_mesh)
-        bpy.context.scene.collection.objects.link(bg_obj)
+        bpy.context.scene.collection.objects.link(bg_obj)  # pyright: ignore
 
         # Create vertices and faces for the mesh
         vertices = [(p[0], p[1], p[2]) for p in status_track_background_points]
@@ -227,8 +227,8 @@ class StatusTrack:
 
         # Add nodes for transparent material
         node_tree = bg_mat.node_tree
-        output = node_tree.nodes.new(type="ShaderNodeOutputMaterial")
-        principled = node_tree.nodes.new(type="ShaderNodeBsdfPrincipled")
+        output = node_tree.nodes.new(type="ShaderNodeOutputMaterial")  # pyright: ignore
+        principled = node_tree.nodes.new(type="ShaderNodeBsdfPrincipled")  # pyright: ignore
 
         # Set up semi-transparent material
         dark_gray = hex_to_blender_rgb("#222223")
