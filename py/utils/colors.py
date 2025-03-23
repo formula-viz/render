@@ -86,22 +86,6 @@ def get_head_to_head_colors(drivers: list[Driver]):
         driver.driver_color
         for driver in drivers
     ]
-
-    # reverse here because the first driver will be the one who won by convention, so
-    # winning driver should keep their base color
-    for i in reversed(range(1, len(colors))):
-        if color_difference(colors[0], colors[i]) <= 30:
-            colors[i] = base_colors[base_color_idx % len(base_colors)]
-            base_color_idx += 1
-            if color_difference(colors[0], colors[i]) <= 30:
-                log_warn(
-                    f"Colors for drivers {drivers[0]}/{drivers[i]} too similar after "
-                    "replacement, check manually."
-                )
-
-            if base_color_idx >= len(base_colors):
-                log_warn("Ran out of base colors, investigate this.")
-
     return colors
 
 
