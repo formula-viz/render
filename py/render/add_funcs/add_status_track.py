@@ -92,7 +92,9 @@ class StatusTrack:
         self.parent_empty.hide_viewport = True
         self.parent_empty.name = "StatusTrackParent"
 
-    def _widen_track(self, new_track_data: TrackData, total_widen: int) -> TrackData:
+    def _widen_track(
+        self, new_track_data: TrackData, total_widen: int
+    ) -> tuple[list[tuple[float, float, float]], list[tuple[float, float, float]]]:
         """Widen track by moving inner and outer points 5 meters each outward.
 
         Args:
@@ -105,8 +107,6 @@ class StatusTrack:
         """
         new_inner_points: list[tuple[float, float, float]] = []
         new_outer_points: list[tuple[float, float, float]] = []
-        new_inner_curb_points: list[tuple[float, float, float]] = []
-        new_outer_curb_points: list[tuple[float, float, float]] = []
 
         for inner_point, outer_point in zip(
             new_track_data.inner_curb_points, new_track_data.outer_curb_points
@@ -130,42 +130,6 @@ class StatusTrack:
             new_inner_x = inner_point[0] - widen_distance * norm_x
             new_inner_y = inner_point[1] - widen_distance * norm_y
             new_inner_z = inner_point[2] - widen_distance * norm_z
-            new_inner_curb_points.append((new_inner_x, new_inner_y, new_inner_z))
-
-            # Move outer point further outward
-            new_outer_x = outer_point[0] + widen_distance * norm_x
-            new_outer_y = outer_point[1] + widen_distance * norm_y
-            new_outer_z = outer_point[2] + widen_distance * norm_z
-            new_outer_curb_points.append((new_outer_x, new_outer_y, new_outer_z))
-
-        # Process inner and outer points (not curb points)
-        for inner_point, outer_point in zip(
-            new_track_data.inner_points, new_track_data.outer_points
-        ):
-            # Calculate vector from inner to outer point
-            vector_x = outer_point[0] - inner_point[0]
-            vector_y = outer_point[1] - inner_point[1]
-            vector_z = outer_point[2] - inner_point[2]
-
-            # Calculate vector length
-            length = (vector_x**2 + vector_y**2 + vector_z**2) ** 0.5
-
-            # Normalize the vector
-            if length > 0:
-                norm_x = vector_x / length
-                norm_y = vector_y / length
-                norm_z = vector_z / length
-            else:
-                # Handle case where points are the same
-                norm_x, norm_y, norm_z = 0, 0, 1
-
-            # Widen by 5 meters in each direction
-            widen_distance = total_widen / 2
-
-            # Move inner point further inward
-            new_inner_x = inner_point[0] - widen_distance * norm_x
-            new_inner_y = inner_point[1] - widen_distance * norm_y
-            new_inner_z = inner_point[2] - widen_distance * norm_z
             new_inner_points.append((new_inner_x, new_inner_y, new_inner_z))
 
             # Move outer point further outward
@@ -174,20 +138,128 @@ class StatusTrack:
             new_outer_z = outer_point[2] + widen_distance * norm_z
             new_outer_points.append((new_outer_x, new_outer_y, new_outer_z))
 
-        return TrackData(
-            new_inner_points,
-            None,
-            new_outer_points,
-            None,
-            new_inner_curb_points,
-            new_outer_curb_points,
+        return new_inner_points, new_outer_points
+
+    def _add_background(self, new_inner_points, new_outer_points, status_track_obj):
+        def calculate_background_points(
+            base_points, reference_points, expansion=45, stride=5
+        ):
+            """Calculate background points from base and reference points.
+
+            Args:
+                base_points: Points to expand from (e.g., outer_curb_points)
+                reference_points: Points used for direction calculation (e.g., outer_points)
+                expansion: Distance to expand in units
+                stride: Take every nth point
+
+            Returns:
+                List of calculated background points and total distance
+
+            """
+            result_points = []
+            total_distance = 0
+
+            for i in range(0, len(base_points), stride):
+                base_point = base_points[i]
+                ref_point = reference_points[i]
+
+                vec = (
+                    base_point[0] - ref_point[0],
+                    base_point[1] - ref_point[1],
+                    base_point[2] - ref_point[2],
+                )
+                length = (vec[0] ** 2 + vec[1] ** 2 + vec[2] ** 2) ** 0.5
+                total_distance += length
+
+                if length > 0:
+                    normalized = (vec[0] / length, vec[1] / length, vec[2] / length)
+                else:
+                    normalized = (0, 0, 0)
+
+                new_point = (
+                    base_point[0] - expansion * normalized[0],
+                    base_point[1] - expansion * normalized[1],
+                    base_point[2],  # Keep Z the same
+                )
+                result_points.append(new_point)
+
+            return result_points, total_distance
+
+        # Calculate outer and inner background points, using every 5th point
+        outer_bg_points, outer_total_distance = calculate_background_points(
+            new_outer_points, new_inner_points, stride=10
         )
+
+        inner_bg_points, inner_total_distance = calculate_background_points(
+            new_inner_points, new_outer_points, stride=10
+        )
+
+        # Choose the points with the longer distance
+        if outer_total_distance >= inner_total_distance:
+            status_track_background_points = outer_bg_points
+        else:
+            status_track_background_points = inner_bg_points
+
+        # Create a mesh for the background
+        bg_mesh = bpy.data.meshes.new("StatusTrackBackgroundMesh")
+        bg_obj = bpy.data.objects.new("StatusTrackBackground", bg_mesh)
+        bpy.context.scene.collection.objects.link(bg_obj)
+
+        # Create vertices and faces for the mesh
+        vertices = [(p[0], p[1], p[2]) for p in status_track_background_points]
+
+        # Create a single face that includes all vertices
+        faces = [list(range(len(vertices)))]
+
+        # Update the mesh with the vertices and faces
+        bg_mesh.from_pydata(vertices, [], faces)
+        bg_mesh.update()
+
+        # Create material for the background with transparency
+        bg_mat = bpy.data.materials.new(name="StatusTrackBackgroundMaterial")
+        bg_mat.use_nodes = True
+
+        # Clear default nodes
+        if bg_mat.node_tree:
+            bg_mat.node_tree.nodes.clear()
+
+        # Add nodes for transparent material
+        node_tree = bg_mat.node_tree
+        output = node_tree.nodes.new(type="ShaderNodeOutputMaterial")
+        principled = node_tree.nodes.new(type="ShaderNodeBsdfPrincipled")
+
+        # Set up semi-transparent material
+        dark_gray = hex_to_blender_rgb("#222223")
+        principled.inputs["Base Color"].default_value = (
+            dark_gray[0],
+            dark_gray[1],
+            dark_gray[2],
+            1.0,
+        )
+        principled.inputs["Alpha"].default_value = 0.2
+
+        # Connect nodes
+        node_tree.links.new(principled.outputs["BSDF"], output.inputs["Surface"])
+
+        # Enable transparency
+        bg_mat.blend_method = "BLEND"
+        bg_obj.data.materials.append(bg_mat)
+
+        # Position the background slightly behind the track to avoid z-fighting
+        bg_obj.location.z = -0.1
+
+        # Parent the background to the status track object
+        bg_obj.parent = status_track_obj
+
+        return bg_obj
 
     def _setup(self) -> Tuple[float, float]:
         new_track_data, new_driver_df = self._center(self.track_data, self.driver_df)
 
-        new_track_data = self._widen_track(new_track_data, 10)
-        track_width, track_height = self._get_track_dimensions(new_track_data)
+        new_inner_points, new_outer_points = self._widen_track(new_track_data, 10)
+        track_width, track_height = self._get_track_dimensions(
+            new_inner_points, new_outer_points
+        )
         optimal_scale = self._calculate_optimal_scale(
             track_width, track_height, self.camera_obj, self.is_shorts_output
         )
@@ -198,23 +270,27 @@ class StatusTrack:
 
         track_mat = create_material(hex_to_blender_rgb("#FFFFFF"), "Main")
         status_track_obj = create_planes(
-            new_track_data.inner_curb_points,
-            new_track_data.outer_curb_points,
+            new_inner_points,
+            new_outer_points,
             "Status",
             track_mat,
         )
 
         # in order to setup the start finish line, we want it to be long, essentially forming a cross,
         # we do this by widening the track again by a
-        new_track_data = self._widen_track(new_track_data, 60)
+        start_finish_line_inners, start_finish_line_outers = self._widen_track(
+            new_track_data, 60
+        )
         status_start_finish_line = add_start_finish_line(
-            new_track_data.inner_points,
-            new_track_data.outer_points,
+            start_finish_line_inners,
+            start_finish_line_outers,
             self.start_finish_line_idx,
             "StatusStartFinishLine",
             line_width=50,
         )
         status_start_finish_line.data.materials[0] = track_mat  # pyright: ignore
+
+        self._add_background(new_inner_points, new_outer_points, status_track_obj)
 
         self._scale(optimal_scale, status_track_obj)
         indicator_dot = self._add_indicator_dot(new_driver_df)
@@ -263,13 +339,25 @@ class StatusTrack:
         self.parent_empty.location = Vector(position)
         self.parent_empty.rotation_euler = camera_obj.rotation_euler
 
-    def _get_track_dimensions(self, track_data: TrackData) -> Tuple[float, float]:
+    def _get_track_dimensions(
+        self, new_inner_points, new_outer_points
+    ) -> Tuple[float, float]:
         """Calculate the width and height of the track."""
-        # Get track dimensions
-        x_points = [point[0] for point in track_data.outer_points]
-        y_points = [point[1] for point in track_data.outer_points]
-        track_width = max(x_points) - min(x_points)
-        track_height = max(y_points) - min(y_points)
+        # Get track dimensions for inner points
+        inner_x_points = [point[0] for point in new_inner_points]
+        inner_y_points = [point[1] for point in new_inner_points]
+        inner_track_width = max(inner_x_points) - min(inner_x_points)
+        inner_track_height = max(inner_y_points) - min(inner_y_points)
+
+        # Get track dimensions for outer points
+        outer_x_points = [point[0] for point in new_outer_points]
+        outer_y_points = [point[1] for point in new_outer_points]
+        outer_track_width = max(outer_x_points) - min(outer_x_points)
+        outer_track_height = max(outer_y_points) - min(outer_y_points)
+
+        # Use the maximum of inner and outer dimensions
+        track_width = max(inner_track_width, outer_track_width)
+        track_height = max(inner_track_height, outer_track_height)
 
         return track_width, track_height
 
