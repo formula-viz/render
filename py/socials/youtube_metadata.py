@@ -31,7 +31,7 @@ class YoutubeText:
         Join the discord to give feedback and make video requests.
         """
         description = "Uploading videos every qualifying session of the formula 1 in addition to historical recaps leading up to the race weekend."
-        description += "\n\nJoin the discord community: https://discord.gg/dXRVVXMm"
+        description += "\n\nJoin the discord community: https://discord.gg/ZMBTwhjScp"
         description += "\n\nGenerated using telemetry car data provided by Formula1 via the FastF1 api."
         description += "\n\n(not affiliated with Formula 1 or any of its subsidiaries)"
 

@@ -176,7 +176,9 @@ class StatusTrack:
 
         return TrackData(
             new_inner_points,
+            None,
             new_outer_points,
+            None,
             new_inner_curb_points,
             new_outer_curb_points,
         )
@@ -361,7 +363,9 @@ class StatusTrack:
 
         new_track_data = TrackData(
             new_inner_points,
+            None,
             new_outer_points,
+            None,
             new_inner_curb_points,
             new_outer_curb_points,
         )

@@ -11,8 +11,10 @@ from py.render.data_funcs.load_driver_data import Driver
 from py.utils.logger import log_warn
 
 GOLD_RGB = (255, 215, 0)
-MAIN_TRACK_COLOR = "#444545"
-CURB_COLOR = "#0f0f0f"
+# MAIN_TRACK_COLOR = "#444545"
+MAIN_TRACK_COLOR = "#2C2C2C"
+# CURB_COLOR = "#0f0f0f"
+CURB_COLOR = "#1F1F1F"
 SCENE_BG_COLOR = "#171717"
 ALTERNATE_CURB_COLOR = "#202020"
 
@@ -86,6 +88,7 @@ def get_head_to_head_colors(drivers: list[Driver]):
         driver.driver_color
         for driver in drivers
     ]
+
     return colors
 
 
