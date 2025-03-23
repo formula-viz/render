@@ -31,6 +31,7 @@ def create_boxes(
 
     Returns:
         The created Blender object
+
     """
     mesh = bpy.data.meshes.new(name + "BoxMesh")
     obj = bpy.data.objects.new(name + "Box", mesh)
@@ -54,46 +55,70 @@ def create_boxes(
     # Create faces for each segment
     for i in range(len(inner_points) - 1):
         # Bottom face
-        bottom_face = bm.faces.new([
-            bottom_inner_verts[i], bottom_inner_verts[i + 1],
-            bottom_outer_verts[i + 1], bottom_outer_verts[i]
-        ])
+        bottom_face = bm.faces.new(
+            [
+                bottom_inner_verts[i],
+                bottom_inner_verts[i + 1],
+                bottom_outer_verts[i + 1],
+                bottom_outer_verts[i],
+            ]
+        )
         all_faces.append(bottom_face)
 
         # Top face
-        top_face = bm.faces.new([
-            top_inner_verts[i], top_inner_verts[i + 1],
-            top_outer_verts[i + 1], top_outer_verts[i]
-        ])
+        top_face = bm.faces.new(
+            [
+                top_inner_verts[i],
+                top_inner_verts[i + 1],
+                top_outer_verts[i + 1],
+                top_outer_verts[i],
+            ]
+        )
         all_faces.append(top_face)
 
         # Inner side face
-        inner_side_face = bm.faces.new([
-            bottom_inner_verts[i], bottom_inner_verts[i + 1],
-            top_inner_verts[i + 1], top_inner_verts[i]
-        ])
+        inner_side_face = bm.faces.new(
+            [
+                bottom_inner_verts[i],
+                bottom_inner_verts[i + 1],
+                top_inner_verts[i + 1],
+                top_inner_verts[i],
+            ]
+        )
         all_faces.append(inner_side_face)
 
         # Outer side face
-        outer_side_face = bm.faces.new([
-            bottom_outer_verts[i], bottom_outer_verts[i + 1],
-            top_outer_verts[i + 1], top_outer_verts[i]
-        ])
+        outer_side_face = bm.faces.new(
+            [
+                bottom_outer_verts[i],
+                bottom_outer_verts[i + 1],
+                top_outer_verts[i + 1],
+                top_outer_verts[i],
+            ]
+        )
         all_faces.append(outer_side_face)
 
         # Start cap face (only for the first segment)
         if i == 0:
-            start_cap_face = bm.faces.new([
-                bottom_inner_verts[0], bottom_outer_verts[0],
-                top_outer_verts[0], top_inner_verts[0]
-            ])
+            start_cap_face = bm.faces.new(
+                [
+                    bottom_inner_verts[0],
+                    bottom_outer_verts[0],
+                    top_outer_verts[0],
+                    top_inner_verts[0],
+                ]
+            )
             all_faces.append(start_cap_face)
 
         # End cap face (for each segment end)
-        end_cap_face = bm.faces.new([
-            bottom_inner_verts[i + 1], bottom_outer_verts[i + 1],
-            top_outer_verts[i + 1], top_inner_verts[i + 1]
-        ])
+        end_cap_face = bm.faces.new(
+            [
+                bottom_inner_verts[i + 1],
+                bottom_outer_verts[i + 1],
+                top_outer_verts[i + 1],
+                top_inner_verts[i + 1],
+            ]
+        )
         all_faces.append(end_cap_face)
 
     bm.to_mesh(mesh)  # pyright: ignore
@@ -178,7 +203,9 @@ def create_planes(
     return obj
 
 
-def create_material(color: tuple[float, float, float], name: str, emission_value: float = 0.0):
+def create_material(
+    color: tuple[float, float, float], name: str, emission_value: float = 0.0
+):
     """Create a Blender material with the specified color.
 
     Args:
@@ -231,5 +258,17 @@ def main(track_data: TrackData) -> None:
     )
 
     if track_data.inner_trace_line and track_data.outer_trace_line:
-        create_boxes(track_data.inner_trace_line.a_points, track_data.inner_trace_line.b_points, "InnerLine", 0.025, line_mat)
-        create_boxes(track_data.outer_trace_line.a_points, track_data.outer_trace_line.b_points, "OuterLine", 0.025, line_mat)
+        create_boxes(
+            track_data.inner_trace_line.a_points,
+            track_data.inner_trace_line.b_points,
+            "InnerLine",
+            0.025,
+            line_mat,
+        )
+        create_boxes(
+            track_data.outer_trace_line.a_points,
+            track_data.outer_trace_line.b_points,
+            "OuterLine",
+            0.025,
+            line_mat,
+        )

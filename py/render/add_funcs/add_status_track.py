@@ -5,6 +5,7 @@ the current position of a driver as a dot. It is positioned relative to the came
 and scales appropriately based on the output mode (shorts or landscape).
 """
 
+import math
 from typing import Tuple
 
 import bpy
@@ -18,6 +19,7 @@ from py.render.data_funcs.load_track_data import TrackData
 from py.utils.colors import hex_to_blender_rgb
 from py.utils.config import Config
 from py.utils.logger import log_info
+from py.utils.project_structure import RESOURCES_DIR
 
 # In the shorts mode, if we have a dot object, 1 meter away from the camera,
 # an x value of 0.2 will be the edge and a y value of 0.36 will be the top edge
@@ -140,7 +142,7 @@ class StatusTrack:
 
         return new_inner_points, new_outer_points
 
-    def _add_background(self, new_inner_points, new_outer_points, status_track_obj):
+    def _add_background(self, new_inner_points, new_outer_points):
         def calculate_background_points(
             base_points, reference_points, expansion=45, stride=5
         ):
@@ -187,11 +189,11 @@ class StatusTrack:
 
         # Calculate outer and inner background points, using every 5th point
         outer_bg_points, outer_total_distance = calculate_background_points(
-            new_outer_points, new_inner_points, stride=10
+            new_outer_points, new_inner_points, stride=15
         )
 
         inner_bg_points, inner_total_distance = calculate_background_points(
-            new_inner_points, new_outer_points, stride=10
+            new_inner_points, new_outer_points, stride=15
         )
 
         # Choose the points with the longer distance
@@ -246,12 +248,101 @@ class StatusTrack:
         bg_obj.data.materials.append(bg_mat)
 
         # Position the background slightly behind the track to avoid z-fighting
-        bg_obj.location.z = -0.1
+        bg_obj.location.z = -0.001
 
         # Parent the background to the status track object
-        bg_obj.parent = status_track_obj
-
         return bg_obj
+
+    def _get_spread(self, points: list[tuple[float, float, float]], spread_val: float):
+        # we want to create an inner and outer spread, essentially
+        spread_a = []
+        spread_b = []
+        for i in range(len(points)):
+            # find vec between cur and prev
+            next = points[i + 1] if i < len(points) - 1 else points[0]
+            cur = points[i]
+            vec = (next[0] - cur[0], next[1] - cur[1])
+
+            # find the perpendicular
+            perp = (-vec[1], vec[0])
+            length = math.sqrt(perp[0] ** 2 + perp[1] ** 2)
+            perp_norm = (perp[0] / length, perp[1] / length, 0)
+
+            spread_a.append(
+                (
+                    cur[0] + perp_norm[0] * spread_val,
+                    cur[1] + perp_norm[1] * spread_val,
+                    0,
+                )
+            )
+            spread_b.append(
+                (
+                    cur[0] - perp_norm[0] * spread_val,
+                    cur[1] - perp_norm[1] * spread_val,
+                    0,
+                )
+            )
+        return spread_a, spread_b
+
+    def _add_start_finish_line(self, a_points, b_points) -> bpy.types.Object:
+        for i in range(len(a_points)):
+            a_points[i] = (a_points[i][0], a_points[i][1], 1)
+            b_points[i] = (b_points[i][0], b_points[i][1], 1)
+
+        status_start_finish_line = add_start_finish_line(
+            a_points,
+            b_points,
+            self.start_finish_line_idx,
+            "StatusStartFinishLine",
+            line_width=40,
+        )
+        # Create start/finish line material with texture
+        start_finish_mat = bpy.data.materials.new(name="StartFinishLineMaterial")
+        start_finish_mat.use_nodes = True
+        if start_finish_mat.node_tree:
+            nodes = start_finish_mat.node_tree.nodes
+            links = start_finish_mat.node_tree.links
+
+            # Clear default nodes
+            nodes.clear()
+
+            # Add texture image node
+            texture_node = nodes.new(type="ShaderNodeTexImage")
+            texture_path = bpy.path.abspath(
+                f"{RESOURCES_DIR}/start-finish-line-texture.png"
+            )
+            texture_image = bpy.data.images.load(texture_path)
+            texture_node.image = texture_image
+
+            # Add UV mapping nodes for proper texture projection
+            mapping_node = nodes.new(type="ShaderNodeMapping")
+            texcoord_node = nodes.new(type="ShaderNodeTexCoord")
+
+            # Add principled BSDF node
+            bsdf_node = nodes.new(type="ShaderNodeBsdfPrincipled")
+            output_node = nodes.new(type="ShaderNodeOutputMaterial")
+
+            # Connect nodes for proper UV mapping
+            links.new(texcoord_node.outputs["UV"], mapping_node.inputs["Vector"])
+            links.new(mapping_node.outputs["Vector"], texture_node.inputs["Vector"])
+            links.new(texture_node.outputs["Color"], bsdf_node.inputs["Base Color"])
+            links.new(bsdf_node.outputs["BSDF"], output_node.inputs["Surface"])
+
+        # Apply material to start/finish line
+        status_start_finish_line.data.materials[0] = start_finish_mat  # pyright: ignore
+
+        # Ensure proper UV mapping
+        # Select the object and enter edit mode
+        bpy.context.view_layer.objects.active = status_start_finish_line
+        bpy.ops.object.mode_set(mode="EDIT")
+
+        # Select all faces and perform unwrap
+        bpy.ops.mesh.select_all(action="SELECT")
+        bpy.ops.uv.unwrap(method="ANGLE_BASED", margin=0.001)
+
+        # Return to object mode
+        bpy.ops.object.mode_set(mode="OBJECT")
+        return status_start_finish_line
 
     def _setup(self) -> Tuple[float, float]:
         new_track_data, new_driver_df = self._center(self.track_data, self.driver_df)
@@ -268,42 +359,70 @@ class StatusTrack:
             track_height * optimal_scale,
         )
 
+        spread_val = 6
+        inner_spread_a, inner_spread_b = self._get_spread(new_inner_points, spread_val)
+        outer_spread_a, outer_spread_b = self._get_spread(new_outer_points, spread_val)
+
         track_mat = create_material(hex_to_blender_rgb("#FFFFFF"), "Main")
-        status_track_obj = create_planes(
-            new_inner_points,
-            new_outer_points,
-            "Status",
+        inner_spread_obj = create_planes(
+            inner_spread_a,
+            inner_spread_b,
+            "InnerStatusSpread",
             track_mat,
         )
 
-        # in order to setup the start finish line, we want it to be long, essentially forming a cross,
-        # we do this by widening the track again by a
-        start_finish_line_inners, start_finish_line_outers = self._widen_track(
-            new_track_data, 60
+        outer_spread_obj = create_planes(
+            outer_spread_a,
+            outer_spread_b,
+            "OuterStatusSpread",
+            track_mat,
         )
-        status_start_finish_line = add_start_finish_line(
-            start_finish_line_inners,
-            start_finish_line_outers,
-            self.start_finish_line_idx,
-            "StatusStartFinishLine",
-            line_width=50,
-        )
-        status_start_finish_line.data.materials[0] = track_mat  # pyright: ignore
 
-        self._add_background(new_inner_points, new_outer_points, status_track_obj)
+        # given outer_spread_a, outer_spread_b, and inner, we want to find the sets which are furthest
+        # so either, outer_spread_a and inner a or b
+        # or outer_spread_b and inner a or b
+        def dist(a, b):
+            return math.sqrt(
+                (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2
+            )
 
-        self._scale(optimal_scale, status_track_obj)
+        max_dist = 0
+        cur_as = []
+        cur_bs = []
+        if dist(outer_spread_a[0], inner_spread_a[0]) > max_dist:
+            max_dist = dist(outer_spread_a[0], outer_spread_b[0])
+            cur_as = outer_spread_a
+            cur_bs = outer_spread_b
+        if dist(outer_spread_a[0], inner_spread_b[0]) > max_dist:
+            max_dist = dist(outer_spread_a[0], inner_spread_b[0])
+            cur_as = outer_spread_a
+            cur_bs = inner_spread_b
+        if dist(outer_spread_b[0], inner_spread_a[0]) > max_dist:
+            max_dist = dist(outer_spread_b[0], inner_spread_a[0])
+            cur_as = outer_spread_b
+            cur_bs = inner_spread_a
+        if dist(outer_spread_b[0], inner_spread_b[0]) > max_dist:
+            max_dist = dist(outer_spread_b[0], inner_spread_b[0])
+            cur_as = outer_spread_b
+            cur_bs = inner_spread_b
+
+        status_start_finish_line = self._add_start_finish_line(cur_as, cur_bs)
+
+        background_obj = self._add_background(new_inner_points, new_outer_points)
+
+        self._scale(optimal_scale, inner_spread_obj)
+        self._scale(optimal_scale, outer_spread_obj)
+        self._scale(optimal_scale, status_start_finish_line)
+        self._scale(optimal_scale, background_obj)
+
         indicator_dot = self._add_indicator_dot(new_driver_df)
+        indicator_dot.parent = inner_spread_obj
 
-        # Parent both objects to the status track, for relative movement, this also scales them accordingly
-        status_start_finish_line.parent = status_track_obj
-        indicator_dot.parent = status_track_obj
+        status_start_finish_line.parent = self.parent_empty
+        inner_spread_obj.parent = self.parent_empty
+        outer_spread_obj.parent = self.parent_empty
+        background_obj.parent = self.parent_empty
 
-        # We want to ensure that there is enough space, the track may be tall causing it to go over
-        # the top of the screen. We know the end width and height in meters which means we can
-        #
-        # finally, parent the status track to the parent empty
-        status_track_obj.parent = self.parent_empty
         return scaled_track_width, scaled_track_height
 
     # TODO: this will need to be updated for different resolutions,

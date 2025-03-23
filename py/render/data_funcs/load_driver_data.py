@@ -25,12 +25,12 @@ from datetime import timedelta
 from typing import Optional
 
 import fastf1 as ff1
-from fastf1.plotting import get_driver_color
 import mathutils
 import numpy as np
 import pandas as pd
 import requests
 from fastf1.core import Laps, Session, Telemetry
+from fastf1.plotting import get_driver_color
 from pandas import Series
 from scipy.interpolate import UnivariateSpline
 

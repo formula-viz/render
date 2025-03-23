@@ -35,12 +35,17 @@ def add_start_finish_line(
     """
     z_offset = 0.02
     points: list[tuple[float, float, float]] = []
-    for i in range(0, line_width):
-        points.append(inner_points[(start_finish_line_idx - i) % len(inner_points)])
 
-    for i in reversed(range(0, line_width)):
-        points.append(outer_points[(start_finish_line_idx - i) % len(outer_points)])
+    points.append(inner_points[start_finish_line_idx % len(inner_points)])
+    points.append(
+        inner_points[(start_finish_line_idx + line_width) % len(inner_points)]
+    )
+    points.append(
+        outer_points[(start_finish_line_idx + line_width) % len(outer_points)]
+    )
+    points.append(outer_points[start_finish_line_idx % len(outer_points)])
 
+    # Apply Z offset to all points
     for i in range(len(points)):
         points[i] = (points[i][0], points[i][1], points[i][2] + z_offset)
 
@@ -53,11 +58,11 @@ def add_start_finish_line(
     for point in points:
         bm.verts.new(point)
 
-    bm.verts.ensure_lookup_table() # pyright: ignore
+    bm.verts.ensure_lookup_table()  # pyright: ignore
     bm.faces.new(bm.verts)  # pyright: ignore
-    bm.to_mesh(mesh) # pyright: ignore
-    bm.free() # pyright: ignore
-    mesh.update() # pyright: ignore
+    bm.to_mesh(mesh)  # pyright: ignore
+    bm.free()  # pyright: ignore
+    mesh.update()  # pyright: ignore
 
     mat = create_material(
         StartFinishLineColor.get_scene_rgb(), "StartFinishLineMaterial"
@@ -68,7 +73,12 @@ def add_start_finish_line(
 
 
 # where at_start is the index of the point where the car is at the start/finish line
-def main(inner_curb_points: list[tuple[float, float, float]], outer_curb_points: list[tuple[float, float, float]], start_finish_line_idx: int, name: str):
+def main(
+    inner_curb_points: list[tuple[float, float, float]],
+    outer_curb_points: list[tuple[float, float, float]],
+    start_finish_line_idx: int,
+    name: str,
+):
     """Add start/finish line."""
     indicators_collection = bpy.data.collections.new(name="IndicatorsCollection")
     bpy.context.scene.collection.children.link(indicators_collection)  # pyright: ignore

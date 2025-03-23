@@ -410,10 +410,12 @@ def curb(
     assert len(curb) == len(cur)
     return curb
 
+
 @dataclass
 class LineData:
     a_points: list[tuple[float, float, float]]
     b_points: list[tuple[float, float, float]]
+
 
 @dataclass
 class TrackData:
@@ -428,7 +430,11 @@ class TrackData:
     inner_curb_points: list[tuple[float, float, float]]
     outer_curb_points: list[tuple[float, float, float]]
 
-def create_white_lines(inner_points: list[tuple[float, float, float]], outer_points: list[tuple[float, float, float]]) -> tuple[LineData, LineData]:
+
+def create_white_lines(
+    inner_points: list[tuple[float, float, float]],
+    outer_points: list[tuple[float, float, float]],
+) -> tuple[LineData, LineData]:
     # we want to create a line which is parallel to the inner points but slightly closer to the outer
     a_trace: list[tuple[float, float, float]] = []
     a_fill: list[tuple[float, float, float]] = []
@@ -436,16 +442,26 @@ def create_white_lines(inner_points: list[tuple[float, float, float]], outer_poi
     b_trace: list[tuple[float, float, float]] = []
     b_fill: list[tuple[float, float, float]] = []
 
-    def get_trace_line(point1: tuple[float, float, float], point2: tuple[float, float, float]) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
+    def get_trace_line(
+        point1: tuple[float, float, float], point2: tuple[float, float, float]
+    ) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
         vec = (point2[0] - point1[0], point2[1] - point1[1], point2[2] - point1[2])
-        vec_length = math.sqrt(vec[0]**2 + vec[1]**2 + vec[2]**2)
+        vec_length = math.sqrt(vec[0] ** 2 + vec[1] ** 2 + vec[2] ** 2)
         normalized_vec = (vec[0] / vec_length, vec[1] / vec_length, vec[2] / vec_length)
 
-        trace_point_dist = 0.1
-        fill_point_dist = 0.4
+        trace_point_dist = 0.2
+        fill_point_dist = 0.5
 
-        trace_point = (point1[0] + normalized_vec[0] * trace_point_dist, point1[1] + normalized_vec[1] * trace_point_dist, point1[2] + normalized_vec[2] * trace_point_dist + 0.02)
-        fill_point = (point1[0] + normalized_vec[0] * fill_point_dist, point1[1] + normalized_vec[1] * fill_point_dist, point1[2] + normalized_vec[2] * fill_point_dist + 0.02)
+        trace_point = (
+            point1[0] + normalized_vec[0] * trace_point_dist,
+            point1[1] + normalized_vec[1] * trace_point_dist,
+            point1[2] + normalized_vec[2] * trace_point_dist + 0.02,
+        )
+        fill_point = (
+            point1[0] + normalized_vec[0] * fill_point_dist,
+            point1[1] + normalized_vec[1] * fill_point_dist,
+            point1[2] + normalized_vec[2] * fill_point_dist + 0.02,
+        )
 
         return trace_point, fill_point
 
@@ -478,4 +494,11 @@ def main(year: int, track: str):
     inner_line, outer_line = create_white_lines(inner_points, outer_points)
 
     log_info("Done processing track data")
-    return TrackData(inner_points, inner_line, outer_points, outer_line, inner_curb_points, outer_curb_points)
+    return TrackData(
+        inner_points,
+        inner_line,
+        outer_points,
+        outer_line,
+        inner_curb_points,
+        outer_curb_points,
+    )
