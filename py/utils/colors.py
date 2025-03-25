@@ -8,11 +8,10 @@ from colormath.color_diff import delta_e_cie2000
 from colormath.color_objects import LabColor, sRGBColor
 
 from py.render.data_funcs.load_driver_data import Driver
-from py.utils.logger import log_warn
 
 GOLD_RGB = (255, 215, 0)
 # MAIN_TRACK_COLOR = "#444545"
-MAIN_TRACK_COLOR = "#2C2C2C"
+MAIN_TRACK_COLOR = "#0D0D0D"
 # CURB_COLOR = "#0f0f0f"
 CURB_COLOR = "#1F1F1F"
 SCENE_BG_COLOR = "#171717"
@@ -52,9 +51,7 @@ def get_rest_of_field_colors(driver: Driver):
     gray_scale = [(x, x, x) for x in np.linspace(70, 255, 19, dtype=float)]
     gray_scale.insert(
         0,
-        hex_to_normal_rgb(
-            driver.driver_color
-        ),
+        hex_to_normal_rgb(driver.driver_color),
     )
 
     return [rgb_to_hex(x) for x in gray_scale]
@@ -84,10 +81,7 @@ def get_head_to_head_colors(drivers: list[Driver]):
     base_colors = ["#FFFFFF", "#808080", "#404040"]  # white, gray, dark gray
     base_color_idx = 0
 
-    colors = [
-        driver.driver_color
-        for driver in drivers
-    ]
+    colors = [driver.driver_color for driver in drivers]
 
     return colors
 

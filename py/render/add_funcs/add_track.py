@@ -6,7 +6,7 @@ import bmesh
 import bpy
 
 from py.render.data_funcs.load_track_data import TrackData
-from py.utils.colors import CurbColor, MainTrackColor
+from py.utils.colors import AlternateCurbColor, CurbColor, MainTrackColor
 
 
 def create_boxes(
@@ -244,17 +244,29 @@ def main(track_data: TrackData) -> None:
         bpy.context.view_layer.layer_collection.children[-1]  # pyright: ignore
     )
 
-    track_mat = create_material(MainTrackColor.get_scene_rgb(), "Main")
+    track_mat = create_material(MainTrackColor.get_scene_rgb(), "Main", 0.5)
     curb_mat = create_material(CurbColor.get_scene_rgb(), "Curb")
-    line_mat = create_material((0.6, 0.6, 0.6), "Line", 0.6)
-    # alternate_curb_mat = create_material(AlternateCurbColor.get_scene_rgb(), "AlternateCurb")
+    line_mat = create_material((0.6, 0.6, 0.6), "Line", 3.0)
+    alternate_curb_mat = create_material(
+        AlternateCurbColor.get_scene_rgb(), "AlternateCurb"
+    )
 
     create_planes(track_data.inner_points, track_data.outer_points, "Main", track_mat)
     create_planes(
-        track_data.outer_points, track_data.outer_curb_points, "CurbOuter", curb_mat
+        track_data.outer_points,
+        track_data.outer_curb_points,
+        "CurbOuter",
+        curb_mat,
+        alternate_curb_mat,
+        True,
     )
     create_planes(
-        track_data.inner_points, track_data.inner_curb_points, "CurbInner", curb_mat
+        track_data.inner_points,
+        track_data.inner_curb_points,
+        "CurbInner",
+        curb_mat,
+        alternate_curb_mat,
+        True,
     )
 
     if track_data.inner_trace_line and track_data.outer_trace_line:

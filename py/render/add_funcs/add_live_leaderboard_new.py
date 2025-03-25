@@ -74,6 +74,9 @@ class LiveLeaderboard:
         self.parent_empty.hide_viewport = True
         self.parent_empty.name = "LeaderboardParent"
 
+        if config["render"]["is_shorts_output"]:
+            self.parent_empty.scale = (0.8, 0.8, 0.8)
+
         self._parent_to_camera()
 
         # Initialize

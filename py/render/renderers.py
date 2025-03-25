@@ -295,7 +295,9 @@ class HeadToHeadRenderer(AbstractRenderer):
             self.state.track_data,
             self.state.camera_obj,
             self.state.start_finish_line_idx,
-            self.state.driver_dfs[self.state.focused_driver],
+            self.state.driver_dfs,
+            self.state.driver_colors,
+            self.state.drivers_in_color_order,
             self.config["render"]["is_shorts_output"],
             self.config,
         )
@@ -420,7 +422,9 @@ class RestOfFieldRenderer(AbstractRenderer):
             self.state.track_data,
             self.state.camera_obj,
             self.state.start_finish_line_idx,
-            self.state.driver_dfs[self.state.focused_driver],
+            self.state.driver_dfs,
+            self.state.driver_colors,
+            self.state.drivers_in_color_order,
             self.config["render"]["is_shorts_output"],
             self.config,
         )

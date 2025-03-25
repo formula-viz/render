@@ -12,13 +12,13 @@ import bpy
 from mathutils import Vector
 from pandas import DataFrame
 
-from py.render.add_funcs.add_flag import add_flag
 from py.render.add_funcs.add_start_finish_line import add_start_finish_line
 from py.render.add_funcs.add_track import create_material, create_planes
 from py.render.data_funcs.load_track_data import TrackData
 from py.utils.colors import hex_to_blender_rgb
 from py.utils.config import Config
 from py.utils.logger import log_info
+from py.utils.models import Driver
 from py.utils.project_structure import RESOURCES_DIR
 
 # In the shorts mode, if we have a dot object, 1 meter away from the camera,
@@ -49,7 +49,9 @@ class StatusTrack:
         track_data: TrackData,
         camera_obj: bpy.types.Object,
         start_finish_line_idx: int,
-        driver_df: DataFrame,
+        driver_dfs: dict[Driver, DataFrame],
+        driver_colors: list[str],
+        drivers_in_color_order: list[Driver],
         is_shorts_output: bool,
         config: Config,
     ):
@@ -67,7 +69,9 @@ class StatusTrack:
         self.track_data = track_data
         self.camera_obj = camera_obj
         self.start_finish_line_idx = start_finish_line_idx
-        self.driver_df = driver_df
+        self.driver_dfs = driver_dfs
+        self.driver_colors = driver_colors
+        self.drivers_in_color_order = drivers_in_color_order
         self.is_shorts_output = is_shorts_output
         self.config = config
 
@@ -345,7 +349,7 @@ class StatusTrack:
         return status_start_finish_line
 
     def _setup(self) -> Tuple[float, float]:
-        new_track_data, new_driver_df = self._center(self.track_data, self.driver_df)
+        new_track_data = self._center(self.track_data, self.driver_dfs)
 
         new_inner_points, new_outer_points = self._widen_track(new_track_data, 10)
         track_width, track_height = self._get_track_dimensions(
@@ -363,7 +367,7 @@ class StatusTrack:
         inner_spread_a, inner_spread_b = self._get_spread(new_inner_points, spread_val)
         outer_spread_a, outer_spread_b = self._get_spread(new_outer_points, spread_val)
 
-        track_mat = create_material(hex_to_blender_rgb("#FFFFFF"), "Main")
+        track_mat = create_material(hex_to_blender_rgb("#FFFFFF"), "Status", 1.0)
         inner_spread_obj = create_planes(
             inner_spread_a,
             inner_spread_b,
@@ -415,8 +419,20 @@ class StatusTrack:
         self._scale(optimal_scale, status_start_finish_line)
         self._scale(optimal_scale, background_obj)
 
-        indicator_dot = self._add_indicator_dot(new_driver_df)
-        indicator_dot.parent = inner_spread_obj
+        if self.config["type"] == "rest-of-field":
+            driver, color = self.drivers_in_color_order[0], self.driver_colors[0]
+            indicator_dot = self._add_indicator_dot(
+                driver.last_name, color, self.driver_dfs[driver], 0
+            )
+            indicator_dot.parent = inner_spread_obj
+        else:
+            for idx, (driver, color) in enumerate(
+                zip(reversed(self.drivers_in_color_order), reversed(self.driver_colors))
+            ):
+                indicator_dot = self._add_indicator_dot(
+                    driver.last_name, color, self.driver_dfs[driver], idx
+                )
+                indicator_dot.parent = inner_spread_obj
 
         status_start_finish_line.parent = self.parent_empty
         inner_spread_obj.parent = self.parent_empty
@@ -524,8 +540,8 @@ class StatusTrack:
         status_track_obj.scale.z = optimal_scale
 
     def _center(
-        self, new_track_data: TrackData, driver_df: DataFrame
-    ) -> tuple[TrackData, DataFrame]:
+        self, new_track_data: TrackData, driver_dfs: dict[Driver, DataFrame]
+    ) -> TrackData:
         new_inner_points = []
         new_outer_points = []
         new_inner_curb_points = []
@@ -563,10 +579,12 @@ class StatusTrack:
             for x, y, z in new_track_data.outer_curb_points
         ]
 
-        new_driver_df = driver_df.copy()
-        new_driver_df["X"] = new_driver_df["X"] + offset_x
-        new_driver_df["Y"] = new_driver_df["Y"] + offset_y
-        new_driver_df["Z"] = new_driver_df["Z"] + offset_z
+        for driver, df in driver_dfs.items():
+            new_driver_df = df.copy()
+            new_driver_df["X"] = new_driver_df["X"] + offset_x
+            new_driver_df["Y"] = new_driver_df["Y"] + offset_y
+            new_driver_df["Z"] = new_driver_df["Z"] + offset_z
+            driver_dfs[driver] = new_driver_df
 
         new_track_data = TrackData(
             new_inner_points,
@@ -577,13 +595,16 @@ class StatusTrack:
             new_outer_curb_points,
         )
 
-        return new_track_data, new_driver_df
+        return new_track_data
 
-    def _add_indicator_dot(self, new_driver_df: DataFrame) -> bpy.types.Object:
-        indicator = add_flag(self.config, None, 150.0)
+    def _add_indicator_dot(
+        self, driver_name: str, driver_color: str, new_driver_df: DataFrame, idx: int
+    ) -> bpy.types.Object:
+        # indicator = add_flag(self.config, None, 150.0)
         is_flag = True
+        indicator = None
         if indicator is None:
-            indicator = self._create_indicator_dot()
+            indicator = self._create_indicator_dot(driver_name, driver_color, idx)
             is_flag = False
 
         x_vals = new_driver_df["X"].astype(float)
@@ -599,38 +620,46 @@ class StatusTrack:
 
         return indicator
 
-    def _create_indicator_dot(self) -> bpy.types.Object:
-        bpy.ops.mesh.primitive_uv_sphere_add(radius=45, segments=64, ring_count=64)  # pyright: ignore
-        dot = bpy.context.active_object
-        if not dot:
-            raise ValueError("Failed to create indicator dot")
-
-        # Create material with emission
-        dot_mat = bpy.data.materials.new(name="IndicatorDot")
-
-        dot_mat.use_nodes = True
-        node_tree = dot_mat.node_tree
-        if not isinstance(node_tree, bpy.types.NodeTree):
-            raise ValueError("Failed to get node tree")
-
-        nodes = node_tree.nodes
-        nodes.clear()  # pyright: ignore
-
-        # Create emission node
-        node_emission = nodes.new("ShaderNodeEmission")
-        node_output = nodes.new("ShaderNodeOutputMaterial")
-
-        # Set emission color and strength
-        node_emission.inputs["Color"].default_value = (  # pyright: ignore
-            *hex_to_blender_rgb("#00FFFF"),
-            1,
+    def _create_indicator_dot(
+        self, driver_name: str, hex_color: str, idx: int
+    ) -> bpy.types.Object:
+        # Create a circle (disk) instead of a sphere using circle primitive
+        bpy.ops.mesh.primitive_circle_add(
+            vertices=32,  # Number of vertices for the circle
+            radius=30,  # Radius of the circle
+            fill_type="TRIFAN",  # Fill the circle to create a disk
         )
-        node_emission.inputs["Strength"].default_value = 2.0  # pyright: ignore
-
-        # Link nodes
-        links = node_tree.links
-        links.new(node_emission.outputs[0], node_output.inputs[0])
-
+        dot = bpy.context.active_object
+        if dot is None:
+            raise ValueError("Failed to create indicator dot")
+        dot.name = f"IndicatorDot{driver_name}"
+        dot_mat = create_material(
+            hex_to_blender_rgb(hex_color), f"IndicatorDotMat{driver_name}", 0.1
+        )
         dot.data.materials.append(dot_mat)  # pyright: ignore
 
-        return dot
+        bpy.ops.mesh.primitive_circle_add(
+            vertices=32,
+            radius=35,  # Slightly larger for border
+            fill_type="NGON",  # No fill, just the edge
+        )
+        border = bpy.context.active_object
+        if border is None:
+            raise ValueError("Failed to create indicator border")
+        border_mat = create_material((1, 1, 1), f"IndicatorBorderMat{driver_name}", 0.1)
+        border.data.materials.append(border_mat)  # pyright: ignore
+
+        # Create a parent empty to help with positioning
+        parent_empty = bpy.data.objects.new(f"{driver_name}DotParent", None)
+        bpy.context.scene.collection.objects.link(parent_empty)
+        parent_empty.empty_display_type = "PLAIN_AXES"
+        parent_empty.hide_viewport = True
+        parent_empty.hide_render = True
+
+        # Set dot initial position with slight z elevation based on index
+        dot.location = (0, 0, 1 * (idx + 1) + 1.0)
+        border.location = (0, 0, 1 * (idx + 1) + 0.5)
+
+        border.parent = parent_empty
+        dot.parent = parent_empty
+        return parent_empty

@@ -1,7 +1,6 @@
 """Create all drivers and return a dictionary mapping driver abbreviations to their objects given the driver data."""
 
 import os
-from pickle import TRUE
 import time
 from typing import Optional
 
@@ -19,8 +18,8 @@ from py.utils.project_structure import F1_CAR_BLEND_PATH, RESOURCES_DIR, Resourc
 
 def scale_and_position_car(empty_obj: bpy.types.Object):
     # Calculate the bounds of all objects together
-    min_x = min_y = min_z = float('inf')
-    max_x = max_y = max_z = float('-inf')
+    min_x = min_y = min_z = float("inf")
+    max_x = max_y = max_z = float("-inf")
 
     for obj in empty_obj.children:
         # Calculate object bounds in world space
@@ -44,9 +43,18 @@ def scale_and_position_car(empty_obj: bpy.types.Object):
 
     for child in empty_obj.children:
         cur_scale = child.scale
-        child.scale = (cur_scale[0] * scale_factor, cur_scale[1] * scale_factor, cur_scale[2] * scale_factor)
+        child.scale = (
+            cur_scale[0] * scale_factor,
+            cur_scale[1] * scale_factor,
+            cur_scale[2] * scale_factor,
+        )
         cur_loc = child.location
-        child.location = ((cur_loc[0] - center_x) * scale_factor, (cur_loc[1] - center_y) * scale_factor, (cur_loc[2] - center_z) * scale_factor)
+        child.location = (
+            (cur_loc[0] - center_x) * scale_factor,
+            (cur_loc[1] - center_y) * scale_factor,
+            (cur_loc[2] - center_z) * scale_factor,
+        )
+
 
 def create_team_base(team_id: str):
     """Create a base F1 car object that will be used as a template for this team.
@@ -80,8 +88,8 @@ def create_team_base(team_id: str):
             for material_slot in obj.material_slots:
                 if material_slot.material and material_slot.material.node_tree:
                     for node in material_slot.material.node_tree.nodes:
-                        if node.type == 'BSDF_PRINCIPLED':
-                            node.inputs['Metallic'].default_value = 0.3
+                        if node.type == "BSDF_PRINCIPLED":
+                            node.inputs["Metallic"].default_value = 0.8
 
     scale_and_position_car(empty_obj)
     return empty_obj
@@ -179,6 +187,116 @@ def add_driver_keyframes(driver_obj, df):
     for rot_eul, frame in driver_rot_keyframes:
         driver_obj.rotation_euler = rot_eul
         driver_obj.keyframe_insert(data_path="rotation_euler", frame=frame)
+
+
+def add_driver_trail(driver_obj, df, driver, trail_color, trail_length=60):
+    """Create a trailing effect behind a driver object using a series of connected small objects.
+
+    Args:
+        driver_obj: The driver's object
+        df: DataFrame with position data
+        driver: Driver information
+        trail_color: Hex color code for the trail
+        trail_length: Maximum length of trail in frames
+
+    Returns:
+        The parent object for the trail
+
+    """
+    # Create a parent empty for the trail
+    trail_parent = bpy.data.objects.new(f"{driver.last_name}TrailParent", None)
+    bpy.context.scene.collection.objects.link(trail_parent)
+
+    # Create material for trail
+    trail_mat = bpy.data.materials.new(name=f"{driver.last_name}TrailMaterial")
+    trail_mat.use_nodes = True
+    nodes = trail_mat.node_tree.nodes
+    links = trail_mat.node_tree.links
+
+    # Setup material nodes
+    bsdf = nodes.get("Principled BSDF")
+    if not bsdf:
+        nodes.clear()
+        bsdf = nodes.new(type="ShaderNodeBsdfPrincipled")
+        output = nodes.new(type="ShaderNodeOutputMaterial")
+        links.new(bsdf.outputs[0], output.inputs[0])
+
+    # Set trail color
+    rgb_color = hex_to_blender_rgb(trail_color)
+    bsdf.inputs["Base Color"].default_value = (*rgb_color, 1.0)
+    bsdf.inputs["Emission Color"].default_value = (*rgb_color, 1.0)
+    bsdf.inputs["Emission Strength"].default_value = 1.5
+    bsdf.inputs["Alpha"].default_value = 0.7
+    trail_mat.blend_method = "BLEND"
+
+    # Pre-fetch position data
+    x_values = df["X"].values
+    y_values = df["Y"].values
+
+    stride = 1
+    overlap = 2
+
+    # Create trail segments (move in steps to reduce the number of objects)
+    for i in range(0, len(df), stride):  # Overlap segments for smooth transitions
+        start_idx = (i - stride - overlap + 1) % len(df)
+        print(f"Start idx: {start_idx}")
+
+        # Create a curve for this segment
+        segment_name = f"{driver.last_name}Trail_Segment_{i}"
+        segment_data = bpy.data.curves.new(name=segment_name, type="CURVE")
+        segment_data.dimensions = "3D"
+        segment_data.resolution_u = 8
+        segment_data.bevel_depth = 0.08  # Thickness of trail
+        segment_obj = bpy.data.objects.new(segment_name, segment_data)
+        bpy.context.scene.collection.objects.link(segment_obj)
+
+        # Create a spline for the segment
+        spline = segment_data.splines.new("NURBS")
+        spline.points.add(stride + overlap)
+        end_idx = 0
+        for j in range(stride + overlap):
+            cur = (start_idx + j) % len(df)
+            end_idx = cur
+            spline.points[j].co = (x_values[cur], y_values[cur], 0.1, 1)
+
+        print(f"End idx: {end_idx}")
+
+        # Apply material to the segment
+        segment_obj.data.materials.append(trail_mat)
+
+        # Parent to the trail parent
+        segment_obj.parent = trail_parent
+
+        # Hide segment initially
+        segment_obj.hide_render = True
+        segment_obj.hide_viewport = True
+        segment_obj.keyframe_insert(data_path="hide_render", frame=1)
+        segment_obj.keyframe_insert(data_path="hide_viewport", frame=1)
+
+        segment_obj.hide_render = False
+        segment_obj.hide_viewport = False
+        segment_obj.keyframe_insert(data_path="hide_render", frame=i + 1)
+        segment_obj.keyframe_insert(data_path="hide_viewport", frame=i + 1)
+
+    # # Animate visibility of the segments
+    # for frame in range(1, total_frames + 1):
+    #     trail_start = max(0, frame - trail_length)
+
+    #     # Show/hide segments as needed
+    #     for segment_obj, start_idx, end_idx in trail_segments:
+    #         # The segment should be visible if it overlaps with the current trail window
+    #         visible = start_idx <= frame and end_idx >= trail_start
+
+    #         # Set and keyframe visibility
+    #         segment_obj.hide_render = not visible
+    #         segment_obj.hide_viewport = not visible
+    #         segment_obj.keyframe_insert(data_path="hide_render", frame=frame)
+    #         segment_obj.keyframe_insert(data_path="hide_viewport", frame=frame)
+
+    #         # Optional: Adjust opacity based on position in the trail
+    #         # This requires material to be unique per segment (make copies if needed)
+
+    return trail_parent
 
 
 def replace_color_in_image(blender_obj, hex_color, driver):
@@ -281,7 +399,7 @@ def main(
     drivers: list[Driver],
     driver_colors: list[str],
     quick_textures_mode: bool,
-    rest_of_field_focused_driver: Optional[Driver]
+    rest_of_field_focused_driver: Optional[Driver],
 ) -> dict[Driver, bpy.types.Object]:
     """Process all drivers and return a dictionary mapping driver abbreviations to their objects."""
     quick_textures_mode_max = 2
@@ -310,6 +428,7 @@ def main(
         if not quick_textures_mode:
             set_color(driver_obj, color, driver.abbrev)
         add_driver_keyframes(driver_obj, driver_dfs[driver])
+        # add_driver_trail(driver_obj, driver_dfs[driver], driver, color)
 
         driver_objs[driver] = driver_obj
 
