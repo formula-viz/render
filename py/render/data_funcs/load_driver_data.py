@@ -33,11 +33,12 @@ from fastf1.core import Laps, Session, Telemetry
 from fastf1.mvapi.data import CircuitInfo
 from fastf1.plotting import get_driver_color
 from pandas import Series
+from pandas.core.frame import DataFrame
 from scipy.interpolate import UnivariateSpline
 
 from py.utils.config import Config
 from py.utils.logger import log_info, log_warn
-from py.utils.models import AppState, Driver
+from py.utils.models import AppState, Driver, SectorsInfo, SectorTimes, TrackData
 from py.utils.project_structure import DriverDataPS
 
 # Uses the new API which has access to the 2025 data
@@ -91,7 +92,7 @@ def save_driver_times(driver_times: dict[Driver, str], year: str, track: str):
         json.dump(driver_times, file)
 
 
-def process_tel(q: Laps, driver: Driver) -> Optional[Telemetry]:
+def process_tel(q: Laps, driver: Driver) -> tuple[Telemetry, SectorTimes]:
     """Process telemetry data for a given driver.
 
     Args:
@@ -107,6 +108,10 @@ def process_tel(q: Laps, driver: Driver) -> Optional[Telemetry]:
         if fastest is None:
             log_warn(f"Couldn't find fastest lap for {driver}")
             return None
+
+        sector_times = SectorTimes(
+            fastest["Sector1Time"], fastest["Sector2Time"], fastest["Sector3Time"]
+        )
 
         tel: Telemetry = fastest.get_telemetry(frequency="original")
     except Exception as e:
@@ -132,7 +137,7 @@ def process_tel(q: Laps, driver: Driver) -> Optional[Telemetry]:
     if "." not in total_time:
         total_time += ".000"
 
-    return tel
+    return tel, sector_times
 
 
 def get_driver_classes(ff1_session: Session, year: int, session: str) -> list[Driver]:
@@ -165,8 +170,11 @@ def get_driver_classes(ff1_session: Session, year: int, session: str) -> list[Dr
     return driver_classes
 
 
-def populate_driver_tels(
-    driver_tels: dict[Driver, Telemetry], drivers: list[Driver], ff1_session: Session
+def process_driver_session_results(
+    driver_tels: dict[Driver, Telemetry],
+    driver_sector_times: dict[Driver, SectorTimes],
+    drivers: list[Driver],
+    ff1_session: Session,
 ):
     """Populate the driver_tels dictionary with telemetry data for the given drivers and session."""
     for driver in drivers:
@@ -178,20 +186,27 @@ def populate_driver_tels(
         q1, q2, q3 = laps.split_qualifying_sessions()
         # we want to get the fastest lap for the highest qualifying session which the driver reached
         if q3 is not None:
-            tel = process_tel(q3, driver)
+            tel, sector_times = process_tel(q3, driver)
             if tel is not None:
                 driver_tels[driver] = tel
+                driver_sector_times[driver] = sector_times
+
         elif q2 is not None:
-            tel = process_tel(q2, driver)
+            tel, sector_times = process_tel(q2, driver)
             if tel is not None:
                 driver_tels[driver] = tel
+                driver_sector_times[driver] = sector_times
+
         elif q1 is not None:
-            tel = process_tel(q1, driver)
+            tel, sector_times = process_tel(q1, driver)
             if tel is not None:
                 driver_tels[driver] = tel
+                driver_sector_times[driver] = sector_times
 
 
-def get_driver_tels(config: Config) -> tuple[dict[Driver, Telemetry], CircuitInfo]:
+def get_driver_tels(
+    config: Config,
+) -> tuple[dict[Driver, Telemetry], dict[Driver, SectorTimes], CircuitInfo]:
     """Return a dictionary of Driver objects and their telemetry data for the given session.
 
     Args:
@@ -202,6 +217,7 @@ def get_driver_tels(config: Config) -> tuple[dict[Driver, Telemetry], CircuitInf
 
     """
     driver_tels: dict[Driver, Telemetry] = {}
+    driver_sector_times: dict[Driver, SectorTimes] = {}
     circuit_info = None
 
     if config["mixed_mode"]["enabled"]:
@@ -219,7 +235,9 @@ def get_driver_tels(config: Config) -> tuple[dict[Driver, Telemetry], CircuitInf
                 drivers = get_driver_classes(ff1_session, year, session)
                 # load the driver images if they are not present already
                 load_driver_headshots(drivers)
-                populate_driver_tels(driver_tels, drivers, ff1_session)
+                process_driver_session_results(
+                    driver_tels, driver_sector_times, drivers, ff1_session
+                )
 
                 touched_ff1_sessions.add((year, session))
     else:
@@ -232,13 +250,15 @@ def get_driver_tels(config: Config) -> tuple[dict[Driver, Telemetry], CircuitInf
         drivers = get_driver_classes(ff1_session, config["year"], config["session"])
         # load the driver images if they are not present already
         load_driver_headshots(drivers)
-        populate_driver_tels(driver_tels, drivers, ff1_session)
+        process_driver_session_results(
+            driver_tels, driver_sector_times, drivers, ff1_session
+        )
 
     assert circuit_info is not None
-    print(
-        circuit_info.corners, circuit_info.marshal_lights, circuit_info.marshal_sectors
-    )
-    return driver_tels, circuit_info
+    if driver_sector_times:
+        first_driver = next(iter(driver_sector_times))
+        print("Driver tel:", driver_sector_times[first_driver])
+    return driver_tels, driver_sector_times, circuit_info
 
 
 def process_grouped_driver_tels(
@@ -410,11 +430,14 @@ def get_driver_df(tel: Telemetry, s_divisor: int, frames_per_second: int):
         sampled_speeds_m_per_s, 0, sampled_speeds_m_per_s[0]
     )
 
+    times = [x / frames_per_second for x in range(len(final_x))]
+
     return pd.DataFrame(
         {
             "X": final_x,
             "Y": final_y,
             "Z": np.zeros(len(final_x)),
+            "Time": times,
             "Speed": sampled_speeds_m_per_s,
         }
     )
@@ -773,10 +796,131 @@ def optimize_smoothness_concurrent(
     return driver_dfs
 
 
+def _get_sectors_info(
+    driver_dfs: dict[Driver, DataFrame],
+    driver_sector_times: dict[Driver, SectorTimes],
+    track_data: TrackData,
+) -> SectorsInfo:
+    # Initialize lists to collect sector location data
+    sector_positions = [[] for _ in range(3)]  # For sectors 1, 2, 3
+
+    # Process each driver's data to find sector locations
+    for driver, driver_df in driver_dfs.items():
+        sector_times = driver_sector_times[driver]
+
+        # Calculate cumulative sector times
+        sector_end_times = [
+            sector_times.sector1.total_seconds(),
+            sector_times.sector1.total_seconds() + sector_times.sector2.total_seconds(),
+            sector_times.sector1.total_seconds()
+            + sector_times.sector2.total_seconds()
+            + sector_times.sector3.total_seconds(),
+        ]
+
+        # Filter out null Time values
+        df_with_time = driver_df[driver_df["Time"].notna()]
+
+        if not df_with_time.empty:
+            # Find positions for each sector
+            for i, time in enumerate(sector_end_times):
+                idx = (df_with_time["Time"] - time).abs().idxmin()
+                sector_positions[i].append(
+                    (
+                        driver_df.loc[idx, "X"],
+                        driver_df.loc[idx, "Y"],
+                        driver_df.loc[idx, "Z"],
+                    )
+                )
+
+    # Calculate average positions for each sector
+    sector_locs = []
+    for positions in sector_positions:
+        if positions:
+            sector_locs.append(
+                tuple(sum(coord) / len(positions) for coord in zip(*positions))
+            )
+        else:
+            sector_locs.append((0, 0, 0))
+
+    sector_1_loc, sector_2_loc, sector_3_loc = sector_locs
+
+    # Find the indices of track points closest to each sector location
+    # Initialize closest indices and distances for all three sectors
+    closest_indices = [0, 0, 0]
+    min_dists = [float("inf"), float("inf"), float("inf")]
+
+    # Iterate through all track points once
+    for i, (inner_point, outer_point) in enumerate(
+        zip(track_data.inner_points, track_data.outer_points)
+    ):
+        # Calculate vector from inner to outer point (track width direction)
+        line_vec = (
+            outer_point[0] - inner_point[0],
+            outer_point[1] - inner_point[1],
+            outer_point[2] - inner_point[2],
+        )
+
+        # Calculate line length squared (for normalization)
+        line_length_sq = line_vec[0] ** 2 + line_vec[1] ** 2 + line_vec[2] ** 2
+
+        if line_length_sq == 0:
+            # Skip if inner and outer points are the same
+            continue
+
+        # Process all three sector locations in one loop iteration
+        for s_idx, sector_loc in enumerate([sector_1_loc, sector_2_loc, sector_3_loc]):
+            # Calculate vector from inner point to sector location
+            point_vec = (
+                sector_loc[0] - inner_point[0],
+                sector_loc[1] - inner_point[1],
+                sector_loc[2] - inner_point[2],
+            )
+
+            # Calculate dot product to find projection
+            dot_product = (
+                point_vec[0] * line_vec[0]
+                + point_vec[1] * line_vec[1]
+                + point_vec[2] * line_vec[2]
+            ) / line_length_sq
+
+            # Clamp to line segment
+            dot_product = max(0, min(1, dot_product))
+
+            # Calculate closest point on the line
+            closest_point = (
+                inner_point[0] + dot_product * line_vec[0],
+                inner_point[1] + dot_product * line_vec[1],
+                inner_point[2] + dot_product * line_vec[2],
+            )
+
+            # Calculate distance from sector location to closest point
+            dist = (
+                (sector_loc[0] - closest_point[0]) ** 2
+                + (sector_loc[1] - closest_point[1]) ** 2
+                + (sector_loc[2] - closest_point[2]) ** 2
+            ) ** 0.5
+
+            if dist < min_dists[s_idx]:
+                min_dists[s_idx] = dist
+                closest_indices[s_idx] = i
+
+    # Create and return SectorsInfo object with all the required fields
+    return SectorsInfo(
+        sector1_loc=sector_1_loc,
+        sector2_loc=sector_2_loc,
+        sector3_loc=sector_3_loc,
+        sector_1_idx=closest_indices[0],
+        sector_2_idx=closest_indices[1],
+        sector_3_idx=closest_indices[2],
+    )
+
+
 # in order to run this function, we need to already have the track data for this track and year
 # because this will be necessary to ensure that we have the correct smoothness so the movement
 # looks natural but also so that we are within track limits
-def main(state: AppState, config: Config) -> tuple[dict[Driver, pd.DataFrame], int]:
+def main(
+    state: AppState, config: Config
+) -> tuple[dict[Driver, pd.DataFrame], dict[Driver, SectorTimes], SectorsInfo, int]:
     """Load driver data, returning all dataframes, needed ones are filtered later."""
     # is_done, driver_dfs, start_finish_line_idx = already_done(
     #     str(config["year"]), config["track"], str(config["render"]["fps"])
@@ -788,7 +932,7 @@ def main(state: AppState, config: Config) -> tuple[dict[Driver, pd.DataFrame], i
 
     assert state.track_data is not None, "Track data must be loaded before driver data"
 
-    driver_tels, circuit_info = get_driver_tels(config)
+    driver_tels, driver_sector_times, circuit_info = get_driver_tels(config)
     state.circuit_info = circuit_info
     start_finish_line_idx = process_grouped_driver_tels(
         driver_tels,
@@ -808,13 +952,17 @@ def main(state: AppState, config: Config) -> tuple[dict[Driver, pd.DataFrame], i
         driver_df = add_wheel_rots(driver_df)
         driver_dfs[driver] = driver_df
 
-    save(
-        str(config["year"]),
-        config["track"],
-        str(config["render"]["fps"]),
-        driver_dfs,
-        start_finish_line_idx,
-    )
+    sectors_info = _get_sectors_info(driver_dfs, driver_sector_times, state.track_data)
+    print(f"Sectors Info: {sectors_info}")
+    print(f"Start finish line index: {start_finish_line_idx}")
+
+    # save(
+    #     str(config["year"]),
+    #     config["track"],
+    #     str(config["render"]["fps"]),
+    #     driver_dfs,
+    #     start_finish_line_idx,
+    # )
 
     log_info("Done processing car data")
-    return driver_dfs, start_finish_line_idx
+    return driver_dfs, driver_sector_times, sectors_info, start_finish_line_idx

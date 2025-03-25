@@ -13,10 +13,15 @@ from fastf1.mvapi.data import CircuitInfo
 from mathutils import Vector
 from pandas import DataFrame
 
-from py.render.add_funcs.add_start_finish_line import add_start_finish_line
 from py.render.add_funcs.add_track import create_material, create_planes
+from py.render.add_funcs.add_track_idx_line import add_track_idx_line
 from py.render.data_funcs.load_track_data import TrackData
-from py.utils.colors import hex_to_blender_rgb
+from py.utils.colors import (
+    SECTOR_1_COLOR,
+    SECTOR_2_COLOR,
+    SECTOR_3_COLOR,
+    hex_to_blender_rgb,
+)
 from py.utils.config import Config
 from py.utils.logger import log_info
 from py.utils.models import AppState, Driver
@@ -254,7 +259,7 @@ class StatusTrack:
             a_points[i] = (a_points[i][0], a_points[i][1], 1)
             b_points[i] = (b_points[i][0], b_points[i][1], 1)
 
-        status_start_finish_line = add_start_finish_line(
+        status_start_finish_line = add_track_idx_line(
             a_points,
             b_points,
             self.state.start_finish_line_idx,
@@ -304,6 +309,87 @@ class StatusTrack:
         bpy.ops.object.mode_set(mode="OBJECT")
         return status_start_finish_line
 
+    def _create_sector_indicators(self, inner_points_copy, outer_points_copy):
+        sector_1_inners: list[tuple[float, float, float]] = []
+        sector_1_outers: list[tuple[float, float, float]] = []
+
+        sector_2_inners: list[tuple[float, float, float]] = []
+        sector_2_outers: list[tuple[float, float, float]] = []
+
+        sector_3_inners: list[tuple[float, float, float]] = []
+        sector_3_outers: list[tuple[float, float, float]] = []
+
+        assert self.state.sectors_info is not None, (
+            "Sectors info must be assigned before creating status track."
+        )
+
+        cur_track_idx = self.state.start_finish_line_idx
+        cur_sec = "section-1"
+        for i in range(cur_track_idx, cur_track_idx + len(inner_points_copy)):
+            cur_track_idx = i % len(inner_points_copy)
+            inner_point = inner_points_copy[cur_track_idx]
+            outer_point = outer_points_copy[cur_track_idx]
+
+            if cur_track_idx == self.state.sectors_info.sector_1_idx:
+                sector_1_inners.append(inner_point)
+                sector_1_outers.append(outer_point)
+                cur_sec = "section-2"
+            elif cur_track_idx == self.state.sectors_info.sector_2_idx:
+                sector_2_inners.append(inner_point)
+                sector_2_outers.append(outer_point)
+                cur_sec = "section-3"
+
+            if cur_sec == "section-1":
+                sector_1_inners.append(inner_point)
+                sector_1_outers.append(outer_point)
+            elif cur_sec == "section-2":
+                sector_2_inners.append(inner_point)
+                sector_2_outers.append(outer_point)
+            else:
+                sector_3_inners.append(inner_point)
+                sector_3_outers.append(outer_point)
+        # append to sector 3 to close the loop so theres no gap
+        sector_3_inners.append(inner_points_copy[self.state.start_finish_line_idx])
+        sector_3_outers.append(outer_points_copy[self.state.start_finish_line_idx])
+
+        # Create a parent empty for sector indicators
+        sectors_parent = bpy.data.objects.new("SectorIndicatorsParent", None)
+        bpy.context.scene.collection.objects.link(sectors_parent)  # pyright: ignore
+        sectors_parent.hide_viewport = True
+        sectors_parent.hide_render = True
+
+        # Create sector planes and parent them
+        sector1_obj = create_planes(
+            sector_1_inners,
+            sector_1_outers,
+            "Sector1",
+            create_material(
+                hex_to_blender_rgb(SECTOR_1_COLOR), "Sector1StatusMat", 0.1
+            ),
+        )
+        sector2_obj = create_planes(
+            sector_2_inners,
+            sector_2_outers,
+            "Sector2",
+            create_material(
+                hex_to_blender_rgb(SECTOR_2_COLOR), "Sector2StatusMat", 0.1
+            ),
+        )
+        sector3_obj = create_planes(
+            sector_3_inners,
+            sector_3_outers,
+            "Sector3",
+            create_material(
+                hex_to_blender_rgb(SECTOR_3_COLOR), "Sector3StatusMat", 0.1
+            ),
+        )
+
+        sector1_obj.parent = sectors_parent
+        sector2_obj.parent = sectors_parent
+        sector3_obj.parent = sectors_parent
+
+        return sectors_parent
+
     def _setup(self) -> Tuple[float, float]:
         driver_dfs_copy: dict[Driver, DataFrame] = {}
         if self.config["type"] == "rest-of-field":
@@ -351,7 +437,7 @@ class StatusTrack:
         inner_spread_a, inner_spread_b = self._get_spread(inner_points_copy, spread_val)
         outer_spread_a, outer_spread_b = self._get_spread(outer_points_copy, spread_val)
 
-        track_mat = create_material(hex_to_blender_rgb("#FFFFFF"), "Status", 1.0)
+        track_mat = create_material(hex_to_blender_rgb("#000000"), "Status", 1.0)
         inner_spread_obj = create_planes(
             inner_spread_a,
             inner_spread_b,
@@ -365,6 +451,11 @@ class StatusTrack:
             "OuterStatusSpread",
             track_mat,
         )
+
+        sectors_indicator_obj = self._create_sector_indicators(
+            inner_points_copy, outer_points_copy
+        )
+        sectors_indicator_obj.location = (0, 0, -0.0001)
 
         # given outer_spread_a, outer_spread_b, and inner, we want to find the sets which are furthest
         # so either, outer_spread_a and inner a or b
@@ -395,13 +486,13 @@ class StatusTrack:
             cur_bs = inner_spread_b
 
         status_start_finish_line = self._add_start_finish_line(cur_as, cur_bs)
-
         background_obj = self._add_background(inner_points_copy, outer_points_copy)
 
         self._scale(optimal_scale, inner_spread_obj)
         self._scale(optimal_scale, outer_spread_obj)
         self._scale(optimal_scale, status_start_finish_line)
         self._scale(optimal_scale, background_obj)
+        self._scale(optimal_scale, sectors_indicator_obj)
 
         if self.config["type"] == "rest-of-field":
             driver, color = (
@@ -428,6 +519,7 @@ class StatusTrack:
         inner_spread_obj.parent = self.parent_empty
         outer_spread_obj.parent = self.parent_empty
         background_obj.parent = self.parent_empty
+        sectors_indicator_obj.parent = self.parent_empty
 
         return scaled_track_width, scaled_track_height
 
@@ -692,7 +784,7 @@ class StatusTrack:
 
         # Create a parent empty to help with positioning
         parent_empty = bpy.data.objects.new(f"{driver_name}DotParent", None)
-        bpy.context.scene.collection.objects.link(parent_empty)
+        bpy.context.scene.collection.objects.link(parent_empty)  # pyright: ignore
         parent_empty.empty_display_type = "PLAIN_AXES"
         parent_empty.hide_viewport = True
         parent_empty.hide_render = True

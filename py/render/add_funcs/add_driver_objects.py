@@ -34,7 +34,7 @@ def scale_and_position_car(empty_obj: bpy.types.Object):
 
     # Calculate center of bounds, but keep bottom at z=0
     center_x = (min_x + max_x) / 2
-    center_y = (min_y + max_y) / 2
+    center_y = max_y  # Place back of the car at y=0 for finish start line sync
     center_z = min_z  # Set z-offset to min_z to place bottom at z=0
 
     # Calculate current width and scaling factor

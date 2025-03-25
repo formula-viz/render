@@ -16,10 +16,10 @@ from py.render.add_funcs import (
     add_live_leaderboard_new,
     add_outro,
     add_race_timer,
-    add_start_finish_line,
     add_status_track,
     add_sun,
     add_track,
+    add_track_idx_line,
 )
 from py.render.add_funcs.add_camera_plane import add_camera_plane
 from py.render.data_funcs import (
@@ -28,7 +28,12 @@ from py.render.data_funcs import (
 )
 from py.render.data_funcs.load_driver_data import Driver
 from py.render.thumbnail.create_thumbnail import ThumbnailGenerator
-from py.utils.colors import get_head_to_head_colors, get_rest_of_field_colors
+from py.utils.colors import (
+    SECTOR_2_COLOR,
+    SECTOR_3_COLOR,
+    get_head_to_head_colors,
+    get_rest_of_field_colors,
+)
 from py.utils.config import Config
 from py.utils.logger import log_info
 from py.utils.models import AppState
@@ -126,11 +131,31 @@ class AbstractRenderer(ABC):
         assert self.state.track_data is not None, (
             "Must load track data before adding indicators"
         )
-        add_start_finish_line.main(
+        add_track_idx_line.main(
             self.state.track_data.inner_curb_points,
             self.state.track_data.outer_curb_points,
             self.state.start_finish_line_idx,
             "StartFinishLine",
+        )
+
+        assert self.state.sectors_info is not None, (
+            "Must load sectors info before adding indicators"
+        )
+        add_track_idx_line.add_track_idx_line(
+            self.state.track_data.inner_points,
+            self.state.track_data.outer_points,
+            self.state.sectors_info.sector_1_idx,
+            "Sector1LineEnd",
+            1,
+            SECTOR_2_COLOR,
+        )
+        add_track_idx_line.add_track_idx_line(
+            self.state.track_data.inner_points,
+            self.state.track_data.outer_points,
+            self.state.sectors_info.sector_2_idx,
+            "Sector2LineEnd",
+            1,
+            SECTOR_3_COLOR,
         )
 
     def render(self):
@@ -174,9 +199,12 @@ class HeadToHeadRenderer(AbstractRenderer):
     def load_driver_data(self):
         """Load and set up driver data for head-to-head comparison."""
         assert self.state.track_data is not None, "Track data is not loaded"
-        self.state.driver_dfs, self.state.start_finish_line_idx = load_driver_data.main(
-            self.state, self.config
-        )
+        (
+            self.state.driver_dfs,
+            self.state.driver_sector_times,
+            self.state.sectors_info,
+            self.state.start_finish_line_idx,
+        ) = load_driver_data.main(self.state, self.config)
 
         self.state.drivers_in_order = []
         new_driver_dfs: dict[Driver, pd.DataFrame] = {}
@@ -301,9 +329,12 @@ class RestOfFieldRenderer(AbstractRenderer):
         Decoupled from add_drivers for the sake of generating necessary data needed for thumbnail gen beforehand.
         """
         assert self.state.track_data is not None, "Track data is not loaded"
-        self.state.driver_dfs, self.state.start_finish_line_idx = load_driver_data.main(
-            self.state, self.config
-        )
+        (
+            self.state.driver_dfs,
+            self.state.driver_sector_times,
+            self.state.sectors_info,
+            self.state.start_finish_line_idx,
+        ) = load_driver_data.main(self.state, self.config)
 
         assert self.config["mixed_mode"]["enabled"] is False, (
             "Mixed mode does not support Rest of Field Renderer"

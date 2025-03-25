@@ -4,15 +4,16 @@ import bmesh
 import bpy
 
 from py.render.add_funcs.add_track import create_material
-from py.utils.colors import StartFinishLineColor
+from py.utils.colors import CURB_COLOR, hex_to_blender_rgb
 
 
-def add_start_finish_line(
+def add_track_idx_line(
     inner_points: list[tuple[float, float, float]],
     outer_points: list[tuple[float, float, float]],
     start_finish_line_idx: int,
     name: str,
     line_width: int = 3,
+    color: str = CURB_COLOR,
 ) -> bpy.types.Object:
     """Create a start/finish line between inner and outer track points.
 
@@ -64,9 +65,7 @@ def add_start_finish_line(
     bm.free()  # pyright: ignore
     mesh.update()  # pyright: ignore
 
-    mat = create_material(
-        StartFinishLineColor.get_scene_rgb(), "StartFinishLineMaterial"
-    )
+    mat = create_material(hex_to_blender_rgb(color), "StartFinishLineMaterial")
 
     obj.data.materials.append(mat)  # pyright: ignore
     return obj
@@ -76,7 +75,7 @@ def add_start_finish_line(
 def main(
     inner_curb_points: list[tuple[float, float, float]],
     outer_curb_points: list[tuple[float, float, float]],
-    start_finish_line_idx: int,
+    track_idx_line: int,
     name: str,
 ):
     """Add start/finish line."""
@@ -86,6 +85,6 @@ def main(
         bpy.context.view_layer.layer_collection.children[-1]  # pyright: ignore
     )
 
-    return add_start_finish_line(
-        inner_curb_points, outer_curb_points, start_finish_line_idx, name
+    return add_track_idx_line(
+        inner_curb_points, outer_curb_points, track_idx_line, name
     )

@@ -17,6 +17,10 @@ CURB_COLOR = "#1F1F1F"
 SCENE_BG_COLOR = "#171717"
 ALTERNATE_CURB_COLOR = "#202020"
 
+SECTOR_1_COLOR = "#F13B23"
+SECTOR_2_COLOR = "#1783DE"
+SECTOR_3_COLOR = "#FAD300"
+
 
 def hex_to_blender_rgb(hex_color: str) -> tuple[float, float, float]:
     # Convert a hex color to a Blender RGB tuple.
@@ -120,12 +124,6 @@ class MainTrackColor:
     @staticmethod
     def get_scene_rgb() -> tuple[float, float, float]:
         return blender_rgb_to_linear(hex_to_blender_rgb(MAIN_TRACK_COLOR))
-
-
-class StartFinishLineColor:
-    @staticmethod
-    def get_scene_rgb() -> tuple[float, float, float]:
-        return blender_rgb_to_linear(hex_to_blender_rgb(CURB_COLOR))
 
 
 class BackgroundColor:

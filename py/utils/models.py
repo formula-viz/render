@@ -4,6 +4,29 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from fastf1.mvapi.data import CircuitInfo
+from pandas import Timedelta
+
+
+@dataclass
+class SectorTimes:
+    """Sector times for a driver."""
+
+    sector1: Timedelta
+    sector2: Timedelta
+    sector3: Timedelta
+
+
+@dataclass
+class SectorsInfo:
+    """Sector information for a driver."""
+
+    sector1_loc: tuple[float, float, float]
+    sector2_loc: tuple[float, float, float]
+    sector3_loc: tuple[float, float, float]
+
+    sector_1_idx: int
+    sector_2_idx: int
+    sector_3_idx: int
 
 
 @dataclass
@@ -76,6 +99,9 @@ class AppState:
     # Common state variables for all renderers
     track_data: Optional[TrackData] = None
     driver_dfs: dict[Driver, Any] = field(default_factory=dict)
+    driver_sector_times: dict[Driver, SectorTimes] = field(default_factory=dict)
+    sectors_info: Optional[SectorsInfo] = None
+
     driver_objs: dict[Driver, Any] = field(default_factory=dict)
     drivers_in_order: list[Driver] = field(default_factory=list)
     driver_colors: list[str] = field(default_factory=list)

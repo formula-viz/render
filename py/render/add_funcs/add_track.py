@@ -144,19 +144,26 @@ def create_boxes(
     return obj
 
 
+def create_sector_indicators(
+    inner_points: list[tuple[float, float, float]],
+    outer_points: list[tuple[float, float, float]],
+):
+    pass
+
+
 def create_planes(
     inner_points: list[tuple[float, float, float]],
     outer_points: list[tuple[float, float, float]],
     name: str,
     material: Optional[bpy.types.Material] = None,
     alternate_material: Optional[bpy.types.Material] = None,
-    is_curb: bool = False,
+    is_curb: bool = True,
 ):
     """Create a mesh plane between two sets of points.
 
     Args:
-        inner_points: List of 3D coordinates representing the inner edge
-        outer_points: List of 3D coordinates representing the outer edge
+        inner_points: List of 4D coordinates representing the inner edge
+        outer_points: List of 4D coordinates representing the outer edge
         name: Base name for the created object
         material: Blender material to apply to the mesh (optional)
 
@@ -175,17 +182,17 @@ def create_planes(
 
     bm.verts.ensure_lookup_table()  # pyright: ignore
 
-    for i in range(len(inner_points) - 1):
+    for i in range(len(inner_points) - 2):
         bm.faces.new(
-            [inner_verts[i], inner_verts[i + 1], outer_verts[i + 1], outer_verts[i]]
+            [inner_verts[i], inner_verts[i + 2], outer_verts[i + 1], outer_verts[i]]
         )
-    # if len(inner_points) > 2:
-    #     bm.faces.new([inner_verts[-1], inner_verts[0], outer_verts[0], outer_verts[-1]])
+    # if len(inner_points) > 3:
+    #     bm.faces.new([inner_verts[0], inner_verts[0], outer_verts[0], outer_verts[-1]])
 
     bm.to_mesh(mesh)  # pyright: ignore
     bm.free()  # pyright: ignore
 
-    pattern_size = 4
+    pattern_size = 5
     if material:
         obj.data.materials.append(material)  # pyright: ignore
 
@@ -196,8 +203,8 @@ def create_planes(
             # Assign material indices to faces
             for i, poly in enumerate(obj.data.polygons):  # pyright: ignore
                 # Integer division to determine which material to use
-                # e.g., with pattern_size=3: 0,1,2 get mat1, 3,4,5 get mat2, etc.
-                material_index = (i // pattern_size) % 2
+                # e.g., with pattern_size=4: 0,1,2 get mat1, 3,4,5 get mat2, etc.
+                material_index = (i // pattern_size) % 3
                 poly.material_index = material_index
 
     return obj
