@@ -126,9 +126,7 @@ def add_keyframes(
         cam_z = cam_zs.iloc[i]
         camera_point = (cam_x, cam_y, cam_z)
 
-        if (
-            start_buffer_frames <= frame or config["render"]["is_shorts_output"]
-        ) and frame <= len(cam_df) - end_buffer_frames:
+        if frame <= len(cam_df) - end_buffer_frames:
             # for shorts mode, we don't want to point at the start line at the beginning,
             # shorts viewers may want to see the cars from the start to have a good indication of the
             # content of the video

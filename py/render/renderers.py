@@ -180,7 +180,7 @@ class AbstractRenderer(ABC):
             # run setup_world again to reset the world
             self.setup_world()
             add_background_grid.main()
-            add_track.main(self.state.track_data)
+            add_track.main(self.state)
             self.add_drivers()
             self.add_indicators()
             self.add_camera()

@@ -429,7 +429,7 @@ def create_white_lines(
         normalized_vec = (vec[0] / vec_length, vec[1] / vec_length, vec[2] / vec_length)
 
         trace_point_dist = 0.2
-        fill_point_dist = 0.5
+        fill_point_dist = 0.4
 
         trace_point = (
             point1[0] + normalized_vec[0] * trace_point_dist,

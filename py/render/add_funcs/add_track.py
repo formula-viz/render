@@ -1,17 +1,20 @@
 """Generate track surfaces and curbs with appropriate materials."""
 
+import math
 from typing import Optional
 
 import bmesh
 import bpy
 
-from py.render.data_funcs.load_track_data import TrackData
-from py.utils.colors import AlternateCurbColor, CurbColor, MainTrackColor
+from py.utils.colors import MainTrackColor
+from py.utils.materials import create_magic_material
+from py.utils.models import AppState, SectorsInfo
 
 
 def create_boxes(
     inner_points: list[tuple[float, float, float]],
     outer_points: list[tuple[float, float, float]],
+    sectors_info: SectorsInfo,
     name: str,
     height: float = 0.1,
     material: Optional[bpy.types.Material] = None,
@@ -144,11 +147,146 @@ def create_boxes(
     return obj
 
 
-def create_sector_indicators(
+def create_planes_curb(
     inner_points: list[tuple[float, float, float]],
     outer_points: list[tuple[float, float, float]],
+    name: str,
+    default_material: bpy.types.Material,
+    curbstone_a_mat: bpy.types.Material,
+    curbstone_b_mat: bpy.types.Material,
+    curve_threshold: float = 0.07,
 ):
-    pass
+    """Create a mesh plane with curb patterns only on curved sections.
+
+    Args:
+        inner_points: List of 3D coordinates representing the inner edge
+        outer_points: List of 3D coordinates representing the outer edge
+        name: Base name for the created object
+        material: Blender material for the main curb surface
+        alternate_material: Blender material for the curb pattern
+        curve_threshold: Minimum angle (in radians) to consider a section as curved
+
+    Returns:
+        The created Blender object
+
+    """
+    mesh = bpy.data.meshes.new(name + "CurbMesh")
+    obj = bpy.data.objects.new(name + "Curb", mesh)
+    bpy.context.collection.objects.link(obj)  # pyright: ignore
+
+    bm = bmesh.new()
+
+    # Create all vertices for inner and outer edges
+    inner_verts = [bm.verts.new(coord) for coord in inner_points]
+    outer_verts = [bm.verts.new(coord) for coord in outer_points]
+
+    bm.verts.ensure_lookup_table()  # pyright: ignore
+
+    # List to track which segments are curved
+    is_curved_segment = []
+
+    # Create faces and determine if each segment is curved
+    faces = []
+    for i in range(len(inner_points) - 1):
+        # Create the face
+        face = bm.faces.new(
+            [inner_verts[i], inner_verts[i + 1], outer_verts[i + 1], outer_verts[i]]
+        )
+        faces.append(face)
+
+        # Determine if this segment is part of a curve
+        # Calculate angle between consecutive segments
+        is_curved = False
+
+        if i > 0 and i < len(inner_points) - 3:
+            # Use wider spacing for better curve detection
+            skip_distance = 20
+            prev_idx = max(0, i - skip_distance)
+            next_idx = min(len(inner_points) - 1, i + skip_distance)
+
+            prev_point = inner_points[prev_idx]
+            cur_point = inner_points[i]
+            next_point = inner_points[next_idx]
+
+            # Get vectors between these more distant points
+            prev_vec = (
+                cur_point[0] - prev_point[0],
+                cur_point[1] - prev_point[1],
+            )
+            curr_vec = (
+                next_point[0] - cur_point[0],
+                next_point[1] - cur_point[1],
+            )
+
+            # Calculate angle using dot product
+            dot_product = prev_vec[0] * curr_vec[0] + prev_vec[1] * curr_vec[1]
+            prev_len = (prev_vec[0] ** 2 + prev_vec[1] ** 2) ** 0.5
+            curr_len = (curr_vec[0] ** 2 + curr_vec[1] ** 2) ** 0.5
+
+            if prev_len > 0 and curr_len > 0:
+                cos_angle = dot_product / (prev_len * curr_len)
+                # Clamp to avoid numerical errors
+                cos_angle = max(min(cos_angle, 1.0), -1.0)
+                angle = abs(math.acos(cos_angle))
+
+                # If angle is greater than threshold, it's a curve
+                is_curved = angle > curve_threshold
+        is_curved_segment.append(is_curved)
+
+    # Apply the mesh to the object
+    bm.to_mesh(mesh)  # pyright: ignore
+    bm.free()  # pyright: ignore
+
+    # Add materials
+    obj.data.materials.append(default_material)  # pyright: ignore
+    obj.data.materials.append(curbstone_a_mat)  # pyright: ignore
+    obj.data.materials.append(curbstone_b_mat)  # pyright: ignore
+
+    # Variables to track the state of curb pattern
+    in_curve = False
+    current_material = 1  # Start with curbstone_a_mat (index 1)
+    accumulated_area = 0.0
+    target_area = 4.0  # 4 square meters per pattern segment
+
+    # Assign material indices to faces
+    for i, poly in enumerate(obj.data.polygons):  # pyright: ignore
+        # Calculate face area (approximate)
+        face_area = poly.area
+
+        # If we're entering a curve
+        if is_curved_segment[i] and not in_curve:
+            in_curve = True
+            accumulated_area = 0.0
+            current_material = 1  # Start with curbstone_a_mat
+
+        # If we're in a curve or completing a pattern segment
+        if in_curve:
+            # Assign current material
+            poly.material_index = current_material
+
+            # Add face area to accumulated area
+            accumulated_area += face_area
+
+            # Check if we've completed a pattern segment
+            if accumulated_area >= target_area:
+                # Switch materials
+                current_material = 3 - current_material  # Toggle between 1 and 2
+                accumulated_area = 0.0  # Reset accumulated area
+
+                # If we've left the curve, check if any of the next 10 elements are curved
+                if not is_curved_segment[i]:
+                    # Look ahead to see if we should stay in curve mode
+                    stay_in_curve = False
+                    for j in range(1, 21):  # Check next 20 segments
+                        look_ahead_idx = (i + j) % len(is_curved_segment)
+                        if is_curved_segment[look_ahead_idx]:
+                            stay_in_curve = True
+                            break
+                    in_curve = stay_in_curve
+        else:
+            # Not in curve, use default material
+            poly.material_index = 0
+    return obj
 
 
 def create_planes(
@@ -182,12 +320,10 @@ def create_planes(
 
     bm.verts.ensure_lookup_table()  # pyright: ignore
 
-    for i in range(len(inner_points) - 2):
+    for i in range(len(inner_points) - 1):
         bm.faces.new(
-            [inner_verts[i], inner_verts[i + 2], outer_verts[i + 1], outer_verts[i]]
+            [inner_verts[i], inner_verts[i + 1], outer_verts[i + 1], outer_verts[i]]
         )
-    # if len(inner_points) > 3:
-    #     bm.faces.new([inner_verts[0], inner_verts[0], outer_verts[0], outer_verts[-1]])
 
     bm.to_mesh(mesh)  # pyright: ignore
     bm.free()  # pyright: ignore
@@ -234,15 +370,11 @@ def create_material(
     return mat
 
 
-def main(track_data: TrackData) -> None:
+def main(state: AppState) -> None:
     """Create the complete track with main surfaces and curbs.
 
     Args:
-        track_data: Object containing track point data with the following properties:
-                   - inner_points: List of 3D coordinates for inner track edge
-                   - outer_points: List of 3D coordinates for outer track edge
-                   - inner_curb_points: List of 3D coordinates for inner curb edge
-                   - outer_curb_points: List of 3D coordinates for outer curb edge
+        state: The application state containing track data.
 
     """
     track_collection = bpy.data.collections.new(name="TrackCollection")
@@ -252,42 +384,50 @@ def main(track_data: TrackData) -> None:
     )
 
     track_mat = create_material(MainTrackColor.get_scene_rgb(), "Main", 0.5)
-    curb_mat = create_material(CurbColor.get_scene_rgb(), "Curb")
-    line_mat = create_material((0.6, 0.6, 0.6), "Line", 3.0)
-    alternate_curb_mat = create_material(
-        AlternateCurbColor.get_scene_rgb(), "AlternateCurb"
+    curb_mat = create_material((0, 0, 0), "Curb")
+    curbstone_a_mat = create_magic_material((1, 1, 1), "CurbstoneA")
+    # curbstone_a_mat = create_material((1, 1, 1), "CurbstoneA")
+    curbstone_b_mat = create_material((0.128, 0, 0), "CurbstoneB")
+
+    line_mat = create_material((0.5, 0.5, 0.5), "Line", 0.1)
+
+    assert state.track_data is not None
+    create_planes(
+        state.track_data.inner_points, state.track_data.outer_points, "Main", track_mat
     )
 
-    create_planes(track_data.inner_points, track_data.outer_points, "Main", track_mat)
-    create_planes(
-        track_data.outer_points,
-        track_data.outer_curb_points,
+    create_planes_curb(
+        state.track_data.outer_points,
+        state.track_data.outer_curb_points,
         "CurbOuter",
         curb_mat,
-        alternate_curb_mat,
-        True,
+        curbstone_a_mat,
+        curbstone_b_mat,
     )
-    create_planes(
-        track_data.inner_points,
-        track_data.inner_curb_points,
+    create_planes_curb(
+        state.track_data.inner_points,
+        state.track_data.inner_curb_points,
         "CurbInner",
         curb_mat,
-        alternate_curb_mat,
-        True,
+        curbstone_a_mat,
+        curbstone_b_mat,
     )
 
-    if track_data.inner_trace_line and track_data.outer_trace_line:
+    assert state.sectors_info is not None
+    if state.track_data.inner_trace_line and state.track_data.outer_trace_line:
         create_boxes(
-            track_data.inner_trace_line.a_points,
-            track_data.inner_trace_line.b_points,
+            state.track_data.inner_trace_line.a_points,
+            state.track_data.inner_trace_line.b_points,
+            state.sectors_info,
             "InnerLine",
-            0.025,
+            0.005,
             line_mat,
         )
         create_boxes(
-            track_data.outer_trace_line.a_points,
-            track_data.outer_trace_line.b_points,
+            state.track_data.outer_trace_line.a_points,
+            state.track_data.outer_trace_line.b_points,
+            state.sectors_info,
             "OuterLine",
-            0.025,
+            0.005,
             line_mat,
         )

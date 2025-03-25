@@ -4,7 +4,7 @@ import bmesh
 import bpy
 
 from py.render.add_funcs.add_track import create_material
-from py.utils.colors import CURB_COLOR, hex_to_blender_rgb
+from py.utils.colors import hex_to_blender_rgb
 
 
 def add_track_idx_line(
@@ -13,7 +13,7 @@ def add_track_idx_line(
     start_finish_line_idx: int,
     name: str,
     line_width: int = 3,
-    color: str = CURB_COLOR,
+    color: str = "#000000",
 ) -> bpy.types.Object:
     """Create a start/finish line between inner and outer track points.
 
