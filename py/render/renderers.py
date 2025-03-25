@@ -1,8 +1,6 @@
 """Handles the invocation of the various render functions based on the simulation and render types."""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any, Optional
 
 import bpy
 import pandas as pd
@@ -29,30 +27,11 @@ from py.render.data_funcs import (
     load_track_data,
 )
 from py.render.data_funcs.load_driver_data import Driver
-from py.render.data_funcs.load_track_data import TrackData
 from py.render.thumbnail.create_thumbnail import ThumbnailGenerator
 from py.utils.colors import get_head_to_head_colors, get_rest_of_field_colors
 from py.utils.config import Config
 from py.utils.logger import log_info
-
-
-@dataclass
-class RendererState:
-    """Holds all state variables used during rendering to make data flow explicit."""
-
-    # Common state variables for all renderers
-    track_data: Optional[TrackData] = None
-    driver_dfs: dict[Driver, Any] = field(default_factory=dict)
-    driver_objs: dict[Driver, Any] = field(default_factory=dict)
-    drivers_in_order: list[Driver] = field(default_factory=list)
-    driver_colors: list[str] = field(default_factory=list)
-    start_finish_line_idx: int = 0
-    num_frames: int = 0
-    camera_obj: Any = None
-    focused_driver: Driver | None = None
-    car_rankings: list[list[tuple[Driver, float]]] = field(default_factory=list)
-
-    drivers_in_color_order: list[Driver] = field(default_factory=list)
+from py.utils.models import AppState
 
 
 class AbstractRenderer(ABC):
@@ -70,7 +49,7 @@ class AbstractRenderer(ABC):
 
         """
         self.config: Config = config
-        self.state = RendererState()
+        self.state = AppState()
 
     @abstractmethod
     def add_drivers(self):
@@ -196,7 +175,7 @@ class HeadToHeadRenderer(AbstractRenderer):
         """Load and set up driver data for head-to-head comparison."""
         assert self.state.track_data is not None, "Track data is not loaded"
         self.state.driver_dfs, self.state.start_finish_line_idx = load_driver_data.main(
-            self.config, self.state.track_data
+            self.state, self.config
         )
 
         self.state.drivers_in_order = []
@@ -292,13 +271,7 @@ class HeadToHeadRenderer(AbstractRenderer):
             raise ValueError("Track data is not set.")
 
         add_status_track.StatusTrack(
-            self.state.track_data,
-            self.state.camera_obj,
-            self.state.start_finish_line_idx,
-            self.state.driver_dfs,
-            self.state.driver_colors,
-            self.state.drivers_in_color_order,
-            self.config["render"]["is_shorts_output"],
+            self.state,
             self.config,
         )
         add_live_leaderboard_new.LiveLeaderboard(
@@ -329,7 +302,7 @@ class RestOfFieldRenderer(AbstractRenderer):
         """
         assert self.state.track_data is not None, "Track data is not loaded"
         self.state.driver_dfs, self.state.start_finish_line_idx = load_driver_data.main(
-            self.config, self.state.track_data
+            self.state, self.config
         )
 
         assert self.config["mixed_mode"]["enabled"] is False, (
@@ -419,13 +392,7 @@ class RestOfFieldRenderer(AbstractRenderer):
             raise ValueError("Track data is not set.")
 
         add_status_track.StatusTrack(
-            self.state.track_data,
-            self.state.camera_obj,
-            self.state.start_finish_line_idx,
-            self.state.driver_dfs,
-            self.state.driver_colors,
-            self.state.drivers_in_color_order,
-            self.config["render"]["is_shorts_output"],
+            self.state,
             self.config,
         )
         add_race_timer.RaceTimer(

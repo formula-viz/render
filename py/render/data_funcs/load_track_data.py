@@ -9,8 +9,6 @@ The processed data can be used to create an accurate track representation.
 import math
 import os
 import sys
-from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -18,6 +16,7 @@ from pandas import DataFrame
 from scipy.interpolate import splev, splprep
 
 from py.utils.logger import log_err, log_info
+from py.utils.models import LineData, TrackData
 from py.utils.project_structure import TrackDataPS
 
 
@@ -409,26 +408,6 @@ def curb(
 
     assert len(curb) == len(cur)
     return curb
-
-
-@dataclass
-class LineData:
-    a_points: list[tuple[float, float, float]]
-    b_points: list[tuple[float, float, float]]
-
-
-@dataclass
-class TrackData:
-    """Track data containing inner, outer, and curb points."""
-
-    inner_points: list[tuple[float, float, float]]
-    inner_trace_line: Optional[LineData]
-
-    outer_points: list[tuple[float, float, float]]
-    outer_trace_line: Optional[LineData]
-
-    inner_curb_points: list[tuple[float, float, float]]
-    outer_curb_points: list[tuple[float, float, float]]
 
 
 def create_white_lines(

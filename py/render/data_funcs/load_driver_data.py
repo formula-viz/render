@@ -30,14 +30,14 @@ import numpy as np
 import pandas as pd
 import requests
 from fastf1.core import Laps, Session, Telemetry
+from fastf1.mvapi.data import CircuitInfo
 from fastf1.plotting import get_driver_color
 from pandas import Series
 from scipy.interpolate import UnivariateSpline
 
-from py.render.data_funcs.load_track_data import TrackData
 from py.utils.config import Config
 from py.utils.logger import log_info, log_warn
-from py.utils.models import Driver
+from py.utils.models import AppState, Driver
 from py.utils.project_structure import DriverDataPS
 
 # Uses the new API which has access to the 2025 data
@@ -191,7 +191,7 @@ def populate_driver_tels(
                 driver_tels[driver] = tel
 
 
-def get_driver_tels(config: Config) -> dict[Driver, Telemetry]:
+def get_driver_tels(config: Config) -> tuple[dict[Driver, Telemetry], CircuitInfo]:
     """Return a dictionary of Driver objects and their telemetry data for the given session.
 
     Args:
@@ -202,6 +202,7 @@ def get_driver_tels(config: Config) -> dict[Driver, Telemetry]:
 
     """
     driver_tels: dict[Driver, Telemetry] = {}
+    circuit_info = None
 
     if config["mixed_mode"]["enabled"]:
         touched_ff1_sessions: set[tuple[int, str]] = set()
@@ -211,6 +212,9 @@ def get_driver_tels(config: Config) -> dict[Driver, Telemetry]:
             if (year, session) not in touched_ff1_sessions:
                 ff1_session = ff1.get_session(year, config["track"], session)
                 ff1_session.load()
+
+                if circuit_info is None:
+                    circuit_info = ff1_session.get_circuit_info()
 
                 drivers = get_driver_classes(ff1_session, year, session)
                 # load the driver images if they are not present already
@@ -223,13 +227,18 @@ def get_driver_tels(config: Config) -> dict[Driver, Telemetry]:
             config["year"], config["track"], config["session"]
         )
         ff1_session.load()
+        circuit_info = ff1_session.get_circuit_info()
 
         drivers = get_driver_classes(ff1_session, config["year"], config["session"])
         # load the driver images if they are not present already
         load_driver_headshots(drivers)
         populate_driver_tels(driver_tels, drivers, ff1_session)
 
-    return driver_tels
+    assert circuit_info is not None
+    print(
+        circuit_info.corners, circuit_info.marshal_lights, circuit_info.marshal_sectors
+    )
+    return driver_tels, circuit_info
 
 
 def process_grouped_driver_tels(
@@ -767,9 +776,7 @@ def optimize_smoothness_concurrent(
 # in order to run this function, we need to already have the track data for this track and year
 # because this will be necessary to ensure that we have the correct smoothness so the movement
 # looks natural but also so that we are within track limits
-def main(
-    config: Config, track_data: TrackData
-) -> tuple[dict[Driver, pd.DataFrame], int]:
+def main(state: AppState, config: Config) -> tuple[dict[Driver, pd.DataFrame], int]:
     """Load driver data, returning all dataframes, needed ones are filtered later."""
     # is_done, driver_dfs, start_finish_line_idx = already_done(
     #     str(config["year"]), config["track"], str(config["render"]["fps"])
@@ -779,9 +786,14 @@ def main(
     #     return driver_dfs, start_finish_line_idx
     log_info("Fetching and processing car data")
 
-    driver_tels = get_driver_tels(config)
+    assert state.track_data is not None, "Track data must be loaded before driver data"
+
+    driver_tels, circuit_info = get_driver_tels(config)
+    state.circuit_info = circuit_info
     start_finish_line_idx = process_grouped_driver_tels(
-        driver_tels, track_data.inner_points, track_data.outer_points
+        driver_tels,
+        state.track_data.inner_points,
+        state.track_data.outer_points,
     )
 
     driver_dfs: dict[Driver, pd.DataFrame] = {}

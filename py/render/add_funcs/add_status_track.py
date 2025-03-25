@@ -9,6 +9,7 @@ import math
 from typing import Tuple
 
 import bpy
+from fastf1.mvapi.data import CircuitInfo
 from mathutils import Vector
 from pandas import DataFrame
 
@@ -18,7 +19,7 @@ from py.render.data_funcs.load_track_data import TrackData
 from py.utils.colors import hex_to_blender_rgb
 from py.utils.config import Config
 from py.utils.logger import log_info
-from py.utils.models import Driver
+from py.utils.models import AppState, Driver
 from py.utils.project_structure import RESOURCES_DIR
 
 # In the shorts mode, if we have a dot object, 1 meter away from the camera,
@@ -46,57 +47,38 @@ class StatusTrack:
 
     def __init__(
         self,
-        track_data: TrackData,
-        camera_obj: bpy.types.Object,
-        start_finish_line_idx: int,
-        driver_dfs: dict[Driver, DataFrame],
-        driver_colors: list[str],
-        drivers_in_color_order: list[Driver],
-        is_shorts_output: bool,
+        state: AppState,
         config: Config,
     ):
         """Initialize the StatusTrack with track data and positioning parameters.
 
         Args:
-            track_data: The track data containing inner and outer track points
-            camera_obj: The camera object to parent the status track to
-            start_finish_line_idx: Index of the start/finish line point
-            driver_df: DataFrame containing driver position data over time
-            is_shorts_output: Boolean indicating if output is for shorts format (vertical)
+            state: The application state
             config: Global configuration settings
 
         """
-        self.track_data = track_data
-        self.camera_obj = camera_obj
-        self.start_finish_line_idx = start_finish_line_idx
-        self.driver_dfs = driver_dfs
-        self.driver_colors = driver_colors
-        self.drivers_in_color_order = drivers_in_color_order
-        self.is_shorts_output = is_shorts_output
+        self.state = state
         self.config = config
 
         self._create_parent_empty()
         log_info("Initializing StatusTrack...")
 
         scaled_track_width, scaled_track_height = self._setup()
-        self._parent_to_camera(camera_obj, scaled_track_width, scaled_track_height)
+        self._parent_to_camera(
+            self.state.camera_obj, scaled_track_width, scaled_track_height
+        )
 
     def _create_parent_empty(self):
-        # Create empty parent object for camera-relative positioning
         bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))  # pyright: ignore
         active_obj = bpy.context.active_object
         if not active_obj:
             raise ValueError(
                 "Failed to create parent empty: Active object is not a valid Blender Object"
             )
-
-        # Explicitly cast to the correct type to make pyright happy
         self.parent_empty = active_obj
-
-        # ensure the parent empty is not rendered and invisible in viewport
         self.parent_empty.hide_render = True
         self.parent_empty.hide_viewport = True
-        self.parent_empty.name = "StatusTrackParent"
+        self.parent_empty.name = "StatusTrackEmptyParent"
 
     def _widen_track(
         self, new_track_data: TrackData, total_widen: int
@@ -191,70 +173,49 @@ class StatusTrack:
 
             return result_points, total_distance
 
-        # Calculate outer and inner background points, using every 5th point
+        # the assignment of outer and inner points may be incorrect so I'm
+        # calculating for both and then validating that we actually choose the correct outer
         outer_bg_points, outer_total_distance = calculate_background_points(
             new_outer_points, new_inner_points, stride=15
         )
-
         inner_bg_points, inner_total_distance = calculate_background_points(
             new_inner_points, new_outer_points, stride=15
         )
-
-        # Choose the points with the longer distance
         if outer_total_distance >= inner_total_distance:
             status_track_background_points = outer_bg_points
         else:
             status_track_background_points = inner_bg_points
 
-        # Create a mesh for the background
         bg_mesh = bpy.data.meshes.new("StatusTrackBackgroundMesh")
         bg_obj = bpy.data.objects.new("StatusTrackBackground", bg_mesh)
         bpy.context.scene.collection.objects.link(bg_obj)  # pyright: ignore
-
-        # Create vertices and faces for the mesh
         vertices = [(p[0], p[1], p[2]) for p in status_track_background_points]
-
-        # Create a single face that includes all vertices
         faces = [list(range(len(vertices)))]
-
-        # Update the mesh with the vertices and faces
         bg_mesh.from_pydata(vertices, [], faces)
         bg_mesh.update()
-
-        # Create material for the background with transparency
         bg_mat = bpy.data.materials.new(name="StatusTrackBackgroundMaterial")
         bg_mat.use_nodes = True
-
-        # Clear default nodes
-        if bg_mat.node_tree:
-            bg_mat.node_tree.nodes.clear()
-
         # Add nodes for transparent material
         node_tree = bg_mat.node_tree
-        output = node_tree.nodes.new(type="ShaderNodeOutputMaterial")  # pyright: ignore
-        principled = node_tree.nodes.new(type="ShaderNodeBsdfPrincipled")  # pyright: ignore
-
+        assert node_tree is not None
+        node_tree.nodes.clear()
+        output = node_tree.nodes.new(type="ShaderNodeOutputMaterial")
+        principled = node_tree.nodes.new(type="ShaderNodeBsdfPrincipled")
         # Set up semi-transparent material
-        dark_gray = hex_to_blender_rgb("#222223")
-        principled.inputs["Base Color"].default_value = (
-            dark_gray[0],
-            dark_gray[1],
-            dark_gray[2],
+        principled.inputs["Base Color"].default_value = (  # pyright: ignore
+            0,
+            0,
+            0,
             1.0,
         )
-        principled.inputs["Alpha"].default_value = 0.2
-
+        principled.inputs["Alpha"].default_value = 0.7  # pyright: ignore
         # Connect nodes
-        node_tree.links.new(principled.outputs["BSDF"], output.inputs["Surface"])
-
+        node_tree.links.new(principled.outputs["BSDF"], output.inputs["Surface"])  # pyright: ignore
         # Enable transparency
         bg_mat.blend_method = "BLEND"
-        bg_obj.data.materials.append(bg_mat)
-
+        bg_obj.data.materials.append(bg_mat)  # pyright: ignore
         # Position the background slightly behind the track to avoid z-fighting
         bg_obj.location.z = -0.001
-
-        # Parent the background to the status track object
         return bg_obj
 
     def _get_spread(self, points: list[tuple[float, float, float]], spread_val: float):
@@ -296,67 +257,90 @@ class StatusTrack:
         status_start_finish_line = add_start_finish_line(
             a_points,
             b_points,
-            self.start_finish_line_idx,
+            self.state.start_finish_line_idx,
             "StatusStartFinishLine",
             line_width=40,
         )
         # Create start/finish line material with texture
         start_finish_mat = bpy.data.materials.new(name="StartFinishLineMaterial")
         start_finish_mat.use_nodes = True
-        if start_finish_mat.node_tree:
-            nodes = start_finish_mat.node_tree.nodes
-            links = start_finish_mat.node_tree.links
+        if not start_finish_mat.node_tree:
+            raise ValueError("Material node tree is not initialized")
 
-            # Clear default nodes
-            nodes.clear()
+        nodes = start_finish_mat.node_tree.nodes
+        links = start_finish_mat.node_tree.links
+        # Clear default nodes
+        nodes.clear()
+        # Add texture image node
+        texture_node = nodes.new(type="ShaderNodeTexImage")
+        texture_path = bpy.path.abspath(
+            f"{RESOURCES_DIR}/start-finish-line-texture.png"
+        )
+        texture_image = bpy.data.images.load(texture_path)
+        texture_node.image = texture_image  # pyright: ignore
+        # Add UV mapping nodes for proper texture projection
+        mapping_node = nodes.new(type="ShaderNodeMapping")
+        texcoord_node = nodes.new(type="ShaderNodeTexCoord")
 
-            # Add texture image node
-            texture_node = nodes.new(type="ShaderNodeTexImage")
-            texture_path = bpy.path.abspath(
-                f"{RESOURCES_DIR}/start-finish-line-texture.png"
-            )
-            texture_image = bpy.data.images.load(texture_path)
-            texture_node.image = texture_image
+        # Add principled BSDF node
+        bsdf_node = nodes.new(type="ShaderNodeBsdfPrincipled")
+        output_node = nodes.new(type="ShaderNodeOutputMaterial")
 
-            # Add UV mapping nodes for proper texture projection
-            mapping_node = nodes.new(type="ShaderNodeMapping")
-            texcoord_node = nodes.new(type="ShaderNodeTexCoord")
-
-            # Add principled BSDF node
-            bsdf_node = nodes.new(type="ShaderNodeBsdfPrincipled")
-            output_node = nodes.new(type="ShaderNodeOutputMaterial")
-
-            # Connect nodes for proper UV mapping
-            links.new(texcoord_node.outputs["UV"], mapping_node.inputs["Vector"])
-            links.new(mapping_node.outputs["Vector"], texture_node.inputs["Vector"])
-            links.new(texture_node.outputs["Color"], bsdf_node.inputs["Base Color"])
-            links.new(bsdf_node.outputs["BSDF"], output_node.inputs["Surface"])
-
+        # Connect nodes for proper UV mapping
+        links.new(texcoord_node.outputs["UV"], mapping_node.inputs["Vector"])
+        links.new(mapping_node.outputs["Vector"], texture_node.inputs["Vector"])
+        links.new(texture_node.outputs["Color"], bsdf_node.inputs["Base Color"])
+        links.new(bsdf_node.outputs["BSDF"], output_node.inputs["Surface"])
         # Apply material to start/finish line
         status_start_finish_line.data.materials[0] = start_finish_mat  # pyright: ignore
-
         # Ensure proper UV mapping
         # Select the object and enter edit mode
-        bpy.context.view_layer.objects.active = status_start_finish_line
+        bpy.context.view_layer.objects.active = status_start_finish_line  # pyright: ignore
         bpy.ops.object.mode_set(mode="EDIT")
-
         # Select all faces and perform unwrap
         bpy.ops.mesh.select_all(action="SELECT")
         bpy.ops.uv.unwrap(method="ANGLE_BASED", margin=0.001)
-
         # Return to object mode
         bpy.ops.object.mode_set(mode="OBJECT")
         return status_start_finish_line
 
     def _setup(self) -> Tuple[float, float]:
-        new_track_data = self._center(self.track_data, self.driver_dfs)
+        driver_dfs_copy: dict[Driver, DataFrame] = {}
+        if self.config["type"] == "rest-of-field":
+            assert self.state.focused_driver is not None, (
+                "Focused driver must be assigned before setting up status track."
+            )
+            driver_dfs_copy[self.state.focused_driver] = self.state.driver_dfs[
+                self.state.focused_driver
+            ].copy()
+        else:
+            for driver, driver_df in self.state.driver_dfs.items():
+                driver_dfs_copy[driver] = driver_df.copy()
 
-        new_inner_points, new_outer_points = self._widen_track(new_track_data, 10)
+        assert self.state.track_data is not None, (
+            "Track data must be assigned before setting up status track."
+        )
+        assert self.state.circuit_info is not None, (
+            "Circuit info must be assigned before setting up status track."
+        )
+
+        track_data_copy, driver_dfs_copy = self._orient(
+            self.state.track_data, self.state.circuit_info, driver_dfs_copy
+        )
+
+        track_data_copy, driver_dfs_copy = self._center(
+            track_data_copy, driver_dfs_copy
+        )
+
+        inner_points_copy, outer_points_copy = self._widen_track(track_data_copy, 10)
         track_width, track_height = self._get_track_dimensions(
-            new_inner_points, new_outer_points
+            inner_points_copy, outer_points_copy
         )
         optimal_scale = self._calculate_optimal_scale(
-            track_width, track_height, self.camera_obj, self.is_shorts_output
+            track_width,
+            track_height,
+            self.state.camera_obj,
+            self.config["render"]["is_shorts_output"],
         )
         scaled_track_width, scaled_track_height = (
             track_width * optimal_scale,
@@ -364,8 +348,8 @@ class StatusTrack:
         )
 
         spread_val = 6
-        inner_spread_a, inner_spread_b = self._get_spread(new_inner_points, spread_val)
-        outer_spread_a, outer_spread_b = self._get_spread(new_outer_points, spread_val)
+        inner_spread_a, inner_spread_b = self._get_spread(inner_points_copy, spread_val)
+        outer_spread_a, outer_spread_b = self._get_spread(outer_points_copy, spread_val)
 
         track_mat = create_material(hex_to_blender_rgb("#FFFFFF"), "Status", 1.0)
         inner_spread_obj = create_planes(
@@ -412,7 +396,7 @@ class StatusTrack:
 
         status_start_finish_line = self._add_start_finish_line(cur_as, cur_bs)
 
-        background_obj = self._add_background(new_inner_points, new_outer_points)
+        background_obj = self._add_background(inner_points_copy, outer_points_copy)
 
         self._scale(optimal_scale, inner_spread_obj)
         self._scale(optimal_scale, outer_spread_obj)
@@ -420,17 +404,23 @@ class StatusTrack:
         self._scale(optimal_scale, background_obj)
 
         if self.config["type"] == "rest-of-field":
-            driver, color = self.drivers_in_color_order[0], self.driver_colors[0]
+            driver, color = (
+                self.state.drivers_in_color_order[0],
+                self.state.driver_colors[0],
+            )
             indicator_dot = self._add_indicator_dot(
-                driver.last_name, color, self.driver_dfs[driver], 0
+                driver.last_name, color, driver_dfs_copy[driver], 0
             )
             indicator_dot.parent = inner_spread_obj
         else:
             for idx, (driver, color) in enumerate(
-                zip(reversed(self.drivers_in_color_order), reversed(self.driver_colors))
+                zip(
+                    reversed(self.state.drivers_in_color_order),
+                    reversed(self.state.driver_colors),
+                )
             ):
                 indicator_dot = self._add_indicator_dot(
-                    driver.last_name, color, self.driver_dfs[driver], idx
+                    driver.last_name, color, driver_dfs_copy[driver], idx
                 )
                 indicator_dot.parent = inner_spread_obj
 
@@ -458,7 +448,7 @@ class StatusTrack:
         # the track will already be centered so its highest point will be scaled_track_height / 2
         up_y, right_x = scaled_track_height / 2, scaled_track_width / 2
 
-        if self.is_shorts_output:
+        if self.config["render"]["is_shorts_output"]:
             position = (
                 SHORTS_MODE_RIGHT_EDGE - right_x - SHORTS_MODE_EDGE_BUFFER,
                 SHORTS_MODE_TOP_EDGE - up_y - SHORTS_MODE_EDGE_BUFFER,
@@ -539,54 +529,105 @@ class StatusTrack:
         status_track_obj.scale.y = optimal_scale
         status_track_obj.scale.z = optimal_scale
 
-    def _center(
-        self, new_track_data: TrackData, driver_dfs: dict[Driver, DataFrame]
-    ) -> TrackData:
-        new_inner_points = []
-        new_outer_points = []
-        new_inner_curb_points = []
-        new_outer_curb_points = []
+    def _orient(
+        self,
+        track_data: TrackData,
+        circuit_info: CircuitInfo,
+        driver_dfs: dict[Driver, DataFrame],
+    ) -> tuple[TrackData, dict[Driver, DataFrame]]:
+        """Rotate the track and driver data by the needed rotation angle."""
+        rotation_angle = math.radians(circuit_info.rotation)
 
-        # offset will be based on the outer points
-        min_x = min([point[0] for point in new_track_data.outer_points])
-        max_x = max([point[0] for point in new_track_data.outer_points])
-        offset_x = -(max_x + min_x) / 2
+        def _rotate_point(point, angle):
+            """Rotate a point around the origin by the given angle."""
+            x, y, z = point
+            cos_angle = math.cos(angle)
+            sin_angle = math.sin(angle)
+            new_x = x * cos_angle - y * sin_angle
+            new_y = x * sin_angle + y * cos_angle
+            return (new_x, new_y, z)
 
-        min_y = min([point[1] for point in new_track_data.outer_points])
-        max_y = max([point[1] for point in new_track_data.outer_points])
-        offset_y = -(max_y + min_y) / 2
-
-        min_z = min([point[2] for point in new_track_data.outer_points])
-        max_z = max([point[2] for point in new_track_data.outer_points])
-        offset_z = -(max_z + min_z) / 2
-
-        offset = (offset_x, offset_y, offset_z)
-
-        new_inner_points = [
-            (x + offset[0], y + offset[1], z + offset[2])
-            for x, y, z in new_track_data.inner_points
+        # Apply rotation to all track points
+        rotated_inner_points = [
+            _rotate_point(p, rotation_angle) for p in track_data.inner_points
         ]
-        new_outer_points = [
-            (x + offset[0], y + offset[1], z + offset[2])
-            for x, y, z in new_track_data.outer_points
+        rotated_outer_points = [
+            _rotate_point(p, rotation_angle) for p in track_data.outer_points
         ]
-        new_inner_curb_points = [
-            (x + offset[0], y + offset[1], z + offset[2])
-            for x, y, z in new_track_data.inner_curb_points
+        rotated_inner_curb_points = [
+            _rotate_point(p, rotation_angle) for p in track_data.inner_curb_points
         ]
-        new_outer_curb_points = [
-            (x + offset[0], y + offset[1], z + offset[2])
-            for x, y, z in new_track_data.outer_curb_points
+        rotated_outer_curb_points = [
+            _rotate_point(p, rotation_angle) for p in track_data.outer_curb_points
         ]
 
+        # Apply rotation to driver positions
         for driver, df in driver_dfs.items():
-            new_driver_df = df.copy()
-            new_driver_df["X"] = new_driver_df["X"] + offset_x
-            new_driver_df["Y"] = new_driver_df["Y"] + offset_y
-            new_driver_df["Z"] = new_driver_df["Z"] + offset_z
-            driver_dfs[driver] = new_driver_df
+            for i in range(len(df)):
+                x, y = float(df.loc[i, "X"]), float(df.loc[i, "Y"])  # pyright: ignore
+                cos_angle = math.cos(rotation_angle)
+                sin_angle = math.sin(rotation_angle)
+                new_x = x * cos_angle - y * sin_angle
+                new_y = x * sin_angle + y * cos_angle
+                df.loc[i, "X"] = new_x
+                df.loc[i, "Y"] = new_y
+            driver_dfs[driver] = df
+        rotated_track_data = TrackData(
+            rotated_inner_points,
+            None,
+            rotated_outer_points,
+            None,
+            rotated_inner_curb_points,
+            rotated_outer_curb_points,
+        )
 
-        new_track_data = TrackData(
+        return rotated_track_data, driver_dfs
+
+    def _center(
+        self, track_data: TrackData, driver_dfs: dict[Driver, DataFrame]
+    ) -> tuple[TrackData, dict[Driver, DataFrame]]:
+        """Center the track and driver data around the origin."""
+
+        def _calculate_offset(points):
+            """Calculate the center offset for a set of points."""
+            min_x = min([point[0] for point in points])
+            max_x = max([point[0] for point in points])
+            offset_x = -(max_x + min_x) / 2
+
+            min_y = min([point[1] for point in points])
+            max_y = max([point[1] for point in points])
+            offset_y = -(max_y + min_y) / 2
+
+            min_z = min([point[2] for point in points])
+            max_z = max([point[2] for point in points])
+            offset_z = -(max_z + min_z) / 2
+
+            return (offset_x, offset_y, offset_z)
+
+        def _apply_offset(points, offset):
+            """Apply offset to a list of points."""
+            return [(x + offset[0], y + offset[1], z + offset[2]) for x, y, z in points]
+
+        # Calculate offset based on outer points
+        offset = _calculate_offset(track_data.outer_points)
+
+        # Apply offset to all point sets
+        new_inner_points = _apply_offset(track_data.inner_points, offset)
+        new_outer_points = _apply_offset(track_data.outer_points, offset)
+        new_inner_curb_points = _apply_offset(track_data.inner_curb_points, offset)
+        new_outer_curb_points = _apply_offset(track_data.outer_curb_points, offset)
+
+        # Apply the same offset to all driver DataFrames
+        centered_driver_dfs = {}
+        for driver, df in driver_dfs.items():
+            centered_df = df.copy()
+            # Apply offset to each coordinate column
+            centered_df["X"] = centered_df["X"] + offset[0]
+            centered_df["Y"] = centered_df["Y"] + offset[1]
+            centered_df["Z"] = centered_df["Z"] + offset[2]
+            centered_driver_dfs[driver] = centered_df
+
+        centered_track_data = TrackData(
             new_inner_points,
             None,
             new_outer_points,
@@ -595,7 +636,7 @@ class StatusTrack:
             new_outer_curb_points,
         )
 
-        return new_track_data
+        return centered_track_data, centered_driver_dfs
 
     def _add_indicator_dot(
         self, driver_name: str, driver_color: str, new_driver_df: DataFrame, idx: int
@@ -626,7 +667,7 @@ class StatusTrack:
         # Create a circle (disk) instead of a sphere using circle primitive
         bpy.ops.mesh.primitive_circle_add(
             vertices=32,  # Number of vertices for the circle
-            radius=30,  # Radius of the circle
+            radius=27.5,  # Radius of the circle
             fill_type="TRIFAN",  # Fill the circle to create a disk
         )
         dot = bpy.context.active_object
